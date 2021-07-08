@@ -1390,11 +1390,7 @@ impl CommandQueue {
     pub fn get_timestamp_frequency(&self) -> DxResult<u64> {
         let mut frequency = 0u64;
         unsafe {
-            dx_try!(
-                self.this,
-                GetTimestampFrequency,
-                &mut frequency
-            );
+            dx_try!(self.this, GetTimestampFrequency, &mut frequency);
 
             Ok(frequency)
         }
@@ -1751,7 +1747,7 @@ impl CommandList {
 
     pub fn set_render_targets(
         &self,
-        descriptors: &mut [CpuDescriptorHandle],
+        descriptors: &[CpuDescriptorHandle],
         single_handle_to_descriptor_range: bool,
         depth_stencil: Option<CpuDescriptorHandle>,
     ) {
@@ -1760,7 +1756,7 @@ impl CommandList {
         // we cannot just pass an array of CPUDescriptorHandle's where
         // an array of D3D12_CPU_DESCRIPTOR_HANDLE's is required
         // one could argue this smells, but it is really convenient
-        // to store descriptor size inside descriptor heap object
+        // to store descriptor size inside descriptor heap handle object
         const MAX_RT_COUNT: usize =
             D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT as usize;
 
@@ -1793,7 +1789,7 @@ impl CommandList {
         }
     }
 
-    pub fn set_descriptor_heaps(&self, heaps: &mut [DescriptorHeap]) {
+    pub fn set_descriptor_heaps(&self, heaps: &[DescriptorHeap]) {
         // since DescriptorHeap object is not just a wrapper around
         // the correspondent COM pointer but also contains another member,
         // we cannot just pass an array of DescriptorHeap's where
@@ -2038,6 +2034,63 @@ impl CommandList {
                 ExecuteBundle,
                 // ToDo: is it 100% safe?
                 command_list.this as *mut ID3D12GraphicsCommandList
+            );
+        }
+    }
+
+    pub fn begin_query(
+        &self,
+        query_heap: &QueryHeap,
+        query_type: QueryType,
+        index: Elements,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                BeginQuery,
+                query_heap.this,
+                query_type as i32,
+                index.0 as u32
+            );
+        }
+    }
+
+    pub fn end_query(
+        &self,
+        query_heap: &QueryHeap,
+        query_type: QueryType,
+        index: Elements,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                EndQuery,
+                query_heap.this,
+                query_type as i32,
+                index.0 as u32
+            );
+        }
+    }
+
+    pub fn resolve_query_data(
+        &self,
+        query_heap: &QueryHeap,
+        query_type: QueryType,
+        start_index: Elements,
+        num_queries: Elements,
+        destination_buffer: &Resource,
+        aligned_destination_buffer_offset: Bytes,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                ResolveQueryData,
+                query_heap.this,
+                query_type as i32,
+                start_index.0 as u32,
+                num_queries.0 as u32,
+                destination_buffer.this,
+                aligned_destination_buffer_offset.0
             );
         }
     }

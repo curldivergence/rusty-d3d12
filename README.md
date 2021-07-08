@@ -1,12 +1,12 @@
 # rusty-d3d12
 This project provides low-level bindings for D3D12 API. It utilizes rust-bindgen for generating raw bindings (unlike d3d12-rs crate), but aims for providing idiomatic APIs (unlike the raw D3D12 wrappers from winapi crate).
 
-A list of currently implemented examples (note their code can be dirty and should not be treated as sane D3D12 tutorials since their purpose is just to showcase the API):
+A list of currently implemented examples (note their code can be dirty and should not be treated as sane D3D12 tutorials or high-quality Rust code examples since their purpose is just to showcase the API):
 - hello triangle
 - hello texture (based on Microsoft sample)
 - dynamic indexing (based on Microsoft sample)
 - dynamic indexing using SM6.6 dynamic resources (basically a clone of the previous example with changes to indexing method)
-- mesh shaders (loosely based)
+- mesh shaders (loosely based on Microsoft sample)
 
 Examples that are planned to be added in the near future include DXR showcase and port of Microsoft's D3D12HeterogeneousMultiadapter sample.
 

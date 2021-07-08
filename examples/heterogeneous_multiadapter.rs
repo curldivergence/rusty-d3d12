@@ -271,6 +271,7 @@ impl HeterogeneousMultiadapterSample {
     fn new(hwnd: *mut std::ffi::c_void) -> Self {
         let mut pipeline = Pipeline::new(hwnd);
         pipeline.update();
+        pipeline.render();
 
         HeterogeneousMultiadapterSample { pipeline }
     }
@@ -297,8 +298,10 @@ struct Pipeline {
     direct_command_queue_timestamp_frequencies: [u64; DEVICE_COUNT],
     copy_command_queue: CommandQueue,
     swapchain: DxgiSwapchain,
-    frame_index: u32,
+    frame_index: usize,
     frames_since_last_update: u32, // static var in OnUpdate()
+    viewport: Viewport,
+    scissor_rect: Rect,
     triangle_count: u32,
     rtv_heaps: [DescriptorHeap; DEVICE_COUNT],
     dsv_heap: DescriptorHeap,
@@ -316,6 +319,15 @@ struct Pipeline {
     cross_adapter_resources: [[Resource; FRAMES_IN_FLIGHT]; DEVICE_COUNT],
     secondary_adapter_textures: [Resource; FRAMES_IN_FLIGHT],
     intermediate_blur_render_target: Resource,
+
+    root_signature: RootSignature,
+    blur_root_signature: RootSignature,
+
+    pipeline_state: PipelineState,
+    blur_pipeline_states: [PipelineState; 2],
+
+    direct_command_lists: [CommandList; DEVICE_COUNT],
+    copy_command_list: CommandList,
 
     vertex_buffer: Resource,
     vertex_buffer_upload: Resource,
@@ -446,8 +458,20 @@ impl Pipeline {
 
         let swapchain =
             create_swapchain(factory, &direct_command_queues[1], hwnd);
-        let frame_index = swapchain.get_current_back_buffer_index();
+        let frame_index = swapchain.get_current_back_buffer_index() as usize;
         trace!("Swapchain returned frame index {}", frame_index);
+
+        let viewport = Viewport::default()
+            .set_top_left_x(0.)
+            .set_top_left_y(0.)
+            .set_width(WINDOW_WIDTH as f32)
+            .set_height(WINDOW_HEIGHT as f32);
+
+        let scissor_rect = Rect::default()
+            .set_left(0)
+            .set_top(0)
+            .set_right(WINDOW_WIDTH as i32)
+            .set_bottom(WINDOW_HEIGHT as i32);
 
         let (rtv_heaps, dsv_heap, cbv_srv_heap) =
             create_descriptor_heaps(&devices, &swapchain);
@@ -623,7 +647,7 @@ impl Pipeline {
         trace!("Created root signatures");
 
         let (pso, blur_pso_u, blur_pso_v) =
-            create_psos(&devices, root_signature, blur_root_signature);
+            create_psos(&devices, &root_signature, &blur_root_signature);
 
         let (direct_command_lists, copy_command_list) = create_command_lists(
             &devices,
@@ -709,6 +733,8 @@ impl Pipeline {
             swapchain,
             frame_index,
             frames_since_last_update: 0,
+            viewport,
+            scissor_rect,
             triangle_count: if is_software_adapter {
                 MAX_TRIANGLE_COUNT / 50
             } else {
@@ -729,6 +755,14 @@ impl Pipeline {
             cross_adapter_resources,
             secondary_adapter_textures,
             intermediate_blur_render_target,
+
+            root_signature,
+            blur_root_signature,
+            pipeline_state: pso,
+            blur_pipeline_states: [blur_pso_u, blur_pso_v],
+
+            direct_command_lists,
+            copy_command_list,
 
             vertex_buffer,
             vertex_buffer_upload,
@@ -764,6 +798,77 @@ impl Pipeline {
             draw_time_moving_average: 0,
             blur_time_moving_average: 0,
         }
+    }
+
+    fn populate_command_lists(&mut self) {
+        // Command list to render target the triangles on the primary adapter.
+        {
+            let adapter_idx = 0usize; // primary
+
+            self.direct_command_allocators[adapter_idx][self.frame_index]
+                .reset()
+                .expect(
+                    "Cannot reset direct command allocator on primary device",
+                );
+
+            self.direct_command_lists[adapter_idx]
+                .reset(
+                    &self.direct_command_allocators[adapter_idx]
+                        [self.frame_index],
+                    Some(&self.pipeline_state),
+                )
+                .expect("Cannot reset direct command list on primary adapter");
+
+            let timestamp_heap_index = 2 * self.frame_index;
+            self.direct_command_lists[adapter_idx].end_query(
+                &self.query_heaps[adapter_idx],
+                QueryType::Timestamp,
+                Elements::from(timestamp_heap_index),
+            );
+
+            self.direct_command_lists[adapter_idx]
+                .set_graphics_root_signature(&self.root_signature);
+
+            self.direct_command_lists[adapter_idx]
+                .set_viewports(slice::from_ref(&self.viewport));
+
+            self.direct_command_lists[adapter_idx]
+                .set_scissor_rects(slice::from_ref(&self.scissor_rect));
+
+            self.direct_command_lists[adapter_idx].resource_barrier(
+                slice::from_ref(&ResourceBarrier::transition(
+                    &ResourceTransitionBarrier::default()
+                        .set_resource(
+                            &self.render_targets[adapter_idx][self.frame_index],
+                        )
+                        .set_state_before(ResourceStates::CommonOrPresent)
+                        .set_state_after(ResourceStates::RenderTarget),
+                )),
+            );
+
+            let rtv_handle = self.rtv_heaps[adapter_idx]
+                .get_cpu_descriptor_handle_for_heap_start()
+                .advance(Elements::from(self.frame_index));
+
+            let dsv_handle =
+                self.dsv_heap.get_cpu_descriptor_handle_for_heap_start();
+
+            self.direct_command_lists[adapter_idx].set_render_targets(
+                slice::from_ref(&rtv_handle),
+                false,
+                Some(dsv_handle),
+            );
+
+            self.direct_command_lists[adapter_idx].clear_render_target_view(
+                rtv_handle,
+                CLEAR_COLOR,
+                &[],
+            );
+        }
+    }
+
+    fn render(&mut self) {
+        self.populate_command_lists()
     }
 
     fn update(&mut self) {
@@ -810,8 +915,7 @@ impl Pipeline {
     fn update_workload_constant_buffers(&mut self) {
         {
             let workload_dst = unsafe {
-                self.workload_cb_mapped_data
-                    .offset(self.frame_index as isize)
+                self.workload_cb_mapped_data.add(self.frame_index)
                     as *mut WorkloadConstantBufferData
             };
 
@@ -824,8 +928,7 @@ impl Pipeline {
             }
 
             let blur_workload_dst = unsafe {
-                self.blur_workload_cb_mapped_data
-                    .offset(self.frame_index as isize)
+                self.blur_workload_cb_mapped_data.add(self.frame_index)
                     as *mut WorkloadConstantBufferData
             };
 
@@ -915,14 +1018,15 @@ impl Pipeline {
     fn get_timestamps_data(&mut self) {
         let oldest_frame_index = self.frame_index;
         assert!(
-            self.frame_fence_values[oldest_frame_index as usize]
+            self.frame_fence_values[oldest_frame_index]
                 <= self.frame_fence.get_completed_value()
         );
         let empty_range = Range::default();
         let moving_average = [&mut self.draw_times, &mut self.blur_times];
         for device_idx in 0..DEVICE_COUNT {
-            let range_begin =
-                Bytes::from(2 * oldest_frame_index * size_of::<u64>() as u32);
+            let range_begin = Bytes::from(
+                2 * oldest_frame_index as u32 * size_of::<u64>() as u32,
+            );
             let read_range = Range::default()
                 .set_begin(range_begin)
                 .set_end(range_begin + Bytes(2 * size_of::<u64>() as u64));
@@ -1400,7 +1504,7 @@ fn create_primary_vertex_buffer(
 
 fn create_command_lists(
     devices: &[Device; DEVICE_COUNT],
-    frame_index: u32,
+    frame_index: usize,
     direct_command_allocators: &[[CommandAllocator; FRAMES_IN_FLIGHT];
          DEVICE_COUNT],
     copy_allocators: &[CommandAllocator; FRAMES_IN_FLIGHT],
@@ -1411,7 +1515,7 @@ fn create_command_lists(
         devices[0]
             .create_command_list(
                 CommandListType::Direct,
-                &direct_command_allocators[0][frame_index as usize],
+                &direct_command_allocators[0][frame_index],
                 Some(&pso),
                 // None,
             )
@@ -1419,7 +1523,7 @@ fn create_command_lists(
         devices[1]
             .create_command_list(
                 CommandListType::Direct,
-                &direct_command_allocators[1][frame_index as usize],
+                &direct_command_allocators[1][frame_index],
                 Some(&blur_pso_u),
                 // None,
             )
@@ -1428,7 +1532,7 @@ fn create_command_lists(
     let copy_command_list = devices[0]
         .create_command_list(
             CommandListType::Copy,
-            &copy_allocators[frame_index as usize],
+            &copy_allocators[frame_index],
             Some(&pso),
             // None,
         )
@@ -1441,8 +1545,8 @@ fn create_command_lists(
 
 fn create_psos(
     devices: &[Device; DEVICE_COUNT],
-    root_signature: RootSignature,
-    blur_root_signature: RootSignature,
+    root_signature: &RootSignature,
+    blur_root_signature: &RootSignature,
 ) -> (PipelineState, PipelineState, PipelineState) {
     let vertex_shader = compile_shader(
         "VertexShader",
