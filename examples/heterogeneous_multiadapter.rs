@@ -327,12 +327,16 @@ struct Pipeline {
 
     depth_stencil: Resource,
     triangle_constant_buffer: Resource,
-    triangle_cb_data: *mut u8,
+    triangle_cb_data: Vec<SceneConstantBuffer>,
+    triangle_cb_mapped_data: *mut u8,
     ps_loop_count: u32,
     workload_constant_buffer: Resource,
-    workload_cb_data: *mut u8,
+    workload_cb_data: WorkloadConstantBufferData,
+    workload_cb_mapped_data: *mut u8,
+
     blur_workload_constant_buffer: Resource,
-    blur_workload_cb_data: *mut u8,
+    blur_workload_cb_data: WorkloadConstantBufferData,
+    blur_workload_cb_mapped_data: *mut u8,
     blur_ps_loop_count: u32,
     blur_constant_buffer: Resource,
 
@@ -647,20 +651,29 @@ impl Pipeline {
 
         trace!("Created depth stencil on primary adapter");
 
-        let (triangle_constant_buffer, triangle_cb_data) =
-            create_triangle_constant_buffer(&devices);
+        let (
+            triangle_constant_buffer,
+            triangle_cb_data,
+            triangle_cb_mapped_data,
+        ) = create_triangle_constant_buffer(&devices);
 
         trace!("Created triangle constant buffer");
 
         let ps_loop_count = 0;
-        let (workload_constant_buffer, workload_cb_data) =
-            create_workload_constant_buffer(&devices, ps_loop_count);
+        let (
+            workload_constant_buffer,
+            workload_cb_data,
+            workload_cb_mapped_data,
+        ) = create_workload_constant_buffer(&devices, ps_loop_count);
 
         trace!("Created workload constant buffer");
 
         let blur_ps_loop_count = 0;
-        let (blur_workload_constant_buffer, blur_workload_cb_data) =
-            create_blur_workload_constant_buffer(&devices, blur_ps_loop_count);
+        let (
+            blur_workload_constant_buffer,
+            blur_workload_cb_data,
+            blur_workload_cb_mapped_data,
+        ) = create_blur_workload_constant_buffer(&devices, blur_ps_loop_count);
 
         trace!("Created blur workload constant buffer");
 
@@ -728,11 +741,15 @@ impl Pipeline {
             depth_stencil,
             triangle_constant_buffer,
             triangle_cb_data,
+            triangle_cb_mapped_data,
             ps_loop_count: 0,
             workload_constant_buffer,
             workload_cb_data,
+            workload_cb_mapped_data,
+
             blur_workload_constant_buffer,
             blur_workload_cb_data,
+            blur_workload_cb_mapped_data,
             blur_ps_loop_count: 0,
             blur_constant_buffer,
 
@@ -756,11 +773,69 @@ impl Pipeline {
         self.adjust_workload_sizes();
         trace!("Adjusted workloads");
 
-        {
-            let workload_dest =
-                unsafe { self.workload_cb_data.offset(self.frame_index as isize) };
+        self.update_workload_constant_buffers();
+        trace!("Updated workload constant buffers");
 
-            
+        self.update_scene_constant_buffer();
+        trace!("Updated scene constant buffer");
+    }
+
+    fn update_scene_constant_buffer(&mut self) {
+        let offset_bounds = 2.5f32;
+        let mut rng = rand::thread_rng();
+        for tri_idx in 0..self.triangle_count as usize {
+            self.triangle_cb_data[tri_idx].offset.x +=
+                self.triangle_cb_data[tri_idx].velocity.x;
+
+            if self.triangle_cb_data[tri_idx].offset.x > offset_bounds {
+                self.triangle_cb_data[tri_idx].velocity.x =
+                    rng.gen_range(0.01..0.02);
+                self.triangle_cb_data[tri_idx].offset.x = -offset_bounds;
+            }
+        }
+        let dest = unsafe {
+            self.triangle_cb_mapped_data
+                .offset(self.frame_index as isize * MAX_TRIANGLE_COUNT as isize)
+                as *mut SceneConstantBuffer
+        };
+        unsafe {
+            copy_nonoverlapping(
+                self.triangle_cb_data.as_ptr(),
+                dest,
+                self.triangle_count as usize,
+            )
+        };
+    }
+
+    fn update_workload_constant_buffers(&mut self) {
+        {
+            let workload_dst = unsafe {
+                self.workload_cb_mapped_data
+                    .offset(self.frame_index as isize)
+                    as *mut WorkloadConstantBufferData
+            };
+
+            self.workload_cb_data.loop_count = self.ps_loop_count;
+            let workload_src =
+                &self.workload_cb_data as *const WorkloadConstantBufferData;
+
+            unsafe {
+                copy_nonoverlapping(workload_src, workload_dst, 1);
+            }
+
+            let blur_workload_dst = unsafe {
+                self.blur_workload_cb_mapped_data
+                    .offset(self.frame_index as isize)
+                    as *mut WorkloadConstantBufferData
+            };
+
+            self.blur_workload_cb_data.loop_count = self.blur_ps_loop_count;
+            let blur_workload_src = &self.blur_workload_cb_data
+                as *const WorkloadConstantBufferData;
+
+            unsafe {
+                copy_nonoverlapping(blur_workload_src, blur_workload_dst, 1);
+            }
         }
     }
 
@@ -967,7 +1042,7 @@ fn create_blur_constant_buffer(devices: &[Device; DEVICE_COUNT]) -> Resource {
 fn create_blur_workload_constant_buffer(
     devices: &[Device; DEVICE_COUNT],
     blur_ps_loop_count: u32,
-) -> (Resource, *mut u8) {
+) -> (Resource, WorkloadConstantBufferData, *mut u8) {
     let blur_workload_constant_buffer_size = Bytes::from(
         size_of::<WorkloadConstantBufferData>() as u32
             * FRAMES_IN_FLIGHT as u32,
@@ -998,17 +1073,17 @@ fn create_blur_workload_constant_buffer(
         copy_nonoverlapping(
             &buffer_data,
             mapped_data as *mut WorkloadConstantBufferData,
-            1, // ToDo: why 1??
+            1,
         );
     }
 
-    (blur_workload_constant_buffer, mapped_data)
+    (blur_workload_constant_buffer, buffer_data, mapped_data)
 }
 
 fn create_workload_constant_buffer(
     devices: &[Device; DEVICE_COUNT],
     ps_loop_count: u32,
-) -> (Resource, *mut u8) {
+) -> (Resource, WorkloadConstantBufferData, *mut u8) {
     let workload_constant_buffer_size = Bytes::from(
         size_of::<WorkloadConstantBufferData>() as u32
             * FRAMES_IN_FLIGHT as u32,
@@ -1043,12 +1118,12 @@ fn create_workload_constant_buffer(
         );
     }
 
-    (workload_constant_buffer, mapped_data)
+    (workload_constant_buffer, buffer_data, mapped_data)
 }
 
 fn create_triangle_constant_buffer(
     devices: &[Device; DEVICE_COUNT],
-) -> (Resource, *mut u8) {
+) -> (Resource, Vec<SceneConstantBuffer>, *mut u8) {
     let constant_buffer_size = Bytes::from(
         size_of::<SceneConstantBuffer>() as u32
             * MAX_TRIANGLE_COUNT
@@ -1107,7 +1182,7 @@ fn create_triangle_constant_buffer(
         );
     }
 
-    (constant_buffer, mapped_data)
+    (constant_buffer, constant_buffer_data, mapped_data)
 }
 
 fn create_depth_stencil(
