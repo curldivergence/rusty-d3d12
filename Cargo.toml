@@ -1,0 +1,45 @@
+[package]
+name = "rusty-d3d12"
+version = "0.1.3"
+authors = ["Andrey Pushkar <mail@apushkar.me>"]
+edition = "2018"
+description = """Low-level DX12 bindings for Rust."""
+license = "GPL-3.0"
+keywords = ["d3d", "d3d12", "directx12", "directx", "dxgi"]
+categories = ["rendering::graphics-api", "graphics", "game-development", "multimedia", "api-bindings"]
+repository = "https://github.com/curldivergence/rusty-d3d12"
+include = ["assets/**/*", "D3D12AgilitySDK/**/*"]
+
+[features]
+default = ["log_ref_counting"]
+# PIX on Windows support via pixwrapper crate (requires WinPixEventRuntime headers and dll)
+# (please see pixwrapper's docs for details)
+pix = []
+log_ref_counting = []
+
+[build-dependencies]
+bindgen = "0.57"
+regex = "1"
+
+[dependencies]
+winapi = "0.3.8"
+bitflags = "1.2.1"
+log = "0.4.8"
+pixwrapper = "0.1.3"
+thiserror = "1.0"
+static_assertions = "1.1.0"
+widestring = "0.4"
+hassle-rs = "0.3"
+
+# Needed for examples
+[dev-dependencies]
+winit = "0.24"
+widestring = "0.4"
+memoffset = "0.5"
+hassle-rs = "0.3"
+clap = "2.33"
+simple_logger = "1.6"
+cgmath = { version = "0.17", features = ["swizzle"] }
+colorsys = "0.6.3"
+tobj = "2.0.4"
+rand = "0.8"
