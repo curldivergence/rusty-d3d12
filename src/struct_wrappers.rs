@@ -597,7 +597,7 @@ impl Rect {
 pub struct TextureCopyLocation(pub D3D12_TEXTURE_COPY_LOCATION);
 
 impl TextureCopyLocation {
-    pub fn new(resource: &Resource, location: TextureLocationType) -> Self {
+    pub fn new(resource: &Resource, location: &TextureLocationType) -> Self {
         match location {
             TextureLocationType::PlacedFootprint(footprint) => {
                 Self(D3D12_TEXTURE_COPY_LOCATION {
@@ -623,8 +623,65 @@ impl TextureCopyLocation {
     }
 }
 
+#[derive(Copy, Clone, Default)]
 #[repr(transparent)]
 pub struct Box(pub D3D12_BOX);
+
+impl Box {
+    pub fn set_left(mut self, left: Elements) -> Self {
+        self.0.left = left.0 as u32;
+        self
+    }
+
+    pub fn get_left(&self) -> Elements {
+        Elements::from(self.0.left)
+    }
+
+    pub fn set_top(mut self, top: Elements) -> Self {
+        self.0.top = top.0 as u32;
+        self
+    }
+
+    pub fn get_top(&self) -> Elements {
+        Elements::from(self.0.top)
+    }
+
+    pub fn set_front(mut self, front: Elements) -> Self {
+        self.0.front = front.0 as u32;
+        self
+    }
+
+    pub fn get_front(&self) -> Elements {
+        Elements::from(self.0.front)
+    }
+
+    pub fn set_right(mut self, right: Elements) -> Self {
+        self.0.right = right.0 as u32;
+        self
+    }
+
+    pub fn get_right(&self) -> Elements {
+        Elements::from(self.0.right)
+    }
+
+    pub fn set_bottom(mut self, bottom: Elements) -> Self {
+        self.0.bottom = bottom.0 as u32;
+        self
+    }
+
+    pub fn get_bottom(&self) -> Elements {
+        Elements::from(self.0.bottom)
+    }
+
+    pub fn set_back(mut self, back: Elements) -> Self {
+        self.0.back = back.0 as u32;
+        self
+    }
+
+    pub fn get_back(&self) -> Elements {
+        Elements::from(self.0.back)
+    }
+}
 
 #[derive(Copy, Clone, Default)]
 #[repr(transparent)]

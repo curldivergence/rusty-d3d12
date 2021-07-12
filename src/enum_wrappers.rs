@@ -480,6 +480,7 @@ pub enum TextureCopyType {
         D3D12_TEXTURE_COPY_TYPE_D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
 }
 
+// ToDo: this type doesn't exist in d3d
 pub enum TextureLocationType {
     PlacedFootprint(PlacedSubresourceFootprint),
     SubresourceIndex(Elements),

@@ -802,69 +802,298 @@ impl Pipeline {
 
     fn populate_command_lists(&mut self) {
         // Command list to render target the triangles on the primary adapter.
+        self.populate_direct_command_list();
+
+        // Command list to copy the render target to the shared heap on the primary adapter.
+        self.populate_copy_command_list();
+
+        // Command list to blur the render target and present.
         {
-            let adapter_idx = 0usize; // primary
+            let adapter_idx = 1usize; // secondary
 
             self.direct_command_allocators[adapter_idx][self.frame_index]
                 .reset()
                 .expect(
-                    "Cannot reset direct command allocator on primary device",
+                    "Cannot reset direct command allocator on secondary adapter",
                 );
 
             self.direct_command_lists[adapter_idx]
                 .reset(
                     &self.direct_command_allocators[adapter_idx]
                         [self.frame_index],
-                    Some(&self.pipeline_state),
+                    Some(&self.blur_pipeline_states[0]),
                 )
-                .expect("Cannot reset direct command list on primary adapter");
+                .expect(
+                    "Cannot reset direct command list on secondary adapter",
+                );
 
-            let timestamp_heap_index = 2 * self.frame_index;
-            self.direct_command_lists[adapter_idx].end_query(
-                &self.query_heaps[adapter_idx],
-                QueryType::Timestamp,
-                Elements::from(timestamp_heap_index),
+            if !self.cross_adapter_textures_supported {
+                self.direct_command_lists[adapter_idx].resource_barrier(
+                    slice::from_ref(&ResourceBarrier::transition(
+                        &ResourceTransitionBarrier::default()
+                            .set_resource(
+                                &self.secondary_adapter_textures
+                                    [self.frame_index],
+                            )
+                            .set_state_before(
+                                ResourceStates::PixelShaderResource,
+                            )
+                            .set_state_after(ResourceStates::CopyDest),
+                    )),
+                );
+
+                let secondary_adapter_texture_desc = self
+                    .secondary_adapter_textures[self.frame_index]
+                    .get_desc();
+
+                let (texture_layout, _, _, _) = self.devices[adapter_idx]
+                    .get_copyable_footprints(
+                        &secondary_adapter_texture_desc,
+                        Elements(0),
+                        Elements(1),
+                        Bytes(0),
+                    );
+
+                let dest = TextureCopyLocation::new(
+                    &self.secondary_adapter_textures[self.frame_index],
+                    &TextureLocationType::SubresourceIndex(Elements(0)),
+                );
+
+                let src = TextureCopyLocation::new(
+                    &self.cross_adapter_resources[adapter_idx]
+                        [self.frame_index],
+                    &TextureLocationType::PlacedFootprint(texture_layout[0]),
+                );
+
+                let resource_box = Box::default()
+                    .set_left(Elements(0))
+                    .set_top(Elements(0))
+                    .set_right(Elements::from(WINDOW_WIDTH))
+                    .set_bottom(Elements::from(WINDOW_HEIGHT));
+
+                self.copy_command_list.copy_texture_region(
+                    &dest,
+                    Elements(0),
+                    Elements(0),
+                    Elements(0),
+                    &src,
+                    Some(&resource_box),
+                );
+
+                self.direct_command_lists[adapter_idx].resource_barrier(
+                    slice::from_ref(&ResourceBarrier::transition(
+                        &ResourceTransitionBarrier::default()
+                            .set_resource(
+                                &self.secondary_adapter_textures
+                                    [self.frame_index],
+                            )
+                            .set_state_before(ResourceStates::CopyDest)
+                            .set_state_after(
+                                ResourceStates::PixelShaderResource,
+                            ),
+                    )),
+                );
+            }
+
+            
+        }
+    }
+
+    fn populate_copy_command_list(&mut self) {
+        let adapter_idx = 0usize;
+        self.copy_allocators[self.frame_index]
+            .reset()
+            .expect("Cannot reset copy command allocator on primary device");
+        self.copy_command_list
+            .reset(&self.copy_allocators[self.frame_index], None)
+            .expect("Cannot reset copy command list on primary adapter");
+        if self.cross_adapter_textures_supported {
+            self.copy_command_list.copy_resource(
+                &self.cross_adapter_resources[adapter_idx][self.frame_index],
+                &self.render_targets[adapter_idx][self.frame_index],
+            );
+        } else {
+            let render_target_desc =
+                self.render_targets[adapter_idx][self.frame_index].get_desc();
+            let (render_target_layout, _, _, _) = self.devices[adapter_idx]
+                .get_copyable_footprints(
+                    &render_target_desc,
+                    Elements(0),
+                    Elements(1),
+                    Bytes(0),
+                );
+
+            let dest = TextureCopyLocation::new(
+                &self.cross_adapter_resources[adapter_idx][self.frame_index],
+                &TextureLocationType::PlacedFootprint(render_target_layout[0]),
             );
 
-            self.direct_command_lists[adapter_idx]
-                .set_graphics_root_signature(&self.root_signature);
-
-            self.direct_command_lists[adapter_idx]
-                .set_viewports(slice::from_ref(&self.viewport));
-
-            self.direct_command_lists[adapter_idx]
-                .set_scissor_rects(slice::from_ref(&self.scissor_rect));
-
-            self.direct_command_lists[adapter_idx].resource_barrier(
-                slice::from_ref(&ResourceBarrier::transition(
-                    &ResourceTransitionBarrier::default()
-                        .set_resource(
-                            &self.render_targets[adapter_idx][self.frame_index],
-                        )
-                        .set_state_before(ResourceStates::CommonOrPresent)
-                        .set_state_after(ResourceStates::RenderTarget),
-                )),
+            let src = TextureCopyLocation::new(
+                &self.render_targets[adapter_idx][self.frame_index],
+                &TextureLocationType::SubresourceIndex(Elements(0)),
             );
 
-            let rtv_handle = self.rtv_heaps[adapter_idx]
-                .get_cpu_descriptor_handle_for_heap_start()
-                .advance(Elements::from(self.frame_index));
+            let resource_box = Box::default()
+                .set_left(Elements(0))
+                .set_top(Elements(0))
+                .set_right(Elements::from(WINDOW_WIDTH))
+                .set_bottom(Elements::from(WINDOW_HEIGHT));
 
-            let dsv_handle =
-                self.dsv_heap.get_cpu_descriptor_handle_for_heap_start();
-
-            self.direct_command_lists[adapter_idx].set_render_targets(
-                slice::from_ref(&rtv_handle),
-                false,
-                Some(dsv_handle),
-            );
-
-            self.direct_command_lists[adapter_idx].clear_render_target_view(
-                rtv_handle,
-                CLEAR_COLOR,
-                &[],
+            self.copy_command_list.copy_texture_region(
+                &dest,
+                Elements(0),
+                Elements(0),
+                Elements(0),
+                &src,
+                Some(&resource_box),
             );
         }
+        self.copy_command_list
+            .close()
+            .expect("Cannot close copy command list");
+    }
+
+    fn populate_direct_command_list(&mut self) {
+        let adapter_idx = 0usize; // primary
+
+        self.direct_command_allocators[adapter_idx][self.frame_index]
+            .reset()
+            .expect("Cannot reset direct command allocator on primary device");
+
+        self.direct_command_lists[adapter_idx]
+            .reset(
+                &self.direct_command_allocators[adapter_idx][self.frame_index],
+                Some(&self.pipeline_state),
+            )
+            .expect("Cannot reset direct command list on primary adapter");
+
+        let timestamp_heap_index = 2 * self.frame_index;
+        self.direct_command_lists[adapter_idx].end_query(
+            &self.query_heaps[adapter_idx],
+            QueryType::Timestamp,
+            Elements::from(timestamp_heap_index),
+        );
+
+        self.direct_command_lists[adapter_idx]
+            .set_graphics_root_signature(&self.root_signature);
+
+        self.direct_command_lists[adapter_idx]
+            .set_viewports(slice::from_ref(&self.viewport));
+
+        self.direct_command_lists[adapter_idx]
+            .set_scissor_rects(slice::from_ref(&self.scissor_rect));
+
+        self.direct_command_lists[adapter_idx].resource_barrier(
+            slice::from_ref(&ResourceBarrier::transition(
+                &ResourceTransitionBarrier::default()
+                    .set_resource(
+                        &self.render_targets[adapter_idx][self.frame_index],
+                    )
+                    .set_state_before(ResourceStates::CommonOrPresent)
+                    .set_state_after(ResourceStates::RenderTarget),
+            )),
+        );
+
+        let rtv_handle = self.rtv_heaps[adapter_idx]
+            .get_cpu_descriptor_handle_for_heap_start()
+            .advance(Elements::from(self.frame_index));
+
+        let dsv_handle =
+            self.dsv_heap.get_cpu_descriptor_handle_for_heap_start();
+
+        self.direct_command_lists[adapter_idx].set_render_targets(
+            slice::from_ref(&rtv_handle),
+            false,
+            Some(dsv_handle),
+        );
+
+        self.direct_command_lists[adapter_idx].clear_render_target_view(
+            rtv_handle,
+            CLEAR_COLOR,
+            &[],
+        );
+        self.direct_command_lists[adapter_idx].clear_depth_stencil_view(
+            dsv_handle,
+            ClearFlags::Depth,
+            1.,
+            0,
+            &[],
+        );
+
+        self.direct_command_lists[adapter_idx]
+            .set_primitive_topology(PrimitiveTopology::TriangleStrip);
+        self.direct_command_lists[adapter_idx].set_vertex_buffers(
+            Elements(0),
+            slice::from_ref(&self.vertex_buffer_view),
+        );
+
+        self.direct_command_lists[adapter_idx]
+            .set_graphics_root_constant_buffer_view(
+                Elements(1),
+                GpuVirtualAddress(
+                    self.workload_constant_buffer.get_gpu_virtual_address().0
+                        + (self.frame_index
+                            * size_of::<WorkloadConstantBufferData>())
+                            as u64,
+                ),
+            );
+
+        let cb_virtual_address =
+            self.triangle_constant_buffer.get_gpu_virtual_address();
+        for tri_idx in 0..self.triangle_count {
+            let cb_location = GpuVirtualAddress(
+                cb_virtual_address.0
+                    + (self.frame_index
+                        * MAX_TRIANGLE_COUNT as usize
+                        * size_of::<SceneConstantBuffer>())
+                        as u64
+                    + (tri_idx as usize * size_of::<SceneConstantBuffer>())
+                        as u64,
+            );
+
+            self.direct_command_lists[adapter_idx]
+                .set_graphics_root_constant_buffer_view(
+                    Elements(0),
+                    cb_location,
+                );
+
+            self.direct_command_lists[adapter_idx].draw_instanced(
+                Elements(3),
+                Elements(1),
+                Elements(0),
+                Elements(0),
+            );
+        }
+
+        self.direct_command_lists[adapter_idx].resource_barrier(
+            slice::from_ref(&ResourceBarrier::transition(
+                &ResourceTransitionBarrier::default()
+                    .set_resource(
+                        &self.render_targets[adapter_idx][self.frame_index],
+                    )
+                    .set_state_before(ResourceStates::RenderTarget)
+                    .set_state_after(ResourceStates::CommonOrPresent),
+            )),
+        );
+
+        self.direct_command_lists[adapter_idx].end_query(
+            &self.query_heaps[adapter_idx],
+            QueryType::Timestamp,
+            Elements::from(timestamp_heap_index + 1),
+        );
+
+        self.direct_command_lists[adapter_idx].resolve_query_data(
+            &self.query_heaps[adapter_idx],
+            QueryType::Timestamp,
+            Elements::from(timestamp_heap_index),
+            Elements(2),
+            &self.timestamp_result_buffers[adapter_idx],
+            Bytes::from(timestamp_heap_index * size_of::<u64>()),
+        );
+
+        self.direct_command_lists[adapter_idx]
+            .close()
+            .expect("Cannot close command list");
     }
 
     fn render(&mut self) {
@@ -1516,7 +1745,7 @@ fn create_command_lists(
             .create_command_list(
                 CommandListType::Direct,
                 &direct_command_allocators[0][frame_index],
-                Some(&pso),
+                Some(pso),
                 // None,
             )
             .expect("Cannot create direct command list"),
@@ -1524,7 +1753,7 @@ fn create_command_lists(
             .create_command_list(
                 CommandListType::Direct,
                 &direct_command_allocators[1][frame_index],
-                Some(&blur_pso_u),
+                Some(blur_pso_u),
                 // None,
             )
             .expect("Cannot create direct command list"),
@@ -1533,7 +1762,7 @@ fn create_command_lists(
         .create_command_list(
             CommandListType::Copy,
             &copy_allocators[frame_index],
-            Some(&pso),
+            Some(pso),
             // None,
         )
         .expect("Cannot create copy command list");
@@ -1577,7 +1806,7 @@ fn create_psos(
         .set_input_layout(
             &InputLayoutDesc::default().from_input_layout(&input_layout),
         )
-        .set_root_signature(&root_signature)
+        .set_root_signature(root_signature)
         .set_vertex_shader_bytecode(&vs_bytecode)
         .set_pixel_shader_bytecode(&ps_bytecode)
         .set_rasterizer_state(&RasterizerDesc::default())
@@ -1633,7 +1862,7 @@ fn create_psos(
         .set_input_layout(
             &InputLayoutDesc::default().from_input_layout(&blur_input_layout),
         )
-        .set_root_signature(&blur_root_signature)
+        .set_root_signature(blur_root_signature)
         .set_vertex_shader_bytecode(&blur_vs_bytecode)
         .set_pixel_shader_bytecode(&blur_ps_bytecode_u)
         .set_rasterizer_state(&RasterizerDesc::default())

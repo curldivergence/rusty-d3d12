@@ -1825,7 +1825,7 @@ impl CommandList {
         dest_y: Elements,
         dest_z: Elements,
         source_location: &TextureCopyLocation,
-        // source_box: &Box,
+        source_box: Option<&Box>,
     ) {
         unsafe {
             dx_call!(
@@ -1836,7 +1836,10 @@ impl CommandList {
                 dest_y.0 as u32,
                 dest_z.0 as u32,
                 &source_location.0,
-                std::ptr::null()
+                match source_box {
+                    Some(&b) => &b.0,
+                    None => std::ptr::null_mut(),
+                }
             )
         }
     }
@@ -2146,13 +2149,13 @@ impl CommandList {
             for i in 0..num_subresources.0 as usize {
                 let dest_location = TextureCopyLocation::new(
                     destination_resource,
-                    TextureLocationType::SubresourceIndex(
+                    &TextureLocationType::SubresourceIndex(
                         Elements(i as u64) + first_subresouce,
                     ),
                 );
                 let source_location = TextureCopyLocation::new(
                     intermediate_resource,
-                    TextureLocationType::PlacedFootprint(layouts[i]),
+                    &TextureLocationType::PlacedFootprint(layouts[i]),
                 );
 
                 self.copy_texture_region(
@@ -2161,6 +2164,7 @@ impl CommandList {
                     Elements(0),
                     Elements(0),
                     &source_location,
+                    None
                 );
             }
         }
