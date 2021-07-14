@@ -895,6 +895,89 @@ impl Pipeline {
                 );
             }
 
+            let timestamp_heap_index = 2 * self.frame_index;
+            self.direct_command_lists[adapter_idx].end_query(
+                &self.query_heaps[adapter_idx],
+                QueryType::Timestamp,
+                Elements::from(timestamp_heap_index),
+            );
+
+            self.direct_command_lists[adapter_idx]
+                .set_graphics_root_signature(&self.blur_root_signature);
+
+            self.direct_command_lists[adapter_idx]
+                .set_descriptor_heaps(slice::from_ref(&self.cbv_srv_heap));
+
+            self.direct_command_lists[adapter_idx]
+                .set_viewports(slice::from_ref(&self.viewport));
+
+            self.direct_command_lists[adapter_idx]
+                .set_scissor_rects(slice::from_ref(&self.scissor_rect));
+
+            self.direct_command_lists[adapter_idx].resource_barrier(
+                slice::from_ref(&ResourceBarrier::transition(
+                    &ResourceTransitionBarrier::default()
+                        .set_resource(&self.intermediate_blur_render_target)
+                        .set_state_before(ResourceStates::PixelShaderResource)
+                        .set_state_after(ResourceStates::RenderTarget),
+                )),
+            );
+
+            self.direct_command_lists[adapter_idx]
+                .set_primitive_topology(PrimitiveTopology::TriangleStrip);
+            self.direct_command_lists[adapter_idx].set_vertex_buffers(
+                Elements(0),
+                slice::from_ref(&self.quad_vertex_buffer_view),
+            );
+
+            self.direct_command_lists[adapter_idx]
+                .set_graphics_root_constant_buffer_view(
+                    Elements(0),
+                    self.blur_constant_buffer.get_gpu_virtual_address(),
+                );
+
+            self.direct_command_lists[adapter_idx]
+                .set_graphics_root_constant_buffer_view(
+                    Elements(2),
+                    GpuVirtualAddress(
+                        self.blur_workload_constant_buffer
+                            .get_gpu_virtual_address()
+                            .0
+                            + (self.frame_index
+                                * size_of::<WorkloadConstantBufferData>())
+                                as u64,
+                    ),
+                );
+
+            {
+                let srv_handle = self
+                    .cbv_srv_heap
+                    .get_gpu_descriptor_handle_for_heap_start();
+
+                self.direct_command_lists[adapter_idx]
+                    .set_graphics_root_descriptor_table(
+                        Elements(1),
+                        srv_handle,
+                    );
+
+                let rtv_handle = self.rtv_heaps[adapter_idx]
+                    .get_cpu_descriptor_handle_for_heap_start()
+                    .advance(Elements::from(FRAMES_IN_FLIGHT));
+
+                self.direct_command_lists[adapter_idx].set_render_targets(
+                    slice::from_ref(&rtv_handle),
+                    false,
+                    None,
+                );
+
+                self.direct_command_lists[adapter_idx].draw_instanced(
+                    Elements(4),
+                    Elements(1),
+                    Elements(0),
+                    Elements(0),
+                );
+            }
+
             
         }
     }

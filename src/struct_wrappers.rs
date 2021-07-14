@@ -623,9 +623,22 @@ impl TextureCopyLocation {
     }
 }
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone)]
 #[repr(transparent)]
 pub struct Box(pub D3D12_BOX);
+
+impl Default for Box {
+    fn default() -> Self {
+        Self(D3D12_BOX {
+            left: 0,
+            top: 0,
+            front: 0,
+            right: 0,
+            bottom: 1,
+            back: 1,
+        })
+    }
+}
 
 impl Box {
     pub fn set_left(mut self, left: Elements) -> Self {
