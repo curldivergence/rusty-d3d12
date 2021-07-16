@@ -222,6 +222,7 @@ impl Default for DxgiSampleDesc {
     }
 }
 
+#[derive(Debug)]
 #[repr(transparent)]
 pub struct ResourceDesc(pub D3D12_RESOURCE_DESC);
 

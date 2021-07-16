@@ -11,7 +11,7 @@ repository = "https://github.com/curldivergence/rusty-d3d12"
 include = ["assets/**/*", "D3D12AgilitySDK/**/*"]
 
 [features]
-default = ["log_ref_counting"]
+default = []
 # PIX on Windows support via pixwrapper crate (requires WinPixEventRuntime headers and dll)
 # (please see pixwrapper's docs for details)
 pix = []

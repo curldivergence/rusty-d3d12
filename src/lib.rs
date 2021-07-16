@@ -1376,6 +1376,11 @@ impl CommandQueue {
         Ok(())
     }
 
+    pub fn wait(&self, fence: &Fence, value: u64) -> DxResult<()> {
+        unsafe { dx_try!(self.this, Wait, fence.this, value) };
+        Ok(())
+    }
+
     pub fn execute_command_lists(&self, command_lists: &[CommandList]) {
         unsafe {
             dx_call!(
@@ -1419,8 +1424,10 @@ impl DxgiSwapchain {
         Ok(Resource { this: buffer })
     }
 
-    pub fn get_current_back_buffer_index(&self) -> UINT {
-        unsafe { dx_call!(self.this, GetCurrentBackBufferIndex,) }
+    pub fn get_current_back_buffer_index(&self) -> Elements {
+        Elements::from(unsafe {
+            dx_call!(self.this, GetCurrentBackBufferIndex,)
+        })
     }
 
     // ToDo: flags
@@ -2164,7 +2171,7 @@ impl CommandList {
                     Elements(0),
                     Elements(0),
                     &source_location,
-                    None
+                    None,
                 );
             }
         }

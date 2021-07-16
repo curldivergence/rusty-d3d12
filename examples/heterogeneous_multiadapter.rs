@@ -269,14 +269,17 @@ struct HeterogeneousMultiadapterSample {
 
 impl HeterogeneousMultiadapterSample {
     fn new(hwnd: *mut std::ffi::c_void) -> Self {
-        let mut pipeline = Pipeline::new(hwnd);
-        pipeline.update();
-        pipeline.render();
+        let pipeline = Pipeline::new(hwnd);
+        // pipeline.update();
+        // pipeline.render();
 
         HeterogeneousMultiadapterSample { pipeline }
     }
 
-    fn draw(&mut self) {}
+    fn draw(&mut self) {
+        self.pipeline.update();
+        self.pipeline.render();
+    }
 }
 
 impl Drop for HeterogeneousMultiadapterSample {
@@ -355,7 +358,11 @@ struct Pipeline {
     frame_fence: Fence,
     render_fence: Fence,
     cross_adapter_fences: [Fence; DEVICE_COUNT],
+    fence_events: [Win32Event; 2],
 
+    current_present_fence_value: u64,
+    current_render_fence_value: u64,
+    current_cross_adapter_fence_value: u64,
     frame_fence_values: [u64; FRAMES_IN_FLIGHT],
 
     draw_times: [u64; MOVING_AVERAGE_FRAME_COUNT],
@@ -458,7 +465,7 @@ impl Pipeline {
 
         let swapchain =
             create_swapchain(factory, &direct_command_queues[1], hwnd);
-        let frame_index = swapchain.get_current_back_buffer_index() as usize;
+        let frame_index = swapchain.get_current_back_buffer_index().0 as usize;
         trace!("Swapchain returned frame index {}", frame_index);
 
         let viewport = Viewport::default()
@@ -718,7 +725,7 @@ impl Pipeline {
 
         trace!("Executed command lists");
 
-        let (frame_fence, render_fence, cross_adapter_fences) =
+        let (frame_fence, render_fence, cross_adapter_fences, fence_events) =
             create_fences(&devices, &direct_command_queues);
 
         trace!("Created fences");
@@ -790,7 +797,11 @@ impl Pipeline {
             frame_fence,
             render_fence,
             cross_adapter_fences,
+            fence_events,
 
+            current_present_fence_value: 1,
+            current_render_fence_value: 1,
+            current_cross_adapter_fence_value: 1,
             frame_fence_values: [0; FRAMES_IN_FLIGHT],
 
             draw_times: [0; MOVING_AVERAGE_FRAME_COUNT],
@@ -802,184 +813,281 @@ impl Pipeline {
 
     fn populate_command_lists(&mut self) {
         // Command list to render target the triangles on the primary adapter.
-        self.populate_direct_command_list();
+        self.populate_primary_adapter_direct_command_list();
+        trace!("Populated direct command list on primary adapter");
 
         // Command list to copy the render target to the shared heap on the primary adapter.
         self.populate_copy_command_list();
+        trace!("Populated copy command list");
 
         // Command list to blur the render target and present.
-        {
-            let adapter_idx = 1usize; // secondary
+        self.populate_secondary_adapter_command_list();
+    }
 
-            self.direct_command_allocators[adapter_idx][self.frame_index]
-                .reset()
-                .expect(
-                    "Cannot reset direct command allocator on secondary adapter",
+    fn populate_secondary_adapter_command_list(&mut self) {
+        let adapter_idx = 1usize; // secondary
+
+        self.direct_command_allocators[adapter_idx][self.frame_index]
+            .reset()
+            .expect(
+                "Cannot reset direct command allocator on secondary adapter",
+            );
+
+        self.direct_command_lists[adapter_idx]
+            .reset(
+                &self.direct_command_allocators[adapter_idx][self.frame_index],
+                Some(&self.blur_pipeline_states[0]),
+            )
+            .expect("Cannot reset direct command list on secondary adapter");
+
+        if !self.cross_adapter_textures_supported {
+            self.direct_command_lists[adapter_idx].resource_barrier(
+                slice::from_ref(&ResourceBarrier::transition(
+                    &ResourceTransitionBarrier::default()
+                        .set_resource(
+                            &self.secondary_adapter_textures[self.frame_index],
+                        )
+                        .set_state_before(ResourceStates::PixelShaderResource)
+                        .set_state_after(ResourceStates::CopyDest),
+                )),
+            );
+
+            let secondary_adapter_texture_desc =
+                self.secondary_adapter_textures[self.frame_index].get_desc();
+
+            let (texture_layout, _, _, _) = self.devices[adapter_idx]
+                .get_copyable_footprints(
+                    &secondary_adapter_texture_desc,
+                    Elements(0),
+                    Elements(1),
+                    Bytes(0),
                 );
 
-            self.direct_command_lists[adapter_idx]
-                .reset(
-                    &self.direct_command_allocators[adapter_idx]
-                        [self.frame_index],
-                    Some(&self.blur_pipeline_states[0]),
-                )
-                .expect(
-                    "Cannot reset direct command list on secondary adapter",
-                );
-
-            if !self.cross_adapter_textures_supported {
-                self.direct_command_lists[adapter_idx].resource_barrier(
-                    slice::from_ref(&ResourceBarrier::transition(
-                        &ResourceTransitionBarrier::default()
-                            .set_resource(
-                                &self.secondary_adapter_textures
-                                    [self.frame_index],
-                            )
-                            .set_state_before(
-                                ResourceStates::PixelShaderResource,
-                            )
-                            .set_state_after(ResourceStates::CopyDest),
-                    )),
-                );
-
-                let secondary_adapter_texture_desc = self
-                    .secondary_adapter_textures[self.frame_index]
+            {
+                let dest_resource_desc = self.secondary_adapter_textures
+                    [self.frame_index]
                     .get_desc();
-
-                let (texture_layout, _, _, _) = self.devices[adapter_idx]
-                    .get_copyable_footprints(
-                        &secondary_adapter_texture_desc,
-                        Elements(0),
-                        Elements(1),
-                        Bytes(0),
-                    );
-
-                let dest = TextureCopyLocation::new(
-                    &self.secondary_adapter_textures[self.frame_index],
-                    &TextureLocationType::SubresourceIndex(Elements(0)),
+                trace!(
+                    "About to copy texture region to resource {}: {:?}",
+                    &self.secondary_adapter_textures[self.frame_index]
+                        .get_name()
+                        .expect("Cannot get resource name"),
+                    &dest_resource_desc
                 );
 
-                let src = TextureCopyLocation::new(
+                let src_resource_desc = self.secondary_adapter_textures
+                    [self.frame_index]
+                    .get_desc();
+                trace!(
+                    "About to copy texture region from resource {}: {:?}",
                     &self.cross_adapter_resources[adapter_idx]
-                        [self.frame_index],
-                    &TextureLocationType::PlacedFootprint(texture_layout[0]),
-                );
-
-                let resource_box = Box::default()
-                    .set_left(Elements(0))
-                    .set_top(Elements(0))
-                    .set_right(Elements::from(WINDOW_WIDTH))
-                    .set_bottom(Elements::from(WINDOW_HEIGHT));
-
-                self.copy_command_list.copy_texture_region(
-                    &dest,
-                    Elements(0),
-                    Elements(0),
-                    Elements(0),
-                    &src,
-                    Some(&resource_box),
-                );
-
-                self.direct_command_lists[adapter_idx].resource_barrier(
-                    slice::from_ref(&ResourceBarrier::transition(
-                        &ResourceTransitionBarrier::default()
-                            .set_resource(
-                                &self.secondary_adapter_textures
-                                    [self.frame_index],
-                            )
-                            .set_state_before(ResourceStates::CopyDest)
-                            .set_state_after(
-                                ResourceStates::PixelShaderResource,
-                            ),
-                    )),
+                        [self.frame_index]
+                        .get_name()
+                        .expect("Cannot get resource name"),
+                    &src_resource_desc
                 );
             }
 
-            let timestamp_heap_index = 2 * self.frame_index;
-            self.direct_command_lists[adapter_idx].end_query(
-                &self.query_heaps[adapter_idx],
-                QueryType::Timestamp,
-                Elements::from(timestamp_heap_index),
+            let dest = TextureCopyLocation::new(
+                &self.secondary_adapter_textures[self.frame_index],
+                &TextureLocationType::SubresourceIndex(Elements(0)),
             );
 
-            self.direct_command_lists[adapter_idx]
-                .set_graphics_root_signature(&self.blur_root_signature);
+            let src = TextureCopyLocation::new(
+                &self.cross_adapter_resources[adapter_idx][self.frame_index],
+                &TextureLocationType::PlacedFootprint(texture_layout[0]),
+            );
 
-            self.direct_command_lists[adapter_idx]
-                .set_descriptor_heaps(slice::from_ref(&self.cbv_srv_heap));
+            let resource_box = Box::default()
+                .set_left(Elements(0))
+                .set_top(Elements(0))
+                .set_right(Elements::from(WINDOW_WIDTH))
+                .set_bottom(Elements::from(WINDOW_HEIGHT));
 
-            self.direct_command_lists[adapter_idx]
-                .set_viewports(slice::from_ref(&self.viewport));
-
-            self.direct_command_lists[adapter_idx]
-                .set_scissor_rects(slice::from_ref(&self.scissor_rect));
+            self.direct_command_lists[adapter_idx].copy_texture_region(
+                &dest,
+                Elements(0),
+                Elements(0),
+                Elements(0),
+                &src,
+                Some(&resource_box),
+            );
 
             self.direct_command_lists[adapter_idx].resource_barrier(
                 slice::from_ref(&ResourceBarrier::transition(
                     &ResourceTransitionBarrier::default()
-                        .set_resource(&self.intermediate_blur_render_target)
-                        .set_state_before(ResourceStates::PixelShaderResource)
-                        .set_state_after(ResourceStates::RenderTarget),
+                        .set_resource(
+                            &self.secondary_adapter_textures[self.frame_index],
+                        )
+                        .set_state_before(ResourceStates::CopyDest)
+                        .set_state_after(ResourceStates::PixelShaderResource),
                 )),
             );
+        }
 
-            self.direct_command_lists[adapter_idx]
-                .set_primitive_topology(PrimitiveTopology::TriangleStrip);
-            self.direct_command_lists[adapter_idx].set_vertex_buffers(
+        let timestamp_heap_index = 2 * self.frame_index;
+        self.direct_command_lists[adapter_idx].end_query(
+            &self.query_heaps[adapter_idx],
+            QueryType::Timestamp,
+            Elements::from(timestamp_heap_index),
+        );
+
+        self.direct_command_lists[adapter_idx]
+            .set_graphics_root_signature(&self.blur_root_signature);
+
+        self.direct_command_lists[adapter_idx]
+            .set_descriptor_heaps(slice::from_ref(&self.cbv_srv_heap));
+
+        self.direct_command_lists[adapter_idx]
+            .set_viewports(slice::from_ref(&self.viewport));
+
+        self.direct_command_lists[adapter_idx]
+            .set_scissor_rects(slice::from_ref(&self.scissor_rect));
+
+        self.direct_command_lists[adapter_idx].resource_barrier(
+            slice::from_ref(&ResourceBarrier::transition(
+                &ResourceTransitionBarrier::default()
+                    .set_resource(&self.intermediate_blur_render_target)
+                    .set_state_before(ResourceStates::PixelShaderResource)
+                    .set_state_after(ResourceStates::RenderTarget),
+            )),
+        );
+
+        self.direct_command_lists[adapter_idx]
+            .set_primitive_topology(PrimitiveTopology::TriangleStrip);
+        self.direct_command_lists[adapter_idx].set_vertex_buffers(
+            Elements(0),
+            slice::from_ref(&self.quad_vertex_buffer_view),
+        );
+
+        self.direct_command_lists[adapter_idx]
+            .set_graphics_root_constant_buffer_view(
                 Elements(0),
-                slice::from_ref(&self.quad_vertex_buffer_view),
+                self.blur_constant_buffer.get_gpu_virtual_address(),
             );
 
-            self.direct_command_lists[adapter_idx]
-                .set_graphics_root_constant_buffer_view(
-                    Elements(0),
-                    self.blur_constant_buffer.get_gpu_virtual_address(),
-                );
+        self.direct_command_lists[adapter_idx]
+            .set_graphics_root_constant_buffer_view(
+                Elements(2),
+                GpuVirtualAddress(
+                    self.blur_workload_constant_buffer
+                        .get_gpu_virtual_address()
+                        .0
+                        + (self.frame_index
+                            * size_of::<WorkloadConstantBufferData>())
+                            as u64,
+                ),
+            );
+
+        // Draw the fullscreen quad - Blur pass #1.
+        {
+            let srv_handle = self
+                .cbv_srv_heap
+                .get_gpu_descriptor_handle_for_heap_start()
+                .advance(Elements::from(self.frame_index));
 
             self.direct_command_lists[adapter_idx]
-                .set_graphics_root_constant_buffer_view(
-                    Elements(2),
-                    GpuVirtualAddress(
-                        self.blur_workload_constant_buffer
-                            .get_gpu_virtual_address()
-                            .0
-                            + (self.frame_index
-                                * size_of::<WorkloadConstantBufferData>())
-                                as u64,
-                    ),
-                );
+                .set_graphics_root_descriptor_table(Elements(1), srv_handle);
 
-            {
-                let srv_handle = self
-                    .cbv_srv_heap
-                    .get_gpu_descriptor_handle_for_heap_start();
+            let rtv_handle = self.rtv_heaps[adapter_idx]
+                .get_cpu_descriptor_handle_for_heap_start()
+                .advance(Elements::from(FRAMES_IN_FLIGHT));
 
-                self.direct_command_lists[adapter_idx]
-                    .set_graphics_root_descriptor_table(
-                        Elements(1),
-                        srv_handle,
-                    );
+            self.direct_command_lists[adapter_idx].set_render_targets(
+                slice::from_ref(&rtv_handle),
+                false,
+                None,
+            );
 
-                let rtv_handle = self.rtv_heaps[adapter_idx]
-                    .get_cpu_descriptor_handle_for_heap_start()
-                    .advance(Elements::from(FRAMES_IN_FLIGHT));
-
-                self.direct_command_lists[adapter_idx].set_render_targets(
-                    slice::from_ref(&rtv_handle),
-                    false,
-                    None,
-                );
-
-                self.direct_command_lists[adapter_idx].draw_instanced(
-                    Elements(4),
-                    Elements(1),
-                    Elements(0),
-                    Elements(0),
-                );
-            }
-
-            
+            self.direct_command_lists[adapter_idx].draw_instanced(
+                Elements(4),
+                Elements(1),
+                Elements(0),
+                Elements(0),
+            );
         }
+
+        // Draw the fullscreen quad - Blur pass #2.
+        {
+            self.direct_command_lists[adapter_idx]
+                .set_pipeline_state(&self.blur_pipeline_states[1]);
+
+            let barriers = [
+                ResourceBarrier::transition(
+                    &ResourceTransitionBarrier::default()
+                        .set_resource(
+                            &self.render_targets[adapter_idx][self.frame_index],
+                        )
+                        .set_state_before(ResourceStates::CommonOrPresent)
+                        .set_state_after(ResourceStates::RenderTarget),
+                ),
+                ResourceBarrier::transition(
+                    &ResourceTransitionBarrier::default()
+                        .set_resource(&self.intermediate_blur_render_target)
+                        .set_state_before(ResourceStates::RenderTarget)
+                        .set_state_after(ResourceStates::PixelShaderResource),
+                ),
+            ];
+            self.direct_command_lists[adapter_idx].resource_barrier(&barriers);
+
+            let srv_handle = self
+                .cbv_srv_heap
+                .get_gpu_descriptor_handle_for_heap_start()
+                .advance(Elements::from(FRAMES_IN_FLIGHT));
+
+            self.direct_command_lists[adapter_idx]
+                .set_graphics_root_descriptor_table(Elements(1), srv_handle);
+
+            self.direct_command_lists[adapter_idx]
+                .set_graphics_root_descriptor_table(Elements(1), srv_handle);
+
+            let rtv_handle = self.rtv_heaps[adapter_idx]
+                .get_cpu_descriptor_handle_for_heap_start()
+                .advance(Elements::from(self.frame_index));
+
+            self.direct_command_lists[adapter_idx].set_render_targets(
+                slice::from_ref(&rtv_handle),
+                false,
+                None,
+            );
+
+            self.direct_command_lists[adapter_idx].draw_instanced(
+                Elements(4),
+                Elements(1),
+                Elements(0),
+                Elements(0),
+            );
+        }
+
+        self.direct_command_lists[adapter_idx].resource_barrier(
+            slice::from_ref(&ResourceBarrier::transition(
+                &ResourceTransitionBarrier::default()
+                    .set_resource(
+                        &self.render_targets[adapter_idx][self.frame_index],
+                    )
+                    .set_state_before(ResourceStates::RenderTarget)
+                    .set_state_after(ResourceStates::CommonOrPresent),
+            )),
+        );
+
+        self.direct_command_lists[adapter_idx].end_query(
+            &self.query_heaps[adapter_idx],
+            QueryType::Timestamp,
+            Elements::from(timestamp_heap_index + 1),
+        );
+
+        self.direct_command_lists[adapter_idx].resolve_query_data(
+            &self.query_heaps[adapter_idx],
+            QueryType::Timestamp,
+            Elements::from(timestamp_heap_index),
+            Elements(2),
+            &self.timestamp_result_buffers[adapter_idx],
+            Bytes::from(timestamp_heap_index * size_of::<u64>()),
+        );
+
+        self.direct_command_lists[adapter_idx]
+            .close()
+            .expect("Cannot close command list on secondary adapter");
     }
 
     fn populate_copy_command_list(&mut self) {
@@ -1036,7 +1144,7 @@ impl Pipeline {
             .expect("Cannot close copy command list");
     }
 
-    fn populate_direct_command_list(&mut self) {
+    fn populate_primary_adapter_direct_command_list(&mut self) {
         let adapter_idx = 0usize; // primary
 
         self.direct_command_allocators[adapter_idx][self.frame_index]
@@ -1180,7 +1288,85 @@ impl Pipeline {
     }
 
     fn render(&mut self) {
-        self.populate_command_lists()
+        self.populate_command_lists();
+
+        self.execute_command_lists();
+
+        self.swapchain.present(1, 0).expect("Cannot present");
+
+        self.direct_command_queues[1]
+            .signal(&self.frame_fence, self.current_present_fence_value)
+            .expect("Cannot signal on queue");
+
+        self.frame_fence_values[self.frame_index] =
+            self.current_present_fence_value;
+        self.current_present_fence_value += 1;
+
+        self.move_to_next_frame();
+    }
+
+    fn move_to_next_frame(&mut self) {
+        {
+            self.frame_index =
+                self.swapchain.get_current_back_buffer_index().0 as usize;
+
+            let completed_fence_value = self.frame_fence.get_completed_value();
+            if completed_fence_value < self.frame_fence_values[self.frame_index]
+            {
+                self.frame_fence
+                    .set_event_on_completion(
+                        self.frame_fence_values[self.frame_index],
+                        &self.fence_events[1],
+                    )
+                    .expect("Cannot set fence event");
+
+                self.fence_events[1].wait();
+            }
+        }
+    }
+
+    fn execute_command_lists(&mut self) {
+        {
+            self.direct_command_queues[0].execute_command_lists(
+                slice::from_ref(&self.direct_command_lists[0]),
+            );
+            self.direct_command_queues[0]
+                .signal(&self.render_fence, self.current_render_fence_value)
+                .expect("Cannot signal direct command queue 0");
+        }
+
+        {
+            self.copy_command_queue
+                .wait(&self.render_fence, self.current_render_fence_value)
+                .expect("Cannot wait on fence");
+
+            self.current_render_fence_value += 1;
+
+            self.copy_command_queue
+                .execute_command_lists(slice::from_ref(
+                    &self.copy_command_list,
+                ));
+            self.copy_command_queue
+                .signal(
+                    &self.cross_adapter_fences[0],
+                    self.current_cross_adapter_fence_value,
+                )
+                .expect("Cannot signal copy command queue");
+        }
+        {
+            self.direct_command_queues[1]
+                .wait(
+                    &self.cross_adapter_fences[1],
+                    self.current_cross_adapter_fence_value,
+                )
+                .expect("Cannot wait on fence");
+
+            self.current_cross_adapter_fence_value += 1;
+
+            self.direct_command_queues[1].execute_command_lists(
+                slice::from_ref(&self.direct_command_lists[1]),
+            );
+        }
     }
 
     fn update(&mut self) {
@@ -1373,31 +1559,40 @@ impl Pipeline {
 fn create_fences(
     devices: &[Device; DEVICE_COUNT],
     direct_command_queues: &[CommandQueue; DEVICE_COUNT],
-) -> (Fence, Fence, [Fence; DEVICE_COUNT]) {
+) -> (Fence, Fence, [Fence; DEVICE_COUNT], [Win32Event; 2]) {
     let frame_fence = devices[1]
         .create_fence(0, FenceFlags::None)
         .expect("Cannot create fence");
+
     let render_fence = devices[0]
         .create_fence(0, FenceFlags::None)
         .expect("Cannot create fence");
+
     let cross_adapter_fence_primary = devices[0]
         .create_fence(0, FenceFlags::Shared | FenceFlags::CrossAdapter)
         .expect("Cannot create fence");
+
     let fence_handle = devices[0]
         .create_shared_handle(
             &cross_adapter_fence_primary.clone().into(),
             "CrossAdapterFence",
         )
         .expect("Cannot create shared handle for cross adapter fence");
+
     let cross_adapter_fence_secondary = devices[1]
         .open_shared_fence_handle(fence_handle)
         .expect("Cannot open shared fence handle");
     fence_handle.close();
+
     let cross_adapter_fences =
         [cross_adapter_fence_primary, cross_adapter_fence_secondary];
     let mut cross_adapter_fence_value = 1;
+
+    let mut fence_events: [MaybeUninit<Win32Event>; 2] =
+        unsafe { MaybeUninit::uninit().assume_init() };
+
     for device_idx in 0..DEVICE_COUNT {
-        let fence_event = Win32Event::default();
+        fence_events[device_idx] = MaybeUninit::new(Win32Event::default());
 
         direct_command_queues[device_idx]
             .signal(
@@ -1407,14 +1602,19 @@ fn create_fences(
             .expect("Cannot signal command queue");
 
         cross_adapter_fences[device_idx]
-            .set_event_on_completion(cross_adapter_fence_value, &fence_event)
+            .set_event_on_completion(cross_adapter_fence_value, unsafe {
+                fence_events[device_idx].assume_init_ref()
+            })
             .expect("Cannot set event on fence");
 
-        fence_event.wait();
+        unsafe { fence_events[device_idx].assume_init_ref() }.wait();
 
         cross_adapter_fence_value += 1;
     }
-    (frame_fence, render_fence, cross_adapter_fences)
+
+    (frame_fence, render_fence, cross_adapter_fences, unsafe {
+        std::mem::transmute(fence_events)
+    })
 }
 
 fn create_blur_constant_buffer(devices: &[Device; DEVICE_COUNT]) -> Resource {
@@ -1433,6 +1633,7 @@ fn create_blur_constant_buffer(devices: &[Device; DEVICE_COUNT]) -> Resource {
     blur_constant_buffer
         .set_name("Blur constant buffer")
         .expect("Cannot set name on resource");
+
     let buffer_data = BlurConstantBufferData {
         texture_dimensions: Vec2::new(
             WINDOW_WIDTH as f32,
@@ -1441,6 +1642,7 @@ fn create_blur_constant_buffer(devices: &[Device; DEVICE_COUNT]) -> Resource {
         offset: 0.5,
         padding: [0.; 61],
     };
+
     let mapped_data = blur_constant_buffer
         .map(Elements(0), None)
         .expect("Cannot map blur_constant_buffer");
@@ -1452,6 +1654,7 @@ fn create_blur_constant_buffer(devices: &[Device; DEVICE_COUNT]) -> Resource {
         );
     }
     blur_constant_buffer.unmap(0, None);
+
     blur_constant_buffer
 }
 
@@ -2186,7 +2389,7 @@ fn create_frame_resources(
 ) {
     let clear_value = ClearValue::default()
         .set_format(DxgiFormat::R8G8B8A8_UNorm)
-        .set_color([0.9, 0.3, 0.3, 1.]);
+        .set_color(CLEAR_COLOR);
 
     let render_target_desc = ResourceDesc::default()
         .set_dimension(ResourceDimension::Texture2D)
@@ -2499,7 +2702,7 @@ fn main() {
                 window.request_redraw();
             }
             Event::RedrawRequested(_) => {
-                sample.draw();
+                //sample.draw();
             }
             _ => (),
         }
