@@ -150,7 +150,7 @@ impl HelloMeshShadersSample {
         }
 
         let factory =
-            DXGIFactory::new(factory_flags).expect("Cannot create factory");
+            DxgiFactory::new(factory_flags).expect("Cannot create factory");
 
         let device = create_device(&factory);
 
@@ -479,7 +479,7 @@ impl HelloMeshShadersSample {
             .rtv_heap
             .get_cpu_descriptor_handle_for_heap_start()
             .advance(Elements(
-                self.swapchain.get_current_back_buffer_index() as u64
+                self.swapchain.get_current_back_buffer_index().0 as u64
             ));
 
         self.command_list.set_render_targets(
@@ -793,7 +793,7 @@ fn setup_heaps(
 }
 
 fn create_swapchain(
-    factory: DXGIFactory,
+    factory: DxgiFactory,
     command_queue: &CommandQueue,
     hwnd: *mut std::ffi::c_void,
 ) -> DxgiSwapchain {
@@ -813,7 +813,7 @@ fn create_swapchain(
     swapchain
 }
 
-fn create_device(factory: &DXGIFactory) -> Device {
+fn create_device(factory: &DxgiFactory) -> Device {
     let device;
     if USE_WARP_ADAPTER {
         let warp_adapter = factory

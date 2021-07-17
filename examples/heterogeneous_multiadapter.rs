@@ -50,9 +50,6 @@ pub extern "C" fn debug_callback(
     category: i32,
     severity: i32,
     id: i32,
-    // category: MessageCategory,
-    // severity: MessageSeverity,
-    // id: MessageId,
     description: *const c_char,
     _context: *mut c_void,
 ) {
@@ -115,7 +112,7 @@ const MOVING_AVERAGE_FRAME_COUNT: usize = 20;
 const TIMESTAMP_PRINT_FREQUENCY: usize = 200;
 
 const ALLOW_DRAW_DYNAMIC_WORKLOAD: bool = false;
-const ALLOW_SHADER_DYNAMIC_WORKLOAD: bool = true;
+const ALLOW_SHADER_DYNAMIC_WORKLOAD: bool = false;
 
 type Mat4 = Matrix4<f32>;
 type Vec3 = Vector3<f32>;
@@ -144,8 +141,8 @@ impl Default for Camera {
             fov: Degrees(45.),
             aspect: WINDOW_WIDTH as f32 / WINDOW_HEIGHT as f32,
             // position: Vec3::new(0., 0.5, -1.),
-            position: Vec3::new(0., 0., -200.),
-            look_at: Vec3::new(0., 0., 10.),
+            position: Vec3::new(0., 0., -1.),
+            look_at: Vec3::new(0., 0., 1.),
         }
     }
 }
@@ -1996,6 +1993,7 @@ fn create_primary_vertex_buffer(
     vertex_buffer
         .set_name("Vertex buffer")
         .expect("Cannot set name on resource");
+
     let vertex_buffer_upload = devices[0]
         .create_committed_resource(
             &HeapProperties::default().set_type(HeapType::Upload),
@@ -2011,10 +2009,12 @@ fn create_primary_vertex_buffer(
     vertex_buffer_upload
         .set_name("Vertex buffer upload")
         .expect("Cannot set name on resource");
+
     let vertex_data = SubresourceData::default()
         .set_data(&triangle_vertices)
         .set_row_pitch(vertex_buffer_size)
         .set_slice_pitch(vertex_buffer_size);
+
     direct_command_lists[0]
         .update_subresources_heap_alloc(
             &vertex_buffer,
@@ -2026,6 +2026,7 @@ fn create_primary_vertex_buffer(
         )
         .expect("Cannot upload vertex buffer");
     trace!("Uploaded vertex buffer");
+
     direct_command_lists[0].resource_barrier(slice::from_ref(
         &ResourceBarrier::transition(
             &ResourceTransitionBarrier::default()
@@ -2037,8 +2038,8 @@ fn create_primary_vertex_buffer(
 
     let vertex_buffer_view = VertexBufferView::default()
         .set_buffer_location(vertex_buffer.get_gpu_virtual_address())
-        .set_size_in_bytes(vertex_buffer_size)
-        .set_stride_in_bytes(Bytes::from(std::mem::size_of::<Vertex>()));
+        .set_stride_in_bytes(Bytes::from(std::mem::size_of::<Vertex>()))
+        .set_size_in_bytes(vertex_buffer_size);
     trace!("Created primary adapter vertex buffer");
 
     (vertex_buffer, vertex_buffer_upload, vertex_buffer_view)
@@ -2742,6 +2743,8 @@ fn main() {
             }
             Event::RedrawRequested(_) => {
                 sample.draw();
+
+                std::thread::sleep_ms(100);
             }
             _ => (),
         }

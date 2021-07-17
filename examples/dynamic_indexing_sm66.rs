@@ -246,7 +246,7 @@ impl DynamicIndexingSample {
         }
 
         let factory =
-            DXGIFactory::new(factory_flags).expect("Cannot create factory");
+            DxgiFactory::new(factory_flags).expect("Cannot create factory");
 
         let device = create_device(&factory);
 
@@ -279,7 +279,7 @@ impl DynamicIndexingSample {
         let fence_event = Win32Event::default();
 
         let swapchain = create_swapchain(factory, &command_queue, hwnd);
-        let frame_index = swapchain.get_current_back_buffer_index();
+        let frame_index = swapchain.get_current_back_buffer_index().0 as u32;
 
         let viewport_desc = Viewport::default()
             .set_width(WINDOW_WIDTH as f32)
@@ -1149,7 +1149,8 @@ impl DynamicIndexingSample {
             .execute_command_lists(slice::from_mut(&mut self.command_list));
 
         self.swapchain.present(1, 0).expect("Cannot present");
-        self.frame_index = self.swapchain.get_current_back_buffer_index();
+        self.frame_index =
+            self.swapchain.get_current_back_buffer_index().0 as u32;
 
         self.frame_resources[self.current_frame_resource_index as usize]
             .fence_value = self.fence_value;
@@ -1454,7 +1455,7 @@ fn setup_heaps(
 }
 
 fn create_swapchain(
-    factory: DXGIFactory,
+    factory: DxgiFactory,
     command_queue: &CommandQueue,
     hwnd: *mut std::ffi::c_void,
 ) -> DxgiSwapchain {
@@ -1474,7 +1475,7 @@ fn create_swapchain(
     swapchain
 }
 
-fn create_device(factory: &DXGIFactory) -> Device {
+fn create_device(factory: &DxgiFactory) -> Device {
     let device;
     if USE_WARP_ADAPTER {
         let warp_adapter = factory

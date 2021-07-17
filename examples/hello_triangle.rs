@@ -144,7 +144,7 @@ struct HelloTriangleSample {
     info_queue: Rc<InfoQueue>,
     device: Device,
     adapter: DxgiAdapter,
-    factory: DXGIFactory,
+    factory: DxgiFactory,
     debug_layer: Debug,
 }
 
@@ -153,7 +153,7 @@ impl HelloTriangleSample {
         let debug_layer = Debug::new().expect("Cannot create debug layer");
         debug_layer.enable_debug_layer();
 
-        let mut factory = DXGIFactory::new(DxgiCreateFactoryFlags::Debug)
+        let mut factory = DxgiFactory::new(DxgiCreateFactoryFlags::Debug)
             .expect("Cannot create factory");
         let adapter = Self::choose_adapter(&mut factory);
 
@@ -376,7 +376,7 @@ float4 PS(VertexOut input) : SV_Target
         let rtv_handle = self
             .rtv_heap
             .get_cpu_descriptor_handle_for_heap_start()
-            .advance(Elements(current_buffer_index as u64));
+            .advance(Elements(current_buffer_index.0 as u64));
 
         HelloTriangleSample::add_transition(
             &self.command_list,
@@ -452,7 +452,7 @@ float4 PS(VertexOut input) : SV_Target
 // Private methods
 
 impl HelloTriangleSample {
-    fn choose_adapter(factory: &mut DXGIFactory) -> DxgiAdapter {
+    fn choose_adapter(factory: &mut DxgiFactory) -> DxgiAdapter {
         let mut adapters =
             factory.enum_adapters().expect("Cannot enumerate adapters");
         debug!("Found adapters:");
