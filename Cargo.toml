@@ -22,7 +22,7 @@ bindgen = "0.57"
 regex = "1"
 
 [dependencies]
-winapi = "0.3.8"
+winapi = { version = "0.3", features = ["winuser", "debugapi"] }
 bitflags = "1.2.1"
 log = "0.4.8"
 pixwrapper = "0.1.3"

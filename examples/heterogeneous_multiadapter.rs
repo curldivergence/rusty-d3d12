@@ -32,6 +32,12 @@ use winit::{
 
 use rusty_d3d12::*;
 
+fn wait_for_debugger() {
+    while unsafe { winapi::um::debugapi::IsDebuggerPresent() } == 0 {
+        std::thread::sleep_ms(1000);
+    }
+}
+
 #[no_mangle]
 pub static D3D12SDKVersion: u32 = 4;
 
@@ -98,7 +104,7 @@ const WINDOW_HEIGHT: u32 = 480;
 
 const FRAMES_IN_FLIGHT: usize = 3;
 
-const USE_DEBUG: bool = true;
+const USE_DEBUG: bool = false;
 const USE_WARP_ADAPTER: bool = false;
 
 const MAX_TRIANGLE_COUNT: u32 = 15000;
@@ -284,19 +290,27 @@ impl HeterogeneousMultiadapterSample {
 
 impl Drop for HeterogeneousMultiadapterSample {
     fn drop(&mut self) {
-        self.pipeline.debug_devices[0]
-            .report_live_device_objects()
-            .expect("Device cannot report live objects");
-        self.pipeline.debug_devices[1]
-            .report_live_device_objects()
-            .expect("Device cannot report live objects");
+        if USE_DEBUG {
+            self.pipeline
+                .debug_devices
+                .as_ref()
+                .expect("No debug devices created")[0]
+                .report_live_device_objects()
+                .expect("Device cannot report live objects");
+            self.pipeline
+                .debug_devices
+                .as_ref()
+                .expect("No debug devices created")[1]
+                .report_live_device_objects()
+                .expect("Device cannot report live objects");
+        }
     }
 }
 
 struct Pipeline {
     devices: [Device; DEVICE_COUNT],
-    debug_devices: [DebugDevice; DEVICE_COUNT],
-    info_queues: [Rc<InfoQueue>; DEVICE_COUNT],
+    debug_devices: Option<[DebugDevice; DEVICE_COUNT]>,
+    info_queues: Option<[Rc<InfoQueue>; DEVICE_COUNT]>,
     direct_command_queues: [CommandQueue; DEVICE_COUNT],
     direct_command_queue_timestamp_frequencies: [u64; DEVICE_COUNT],
     copy_command_queue: CommandQueue,
@@ -383,47 +397,59 @@ impl Pipeline {
             debug_controller.enable_object_auto_name();
             factory_flags = DxgiCreateFactoryFlags::Debug;
         }
+
         let factory =
             DxgiFactory::new(factory_flags).expect("Cannot create factory");
         let (devices, is_software_adapter) = create_devices(&factory);
 
-        let mut debug_devices: [MaybeUninit<DebugDevice>; DEVICE_COUNT] =
-            unsafe { MaybeUninit::uninit().assume_init() };
-        for device_idx in 0..DEVICE_COUNT {
-            debug_devices[device_idx] = MaybeUninit::new(
-                DebugDevice::new(&devices[device_idx])
-                    .expect("Cannot create debug device"),
-            );
+        let debug_devices;
+        if USE_DEBUG {
+            let mut temp_debug_devices: [MaybeUninit<DebugDevice>;
+                DEVICE_COUNT] = unsafe { MaybeUninit::uninit().assume_init() };
+            for device_idx in 0..DEVICE_COUNT {
+                temp_debug_devices[device_idx] = MaybeUninit::new(
+                    DebugDevice::new(&devices[device_idx])
+                        .expect("Cannot create debug device"),
+                );
+            }
+            debug_devices =
+                Some(unsafe { std::mem::transmute(temp_debug_devices) });
+        } else {
+            debug_devices = None;
         }
-        let debug_devices = unsafe { std::mem::transmute(debug_devices) };
 
-        let mut info_queues: [MaybeUninit<Rc<InfoQueue>>; DEVICE_COUNT] =
-            unsafe { MaybeUninit::uninit().assume_init() };
-        for device_idx in 0..DEVICE_COUNT {
-            let info_queue = Rc::from(
-                InfoQueue::new(
-                    &devices[device_idx],
-                    // Some(&[
-                    //     MessageSeverity::Corruption,
-                    //     MessageSeverity::Error,
-                    //     MessageSeverity::Warning,
-                    // ]),
-                    None,
-                )
-                .expect("Cannot create debug info queue"),
-            );
+        let info_queues;
+        if USE_DEBUG {
+            let mut temp_info_queues: [MaybeUninit<Rc<InfoQueue>>;
+                DEVICE_COUNT] = unsafe { MaybeUninit::uninit().assume_init() };
+            for device_idx in 0..DEVICE_COUNT {
+                let info_queue = Rc::from(
+                    InfoQueue::new(
+                        &devices[device_idx],
+                        // Some(&[
+                        //     MessageSeverity::Corruption,
+                        //     MessageSeverity::Error,
+                        //     MessageSeverity::Warning,
+                        // ]),
+                        None,
+                    )
+                    .expect("Cannot create debug info queue"),
+                );
 
-            info_queue
-                .register_callback(
-                    debug_callback,
-                    MessageCallbackFlags::FlagNone,
-                )
-                .expect("Cannot set debug callback on info queue");
+                info_queue
+                    .register_callback(
+                        debug_callback,
+                        MessageCallbackFlags::FlagNone,
+                    )
+                    .expect("Cannot set debug callback on info queue");
 
-            info_queues[device_idx] = MaybeUninit::new(info_queue);
+                temp_info_queues[device_idx] = MaybeUninit::new(info_queue);
+            }
+            info_queues =
+                Some(unsafe { std::mem::transmute(temp_info_queues) });
+        } else {
+            info_queues = None;
         }
-        let info_queues: [Rc<InfoQueue>; DEVICE_COUNT] =
-            unsafe { std::mem::transmute(info_queues) };
 
         let mut direct_command_queues: [MaybeUninit<CommandQueue>;
             DEVICE_COUNT] = unsafe { MaybeUninit::uninit().assume_init() };
@@ -822,6 +848,7 @@ impl Pipeline {
 
         // Command list to blur the render target and present.
         self.populate_secondary_adapter_command_list();
+        trace!("Populated direct command list on secondary adapter");
     }
 
     fn populate_secondary_adapter_command_list(&mut self) {
@@ -863,30 +890,30 @@ impl Pipeline {
                     Bytes(0),
                 );
 
-            {
-                let dest_resource_desc = self.secondary_adapter_textures
-                    [self.frame_index]
-                    .get_desc();
-                trace!(
-                    "About to copy texture region to resource {}: {:?}",
-                    &self.secondary_adapter_textures[self.frame_index]
-                        .get_name()
-                        .expect("Cannot get resource name"),
-                    &dest_resource_desc
-                );
+            // {
+            //     let dest_resource_desc = self.secondary_adapter_textures
+            //         [self.frame_index]
+            //         .get_desc();
+            //     trace!(
+            //         "About to copy texture region to resource {}: {:?}",
+            //         &self.secondary_adapter_textures[self.frame_index]
+            //             .get_name()
+            //             .expect("Cannot get resource name"),
+            //         &dest_resource_desc
+            //     );
 
-                let src_resource_desc = self.secondary_adapter_textures
-                    [self.frame_index]
-                    .get_desc();
-                trace!(
-                    "About to copy texture region from resource {}: {:?}",
-                    &self.cross_adapter_resources[adapter_idx]
-                        [self.frame_index]
-                        .get_name()
-                        .expect("Cannot get resource name"),
-                    &src_resource_desc
-                );
-            }
+            //     let src_resource_desc = self.secondary_adapter_textures
+            //         [self.frame_index]
+            //         .get_desc();
+            //     trace!(
+            //         "About to copy texture region from resource {}: {:?}",
+            //         &self.cross_adapter_resources[adapter_idx]
+            //             [self.frame_index]
+            //             .get_name()
+            //             .expect("Cannot get resource name"),
+            //         &src_resource_desc
+            //     );
+            // }
 
             let dest = TextureCopyLocation::new(
                 &self.secondary_adapter_textures[self.frame_index],
@@ -2679,6 +2706,18 @@ fn create_devices(factory: &DxgiFactory) -> ([Device; DEVICE_COUNT], bool) {
 }
 
 fn main() {
+    //wait_for_debugger();
+
+    // std::panic::set_hook(std::boxed::Box::new(|panic_info| {
+    //     if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+    //         println!("panic occurred: {:?}", s);
+    //     } else {
+    //         println!("panic occurred (no description)");
+    //     }
+
+    //     std::thread::sleep_ms(10000);
+    // }));
+
     simple_logger::init_with_level(log::Level::Trace).unwrap();
 
     let event_loop = EventLoop::new();
@@ -2702,7 +2741,7 @@ fn main() {
                 window.request_redraw();
             }
             Event::RedrawRequested(_) => {
-                //sample.draw();
+                sample.draw();
             }
             _ => (),
         }
