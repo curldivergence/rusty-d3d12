@@ -30,6 +30,8 @@ use winit::{
     window::WindowBuilder,
 };
 
+use static_assertions::assert_eq_size;
+
 use rusty_d3d12::*;
 
 fn wait_for_debugger() {
@@ -101,7 +103,7 @@ const WINDOW_HEIGHT: u32 = 480;
 
 const FRAMES_IN_FLIGHT: usize = 3;
 
-const USE_DEBUG: bool = false;
+const USE_DEBUG: bool = true;
 const USE_WARP_ADAPTER: bool = false;
 
 const MAX_TRIANGLE_COUNT: u32 = 15000;
@@ -253,18 +255,24 @@ struct SceneConstantBuffer {
     padding: [f32; 36],
 }
 
+static_assertions::const_assert!(size_of::<SceneConstantBuffer>() == 256);
+
 #[repr(C)]
 struct BlurConstantBufferData {
     texture_dimensions: Vec2,
     offset: f32,
     padding: [f32; 61],
 }
+static_assertions::const_assert!(size_of::<BlurConstantBufferData>() == 256);
 
 #[repr(C)]
 struct WorkloadConstantBufferData {
     loop_count: u32,
     padding: [f32; 63],
 }
+static_assertions::const_assert!(
+    size_of::<WorkloadConstantBufferData>() == 256
+);
 
 struct HeterogeneousMultiadapterSample {
     pipeline: Pipeline,
@@ -272,9 +280,9 @@ struct HeterogeneousMultiadapterSample {
 
 impl HeterogeneousMultiadapterSample {
     fn new(hwnd: *mut std::ffi::c_void) -> Self {
-        let pipeline = Pipeline::new(hwnd);
-        // pipeline.update();
-        // pipeline.render();
+        let mut pipeline = Pipeline::new(hwnd);
+        pipeline.update();
+        pipeline.render();
 
         HeterogeneousMultiadapterSample { pipeline }
     }
@@ -748,8 +756,13 @@ impl Pipeline {
 
         trace!("Executed command lists");
 
-        let (frame_fence, render_fence, cross_adapter_fences, fence_events) =
-            create_fences(&devices, &direct_command_queues);
+        let (
+            frame_fence,
+            render_fence,
+            cross_adapter_fences,
+            fence_events,
+            cross_adapter_fence_value,
+        ) = create_fences(&devices, &direct_command_queues);
 
         trace!("Created fences");
 
@@ -824,7 +837,7 @@ impl Pipeline {
 
             current_present_fence_value: 1,
             current_render_fence_value: 1,
-            current_cross_adapter_fence_value: 1,
+            current_cross_adapter_fence_value: cross_adapter_fence_value,
             frame_fence_values: [0; FRAMES_IN_FLIGHT],
 
             draw_times: [0; MOVING_AVERAGE_FRAME_COUNT],
@@ -1058,9 +1071,6 @@ impl Pipeline {
                 .cbv_srv_heap
                 .get_gpu_descriptor_handle_for_heap_start()
                 .advance(Elements::from(FRAMES_IN_FLIGHT));
-
-            self.direct_command_lists[adapter_idx]
-                .set_graphics_root_descriptor_table(Elements(1), srv_handle);
 
             self.direct_command_lists[adapter_idx]
                 .set_graphics_root_descriptor_table(Elements(1), srv_handle);
@@ -1421,9 +1431,11 @@ impl Pipeline {
             }
         }
         let dest = unsafe {
-            self.triangle_cb_mapped_data
-                .offset(self.frame_index as isize * MAX_TRIANGLE_COUNT as isize)
-                as *mut SceneConstantBuffer
+            self.triangle_cb_mapped_data.offset(
+                self.frame_index as isize
+                    * MAX_TRIANGLE_COUNT as isize
+                    * size_of::<SceneConstantBuffer>() as isize,
+            ) as *mut SceneConstantBuffer
         };
         unsafe {
             copy_nonoverlapping(
@@ -1583,7 +1595,7 @@ impl Pipeline {
 fn create_fences(
     devices: &[Device; DEVICE_COUNT],
     direct_command_queues: &[CommandQueue; DEVICE_COUNT],
-) -> (Fence, Fence, [Fence; DEVICE_COUNT], [Win32Event; 2]) {
+) -> (Fence, Fence, [Fence; DEVICE_COUNT], [Win32Event; 2], u64) {
     let frame_fence = devices[1]
         .create_fence(0, FenceFlags::None)
         .expect("Cannot create fence");
@@ -1636,9 +1648,13 @@ fn create_fences(
         cross_adapter_fence_value += 1;
     }
 
-    (frame_fence, render_fence, cross_adapter_fences, unsafe {
-        std::mem::transmute(fence_events)
-    })
+    (
+        frame_fence,
+        render_fence,
+        cross_adapter_fences,
+        unsafe { std::mem::transmute(fence_events) },
+        cross_adapter_fence_value,
+    )
 }
 
 fn create_blur_constant_buffer(devices: &[Device; DEVICE_COUNT]) -> Resource {
@@ -1757,7 +1773,7 @@ fn create_workload_constant_buffer(
         copy_nonoverlapping(
             &buffer_data,
             mapped_data as *mut WorkloadConstantBufferData,
-            1, // ToDo: why 1??
+            1,
         );
     }
 
@@ -1772,6 +1788,7 @@ fn create_triangle_constant_buffer(
             * MAX_TRIANGLE_COUNT
             * FRAMES_IN_FLIGHT as u32,
     );
+
     let constant_buffer = devices[0]
         .create_committed_resource(
             &HeapProperties::default().set_type(HeapType::Upload),
@@ -1787,12 +1804,16 @@ fn create_triangle_constant_buffer(
     constant_buffer
         .set_name("Constant buffer")
         .expect("Cannot set name on resource");
+
     let camera = Camera::default();
+
     let world = Mat4::identity();
     let view = make_view_matrix(camera.position, camera.look_at);
     let proj = make_projection_matrix(&camera);
+
     let mut rng = rand::thread_rng();
     let mut constant_buffer_data = vec![];
+
     for tri_idx in 0..MAX_TRIANGLE_COUNT as usize {
         constant_buffer_data.push(SceneConstantBuffer {
             velocity: Vec4::new(rng.gen_range(0.01..0.02), 0., 0., 0.),
@@ -1976,8 +1997,10 @@ fn create_primary_vertex_buffer(
             ),
         },
     ];
+
     let vertex_buffer_size =
         Bytes::from(triangle_vertices.len() * size_of::<Vertex>());
+
     let vertex_buffer = devices[0]
         .create_committed_resource(
             &HeapProperties::default().set_type(HeapType::Default),
@@ -2708,17 +2731,6 @@ fn create_devices(factory: &DxgiFactory) -> ([Device; DEVICE_COUNT], bool) {
 
 fn main() {
     //wait_for_debugger();
-
-    // std::panic::set_hook(std::boxed::Box::new(|panic_info| {
-    //     if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
-    //         println!("panic occurred: {:?}", s);
-    //     } else {
-    //         println!("panic occurred (no description)");
-    //     }
-
-    //     std::thread::sleep_ms(10000);
-    // }));
-
     simple_logger::init_with_level(log::Level::Trace).unwrap();
 
     let event_loop = EventLoop::new();
@@ -2743,8 +2755,6 @@ fn main() {
             }
             Event::RedrawRequested(_) => {
                 sample.draw();
-
-                std::thread::sleep_ms(100);
             }
             _ => (),
         }

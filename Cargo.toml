@@ -1,6 +1,6 @@
 [package]
 name = "rusty-d3d12"
-version = "0.1.3"
+version = "0.1.4"
 authors = ["Andrey Pushkar <mail@apushkar.me>"]
 edition = "2018"
 description = """Low-level DX12 bindings for Rust."""
