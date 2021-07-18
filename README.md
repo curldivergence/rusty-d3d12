@@ -5,10 +5,10 @@ A list of currently implemented examples (note their code can be dirty and shoul
 - hello triangle
 - hello texture (based on Microsoft sample)
 - dynamic indexing (based on Microsoft sample)
-- dynamic indexing using SM6.6 dynamic resources (basically a clone of the previous example with changes to indexing method)
+- dynamic indexing using SM6.6 dynamic resources (basically a clone of the previous example with changes to indexing method and Agility SDK exports)
 - mesh shaders (loosely based on Microsoft sample)
 
-Examples that are planned to be added in the near future include DXR showcase and port of Microsoft's D3D12HeterogeneousMultiadapter sample.
+Examples that are planned to be added in the near future include port of Microsoft's D3D12nBodyGravity sample and DXR showcase.
 
 Also, please check out a satellite [pixwrapper](https://crates.io/crates/pixwrapper) crate that can also be used as a standalone helper.
 
