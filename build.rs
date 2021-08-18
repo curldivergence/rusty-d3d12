@@ -164,4 +164,48 @@ fn main() {
         std::fs::copy(copy_source_path.join(file), copy_dest_path.join(file))
             .expect("Cannot copy Agility SDK dlls");
     }
+
+    #[cfg(feature = "pix")]
+    setup_pix_wrapper();
+}
+
+fn setup_pix_wrapper() {
+    let pix_runtime_path = PathBuf::from(env::var("PIX_RUNTIME_PATH").unwrap())
+        .to_str()
+        .unwrap()
+        .to_owned();
+
+    // Build C wrapper over C++ PIX header
+    cc::Build::new()
+        .cpp(true)
+        .include(format!("{}\\include\\", pix_runtime_path))
+        .include(
+            PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
+                .join("D3D12AgilitySDK")
+                .join("include"),
+        )
+        .file("pix_wrapper.cpp")
+        .compile("pix_wrapper");
+
+    // Generate Rust bindings to C wrapper
+    println!("cargo:rustc-link-search={}\\bin\\x64", pix_runtime_path);
+    println!("cargo:rustc-link-lib=WinPixEventRuntime");
+    println!("cargo:rerun-if-changed=pix_wrapper.h");
+    println!("cargo:rerun-if-changed=pix_wrapper.cpp");
+    println!("cargo:rustc-link-lib=static=pix_wrapper");
+
+    let bindings = bindgen::Builder::default()
+        .layout_tests(false)
+        .header("pix_wrapper.h")
+        .whitelist_function("pix_.*")
+        .whitelist_type("ID3D12GraphicsCommandList.*")
+        .whitelist_type("ID3D12CommandQueue.*")
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks))
+        .generate()
+        .expect("Unable to generate bindings");
+
+    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
+    bindings
+        .write_to_file(out_path.join("pix_bindings.rs"))
+        .expect("Couldn't write bindings!");
 }

@@ -1,5 +1,0 @@
-# [build]
-# rustflags = [ "-Z", "sanitizer=memory"]
-
-[unstable]
-extra-link-arg = true

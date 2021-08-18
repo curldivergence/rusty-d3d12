@@ -1,5 +1,3 @@
-#![feature(destructuring_assignment)]
-
 use std::cmp::max;
 use std::cmp::min;
 use std::ffi::c_void;

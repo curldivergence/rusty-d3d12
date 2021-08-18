@@ -98,6 +98,9 @@ struct HelloTextureSample {
 
 impl HelloTextureSample {
     fn new(hwnd: *mut std::ffi::c_void) -> Self {
+        #[cfg(feature = "pix")]
+        PIXSupport::init();
+
         let mut factory_flags = DxgiCreateFactoryFlags::None;
         if USE_DEBUG {
             let debug_controller =
@@ -403,6 +406,9 @@ impl HelloTextureSample {
             .reset(&self.command_allocator, Some(&self.pso))
             .expect("Cannot reset command list");
 
+        #[cfg(feature = "pix")]
+        PIXSupport::begin_event_cmd_list(&self.command_list, "Frame", 0);
+
         self.command_list
             .set_graphics_root_signature(&self.root_signature);
 
@@ -467,6 +473,9 @@ impl HelloTextureSample {
                     .set_state_after(ResourceStates::CommonOrPresent),
             )]);
 
+        #[cfg(feature = "pix")]
+        PIXSupport::end_event_cmd_list(&self.command_list);
+
         self.command_list
             .close()
             .expect("Cannot close command list");
@@ -481,7 +490,8 @@ impl HelloTextureSample {
         self.swapchain.present(1, 0).expect("Cannot present");
         self.flush_gpu();
 
-        self.frame_index = self.swapchain.get_current_back_buffer_index().0 as u32;
+        self.frame_index =
+            self.swapchain.get_current_back_buffer_index().0 as u32;
     }
 
     fn flush_gpu(&mut self) {
@@ -502,6 +512,9 @@ impl HelloTextureSample {
 
 impl Drop for HelloTextureSample {
     fn drop(&mut self) {
+        #[cfg(feature = "pix")]
+        PIXSupport::shutdown();
+
         self.debug_device
             .report_live_device_objects()
             .expect("Device cannot report live objects");

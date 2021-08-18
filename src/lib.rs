@@ -31,6 +31,8 @@ pub use struct_wrappers::*;
 mod enum_wrappers;
 pub use enum_wrappers::*;
 
+mod pix_wrapper;
+
 // ToDo: operator? instead of .expect
 // ToDo: clean up redundant mut's in signatures
 // ToDo: remove D3D from type names?? (move to module?)
@@ -2394,85 +2396,79 @@ impl_com_object_refcount_named!(Heap);
 impl_com_object_clone_drop!(Heap);
 
 #[cfg(feature = "pix")]
-use pixwrapper::{
-    pix_begin_capture, pix_begin_event_cmd_list, pix_begin_event_cmd_queue,
-    pix_end_capture, pix_end_event_cmd_list, pix_end_event_cmd_queue,
-    pix_init_analysis, pix_shutdown_analysis,
-};
-#[cfg(feature = "pix")]
 pub struct PIXSupport {}
 
 #[cfg(feature = "pix")]
 impl PIXSupport {
     pub fn init() {
         unsafe {
-            pix_init_analysis();
+            pix_wrapper::pix_init_analysis();
         }
     }
 
     pub fn shutdown() {
         unsafe {
-            pix_shutdown_analysis();
+            pix_wrapper::pix_shutdown_analysis();
         }
     }
 
     pub fn begin_capture() {
         unsafe {
-            pix_begin_capture();
+            pix_wrapper::pix_begin_capture();
         }
     }
 
     pub fn end_capture() {
         unsafe {
-            pix_end_capture();
+            pix_wrapper::pix_end_capture();
         }
     }
 
     pub fn begin_event_cmd_list(
-        cmd_list: CommandList,
+        cmd_list: &CommandList,
         marker: &str,
         color: u64,
     ) {
         unsafe {
+            // ToDo: allocation on every marker call is sad :(
             let marker = CString::new(marker)
                 .expect("Cannot convert marker string to C string");
-            pix_begin_event_cmd_list(
-                cmd_list.this as *mut pixwrapper::ID3D12GraphicsCommandList6,
+            pix_wrapper::pix_begin_event_cmd_list(
+                cmd_list.this as *mut pix_wrapper::ID3D12GraphicsCommandList6,
                 color,
-                // ToDo: allocation on every marker call is sad :(
                 marker.as_ptr() as *const i8,
             );
         }
     }
 
-    pub fn end_event_cmd_list(cmd_list: CommandList) {
+    pub fn end_event_cmd_list(cmd_list: &CommandList) {
         unsafe {
-            pix_end_event_cmd_list(
-                cmd_list.this as *mut pixwrapper::ID3D12GraphicsCommandList6,
+            pix_wrapper::pix_end_event_cmd_list(
+                cmd_list.this as *mut pix_wrapper::ID3D12GraphicsCommandList6,
             );
         }
     }
 
     pub fn begin_event_cmd_queue(
-        cmd_queue: CommandQueue,
+        cmd_queue: &CommandQueue,
         marker: &str,
         color: u64,
     ) {
         unsafe {
             let marker = CString::new(marker)
                 .expect("Cannot convert marker string to C string");
-            pix_begin_event_cmd_queue(
-                cmd_queue.this as *mut pixwrapper::ID3D12CommandQueue,
+            pix_wrapper::pix_begin_event_cmd_queue(
+                cmd_queue.this as *mut pix_wrapper::ID3D12CommandQueue,
                 color,
                 marker.as_ptr() as *const i8,
             );
         }
     }
 
-    pub fn end_event_cmd_queue(cmd_queue: CommandQueue) {
+    pub fn end_event_cmd_queue(cmd_queue: &CommandQueue) {
         unsafe {
-            pix_end_event_cmd_queue(
-                cmd_queue.this as *mut pixwrapper::ID3D12CommandQueue,
+            pix_wrapper::pix_end_event_cmd_queue(
+                cmd_queue.this as *mut pix_wrapper::ID3D12CommandQueue,
             );
         }
     }
