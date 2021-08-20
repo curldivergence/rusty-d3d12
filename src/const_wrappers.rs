@@ -7,7 +7,6 @@ use crate::utils::*;
 // use crate::{enum_wrappers::*};
 // use crate::{struct_wrappers::*};
 
-
 // ToDo: keep the original name?
 pub const CONSTANT_BUFFER_ALIGNMENT: Bytes =
     Bytes(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT as u64);

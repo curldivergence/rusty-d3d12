@@ -479,7 +479,7 @@ impl HelloMeshShadersSample {
             .rtv_heap
             .get_cpu_descriptor_handle_for_heap_start()
             .advance(Elements(
-                self.swapchain.get_current_back_buffer_index().0 as u64
+                self.swapchain.get_current_back_buffer_index().0 as u64,
             ));
 
         self.command_list.set_render_targets(

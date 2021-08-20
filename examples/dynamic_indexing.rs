@@ -1143,7 +1143,8 @@ impl DynamicIndexingSample {
             .execute_command_lists(slice::from_mut(&mut self.command_list));
 
         self.swapchain.present(1, 0).expect("Cannot present");
-        self.frame_index = self.swapchain.get_current_back_buffer_index().0 as u32;
+        self.frame_index =
+            self.swapchain.get_current_back_buffer_index().0 as u32;
 
         self.frame_resources[self.current_frame_resource_index as usize]
             .fence_value = self.fence_value;
