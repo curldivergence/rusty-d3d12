@@ -2309,7 +2309,7 @@ impl Win32Event {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 #[repr(transparent)]
 pub struct Handle(pub HANDLE);
 
