@@ -2,6 +2,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
+use std::slice;
 use std::{convert::TryFrom, marker::PhantomData, mem::size_of};
 
 use widestring::WideCStr;
@@ -13,13 +14,11 @@ use crate::{enum_wrappers::*, RootSignature};
 
 use crate::Resource;
 
-// ToDo: getters?
-
 // Only newtypes for data structs etc. live here;
 // if a struct is not identical to the raw one,
 // it should be placed directly in lib.rs
 
-// ToDo: accepts struct by reference?
+// ToDo: make internal members private after adding all the type-safe getters?
 
 pub struct GpuVirtualAddress(pub D3D12_GPU_VIRTUAL_ADDRESS);
 
@@ -52,7 +51,7 @@ impl DxgiSwapchainDesc {
         self
     }
 
-    pub fn get_width(&self) -> u32 {
+    pub fn width(&self) -> u32 {
         self.0.Width
     }
 
@@ -61,7 +60,7 @@ impl DxgiSwapchainDesc {
         self
     }
 
-    pub fn get_height(&self) -> u32 {
+    pub fn height(&self) -> u32 {
         self.0.Height
     }
 
@@ -70,7 +69,7 @@ impl DxgiSwapchainDesc {
         self
     }
 
-    pub fn get_format(&self) -> DxgiFormat {
+    pub fn format(&self) -> DxgiFormat {
         unsafe { std::mem::transmute(self.0.Format) }
     }
 
@@ -79,7 +78,7 @@ impl DxgiSwapchainDesc {
         self
     }
 
-    pub fn get_stereo(&self) -> bool {
+    pub fn stereo(&self) -> bool {
         self.0.Stereo != 0
     }
 
@@ -88,7 +87,7 @@ impl DxgiSwapchainDesc {
         self
     }
 
-    pub fn get_sample_desc(&self) -> DxgiSampleDesc {
+    pub fn sample_desc(&self) -> DxgiSampleDesc {
         DxgiSampleDesc(self.0.SampleDesc)
     }
 
@@ -97,7 +96,7 @@ impl DxgiSwapchainDesc {
         self
     }
 
-    pub fn get_buffer_usage(&self) -> DxgiUsage {
+    pub fn buffer_usage(&self) -> DxgiUsage {
         unsafe { DxgiUsage::from_bits_unchecked(self.0.BufferUsage) }
     }
 
@@ -106,7 +105,7 @@ impl DxgiSwapchainDesc {
         self
     }
 
-    pub fn get_buffer_count(&self) -> Elements {
+    pub fn buffer_count(&self) -> Elements {
         Elements::from(self.0.BufferCount)
     }
 
@@ -115,7 +114,7 @@ impl DxgiSwapchainDesc {
         self
     }
 
-    pub fn get_scaling(&self) -> DxgiScaling {
+    pub fn scaling(&self) -> DxgiScaling {
         unsafe { std::mem::transmute(self.0.Scaling) }
     }
 
@@ -124,7 +123,7 @@ impl DxgiSwapchainDesc {
         self
     }
 
-    pub fn get_swap_effect(&self) -> DxgiSwapEffect {
+    pub fn swap_effect(&self) -> DxgiSwapEffect {
         unsafe { std::mem::transmute(self.0.SwapEffect) }
     }
 
@@ -133,18 +132,17 @@ impl DxgiSwapchainDesc {
         self
     }
 
-    pub fn get_alpha_mode(&self) -> DxgiAlphaMode {
+    pub fn alpha_mode(&self) -> DxgiAlphaMode {
         unsafe { std::mem::transmute(self.0.AlphaMode) }
     }
 
-    // ToDo
-    pub fn set_flags(mut self, flags: u32) -> Self {
-        self.0.Flags = flags;
+    pub fn set_flags(mut self, flags: DxgiSwapChainFlag) -> Self {
+        self.0.Flags = flags.bits() as u32;
         self
     }
 
-    pub fn get_flags(&self) -> u32 {
-        self.0.Flags
+    pub fn flags(&self) -> DxgiSwapChainFlag {
+        unsafe { std::mem::transmute(self.0.Flags) }
     }
 }
 
@@ -210,38 +208,33 @@ impl std::fmt::Debug for DxgiAdapterDesc {
     }
 }
 
+#[derive(Default)]
 #[repr(transparent)]
 pub struct DxgiSampleDesc(pub DXGI_SAMPLE_DESC);
 
-impl Default for DxgiSampleDesc {
-    fn default() -> Self {
-        Self(DXGI_SAMPLE_DESC {
-            Count: 1,
-            Quality: 0,
-        })
+impl DxgiSampleDesc {
+    pub fn set_count(mut self, count: u32) -> Self {
+        self.0.Count = count;
+        self
+    }
+
+    pub fn count(&self) -> u32 {
+        self.0.Count
+    }
+
+    pub fn set_quality(mut self, quality: u32) -> Self {
+        self.0.Quality = quality;
+        self
+    }
+
+    pub fn quality(&self) -> u32 {
+        self.0.Quality
     }
 }
 
-#[derive(Debug)]
+#[derive(Default)]
 #[repr(transparent)]
 pub struct ResourceDesc(pub D3D12_RESOURCE_DESC);
-
-impl Default for ResourceDesc {
-    fn default() -> Self {
-        ResourceDesc(D3D12_RESOURCE_DESC {
-            Dimension: ResourceDimension::Unknown as i32,
-            Alignment: D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT as u64,
-            Width: 0,
-            Height: 1,
-            DepthOrArraySize: 1,
-            MipLevels: 1,
-            Format: DxgiFormat::Unknown as i32,
-            SampleDesc: DxgiSampleDesc::default().0,
-            Layout: TextureLayout::Unknown as i32,
-            Flags: ResourceFlags::None.bits(),
-        })
-    }
-}
 
 impl ResourceDesc {
     pub fn set_dimension(mut self, dimension: ResourceDimension) -> Self {
@@ -249,20 +242,35 @@ impl ResourceDesc {
         self
     }
 
+    pub fn dimension(&self) -> ResourceDimension {
+        unsafe { std::mem::transmute(self.0.Dimension) }
+    }
+
     pub fn set_alignment(mut self, alignment: Bytes) -> Self {
         self.0.Alignment = alignment.0;
         self
     }
 
-    // ToDo: Bytes here and below?
+    pub fn alignment(&self) -> Bytes {
+        Bytes(self.0.Alignment)
+    }
+
     pub fn set_width(mut self, width: Elements) -> Self {
         self.0.Width = width.0;
         self
     }
 
+    pub fn width(&self) -> Elements {
+        Elements(self.0.Width)
+    }
+
     pub fn set_height(mut self, height: Elements) -> Self {
         self.0.Height = height.0 as u32;
         self
+    }
+
+    pub fn height(&self) -> Elements {
+        Elements::from(self.0.Height)
     }
 
     pub fn set_depth_or_array_size(
@@ -273,9 +281,17 @@ impl ResourceDesc {
         self
     }
 
-    pub fn set_mip_levels(mut self, mip_levels: Elements) -> Self {
-        self.0.MipLevels = mip_levels.0 as u16;
+    pub fn depth_or_array_size(&self) -> Elements {
+        Elements::from(self.0.DepthOrArraySize)
+    }
+
+    pub fn set_mip_levels(mut self, mip_levels: u16) -> Self {
+        self.0.MipLevels = mip_levels;
         self
+    }
+
+    pub fn mip_levels(&self) -> u16 {
+        self.0.MipLevels
     }
 
     pub fn set_format(mut self, format: DxgiFormat) -> Self {
@@ -283,14 +299,26 @@ impl ResourceDesc {
         self
     }
 
+    pub fn format(&self) -> DxgiFormat {
+        unsafe { std::mem::transmute(self.0.Format) }
+    }
+
     pub fn set_sample_desc(mut self, sample_desc: DxgiSampleDesc) -> Self {
         self.0.SampleDesc = sample_desc.0;
         self
     }
 
-    pub fn set_layout(mut self, layout: TextureLayout) -> Self {
+    pub fn sample_desc(&self) -> DxgiSampleDesc {
+        DxgiSampleDesc(self.0.SampleDesc)
+    }
+
+    pub fn set_layout(mut self, layout: D3D12_TEXTURE_LAYOUT) -> Self {
         self.0.Layout = layout as i32;
         self
+    }
+
+    pub fn layout(&self) -> TextureLayout {
+        unsafe { std::mem::transmute(self.0.Layout) }
     }
 
     pub fn set_flags(mut self, flags: ResourceFlags) -> Self {
@@ -298,9 +326,8 @@ impl ResourceDesc {
         self
     }
 
-    // Is it really the best way?
-    pub fn format(&self) -> DxgiFormat {
-        unsafe { std::mem::transmute(self.0.Format) }
+    pub fn flags(&self) -> D3D12_RESOURCE_FLAGS {
+        unsafe { std::mem::transmute(self.0.Flags) }
     }
 }
 
@@ -336,9 +363,13 @@ impl Default for HeapProperties {
 }
 
 impl HeapProperties {
-    pub fn set_type(mut self, heap_type: HeapType) -> Self {
+    pub fn set_heap_type(mut self, heap_type: HeapType) -> Self {
         self.0.Type = heap_type as i32;
         self
+    }
+
+    pub fn heap_type(&self) -> HeapType {
+        unsafe { std::mem::transmute(self.0.Type) }
     }
 
     pub fn set_cpu_page_property(
@@ -349,6 +380,10 @@ impl HeapProperties {
         self
     }
 
+    pub fn cpu_page_property(&self) -> CPUPageProperty {
+        unsafe { std::mem::transmute(self.0.CPUPageProperty) }
+    }
+
     pub fn set_memory_pool_preference(
         mut self,
         memory_pool_preference: MemoryPool,
@@ -357,14 +392,26 @@ impl HeapProperties {
         self
     }
 
-    pub fn set_creation_node_mask(mut self, node_mask: UINT) -> Self {
+    pub fn memory_pool_preference(&self) -> MemoryPool {
+        unsafe { std::mem::transmute(self.0.MemoryPoolPreference) }
+    }
+
+    pub fn set_creation_node_mask(mut self, node_mask: u32) -> Self {
         self.0.CreationNodeMask = node_mask;
         self
     }
 
-    pub fn set_visibility_node_mask(mut self, node_mask: UINT) -> Self {
+    pub fn creation_node_mask(&self) -> u32 {
+        self.0.CreationNodeMask
+    }
+
+    pub fn set_visibility_node_mask(mut self, node_mask: u32) -> Self {
         self.0.VisibleNodeMask = node_mask;
         self
+    }
+
+    pub fn visible_node_mask(&self) -> u32 {
+        self.0.VisibleNodeMask
     }
 }
 
@@ -378,7 +425,7 @@ impl Range {
         self
     }
 
-    pub fn get_begin(&self) -> Bytes {
+    pub fn begin(&self) -> Bytes {
         Bytes(self.0.Begin)
     }
 
@@ -387,7 +434,7 @@ impl Range {
         self
     }
 
-    pub fn get_end(&self) -> Bytes {
+    pub fn end(&self) -> Bytes {
         Bytes(self.0.End)
     }
 }
@@ -396,14 +443,25 @@ impl Range {
 pub struct ResourceBarrier(pub D3D12_RESOURCE_BARRIER);
 
 impl ResourceBarrier {
-    pub fn set_type(mut self, barrier_type: ResourceBarrierType) -> Self {
+    pub fn set_barrier_type(
+        mut self,
+        barrier_type: ResourceBarrierType,
+    ) -> Self {
         self.0.Type = barrier_type as i32;
         self
+    }
+
+    pub fn barrier_type(&self) -> ResourceBarrierType {
+        unsafe { std::mem::transmute(self.0.Type) }
     }
 
     pub fn set_flags(mut self, flags: ResourceBarrierFlags) -> Self {
         self.0.Flags = flags.bits();
         self
+    }
+
+    pub fn flags(&self) -> ResourceBarrierFlags {
+        unsafe { std::mem::transmute(self.0.Flags) }
     }
 
     pub fn set_transition(
@@ -414,6 +472,10 @@ impl ResourceBarrier {
         self
     }
 
+    pub fn transition(&self) -> ResourceTransitionBarrier {
+        unsafe { ResourceTransitionBarrier(self.0.__bindgen_anon_1.Transition) }
+    }
+
     pub fn set_aliasing(
         mut self,
         barrier_desc: &ResourceAliasingBarrier,
@@ -422,13 +484,21 @@ impl ResourceBarrier {
         self
     }
 
+    pub fn aliasing(&self) -> ResourceAliasingBarrier {
+        unsafe { ResourceAliasingBarrier(self.0.__bindgen_anon_1.Aliasing) }
+    }
+
     pub fn set_uav(mut self, barrier_desc: &ResourceUavBarrier) -> Self {
         self.0.__bindgen_anon_1.UAV = barrier_desc.0;
         self
     }
 
+    pub fn uav(&self) -> ResourceUavBarrier {
+        unsafe { ResourceUavBarrier(self.0.__bindgen_anon_1.UAV) }
+    }
+
     // Convenience methods
-    pub fn transition(desc: &ResourceTransitionBarrier) -> Self {
+    pub fn make_transition_barrier(desc: &ResourceTransitionBarrier) -> Self {
         Self(D3D12_RESOURCE_BARRIER {
             Type: ResourceBarrierType::Transition as i32,
             Flags: ResourceBarrierFlags::None.bits(),
@@ -438,7 +508,7 @@ impl ResourceBarrier {
         })
     }
 
-    pub fn aliasing(desc: &ResourceAliasingBarrier) -> Self {
+    pub fn make_aliasing_barrier(desc: &ResourceAliasingBarrier) -> Self {
         Self(D3D12_RESOURCE_BARRIER {
             Type: ResourceBarrierType::Aliasing as i32,
             Flags: ResourceBarrierFlags::None.bits(),
@@ -448,7 +518,7 @@ impl ResourceBarrier {
         })
     }
 
-    pub fn uav(desc: &ResourceUavBarrier) -> Self {
+    pub fn make_uav_barrier(desc: &ResourceUavBarrier) -> Self {
         Self(D3D12_RESOURCE_BARRIER {
             Type: ResourceBarrierType::Uav as i32,
             Flags: ResourceBarrierFlags::None.bits(),
@@ -469,6 +539,14 @@ impl ResourceTransitionBarrier {
         self
     }
 
+    pub fn resource(&self) -> Resource {
+        let resource = Resource {
+            this: self.0.pResource,
+        };
+        resource.add_ref();
+        resource
+    }
+
     // None value means "all subresources"
     pub fn set_subresource(mut self, subresource: Option<Elements>) -> Self {
         match subresource {
@@ -480,14 +558,29 @@ impl ResourceTransitionBarrier {
         self
     }
 
+    pub fn subresource(&self) -> Option<Elements> {
+        match self.0.Subresource {
+            D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES => None,
+            _ => Some(Elements::from(self.0.Subresource)),
+        }
+    }
+
     pub fn set_state_before(mut self, state_before: ResourceStates) -> Self {
         self.0.StateBefore = state_before as i32;
         self
     }
 
+    pub fn state_before(&self) -> ResourceStates {
+        unsafe { std::mem::transmute(self.0.StateBefore) }
+    }
+
     pub fn set_state_after(mut self, state_after: ResourceStates) -> Self {
         self.0.StateAfter = state_after as i32;
         self
+    }
+
+    pub fn state_after(&self) -> ResourceStates {
+        unsafe { std::mem::transmute(self.0.StateAfter) }
     }
 }
 
@@ -501,9 +594,25 @@ impl ResourceAliasingBarrier {
         self
     }
 
+    pub fn resource_before(&self) -> Resource {
+        let resource = Resource {
+            this: self.0.pResourceBefore,
+        };
+        resource.add_ref();
+        resource
+    }
+
     pub fn set_resource_after(mut self, resource_after: &Resource) -> Self {
         self.0.pResourceAfter = resource_after.this;
         self
+    }
+
+    pub fn resource_after(&self) -> Resource {
+        let resource = Resource {
+            this: self.0.pResourceAfter,
+        };
+        resource.add_ref();
+        resource
     }
 }
 
@@ -516,9 +625,17 @@ impl ResourceUavBarrier {
         self.0.pResource = resource.this;
         self
     }
+
+    pub fn resource(&self) -> Resource {
+        let resource = Resource {
+            this: self.0.pResource,
+        };
+        resource.add_ref();
+        resource
+    }
 }
 
-#[derive(Clone, Copy)] // ToDo: can we do better?
+#[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct Viewport(pub D3D12_VIEWPORT);
 
@@ -541,9 +658,17 @@ impl Viewport {
         self
     }
 
+    pub fn top_left_x(&self) -> f32 {
+        self.0.TopLeftX
+    }
+
     pub fn set_top_left_y(mut self, top_left_y: f32) -> Self {
         self.0.TopLeftY = top_left_y;
         self
+    }
+
+    pub fn top_left_y(&self) -> f32 {
+        self.0.TopLeftY
     }
 
     pub fn set_width(mut self, width: f32) -> Self {
@@ -551,13 +676,39 @@ impl Viewport {
         self
     }
 
+    pub fn width(&self) -> f32 {
+        self.0.Width
+    }
+
     pub fn set_height(mut self, height: f32) -> Self {
         self.0.Height = height;
         self
     }
+
+    pub fn height(&self) -> f32 {
+        self.0.Height
+    }
+
+    pub fn set_min_depth(mut self, min_depth: f32) -> Self {
+        self.0.MinDepth = min_depth;
+        self
+    }
+
+    pub fn min_depth(&self) -> f32 {
+        self.0.MinDepth
+    }
+
+    pub fn set_max_depth(mut self, max_depth: f32) -> Self {
+        self.0.MaxDepth = max_depth;
+        self
+    }
+
+    pub fn max_depth(&self) -> f32 {
+        self.0.MaxDepth
+    }
 }
 
-#[derive(Clone, Copy)] // ToDo: can we do better?
+#[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct Rect(pub D3D12_RECT);
 
@@ -578,9 +729,17 @@ impl Rect {
         self
     }
 
+    pub fn left(&self) -> i32 {
+        self.0.left
+    }
+
     pub fn set_top(mut self, top: i32) -> Self {
         self.0.top = top;
         self
+    }
+
+    pub fn top(&self) -> i32 {
+        self.0.top
     }
 
     pub fn set_right(mut self, right: i32) -> Self {
@@ -588,9 +747,17 @@ impl Rect {
         self
     }
 
+    pub fn right(&self) -> i32 {
+        self.0.right
+    }
+
     pub fn set_bottom(mut self, bottom: i32) -> Self {
         self.0.bottom = bottom;
         self
+    }
+
+    pub fn bottom(&self) -> i32 {
+        self.0.bottom
     }
 }
 
@@ -622,6 +789,25 @@ impl TextureCopyLocation {
             }
         }
     }
+
+    pub fn resource(&self) -> Resource {
+        let resource = Resource {
+            this: self.0.pResource,
+        };
+        resource.add_ref();
+        resource
+    }
+
+    pub fn copy_type(&self) -> TextureCopyType {
+        match unsafe { std::mem::transmute(self.0.Type) } {
+            TextureCopyType::PlacedFootprint => {
+                TextureCopyType::PlacedFootprint
+            }
+            TextureCopyType::SubresourceIndex => {
+                TextureCopyType::SubresourceIndex
+            }
+        }
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -647,7 +833,7 @@ impl Box {
         self
     }
 
-    pub fn get_left(&self) -> Elements {
+    pub fn left(&self) -> Elements {
         Elements::from(self.0.left)
     }
 
@@ -656,7 +842,7 @@ impl Box {
         self
     }
 
-    pub fn get_top(&self) -> Elements {
+    pub fn top(&self) -> Elements {
         Elements::from(self.0.top)
     }
 
@@ -665,7 +851,7 @@ impl Box {
         self
     }
 
-    pub fn get_front(&self) -> Elements {
+    pub fn front(&self) -> Elements {
         Elements::from(self.0.front)
     }
 
@@ -674,7 +860,7 @@ impl Box {
         self
     }
 
-    pub fn get_right(&self) -> Elements {
+    pub fn right(&self) -> Elements {
         Elements::from(self.0.right)
     }
 
@@ -683,7 +869,7 @@ impl Box {
         self
     }
 
-    pub fn get_bottom(&self) -> Elements {
+    pub fn bottom(&self) -> Elements {
         Elements::from(self.0.bottom)
     }
 
@@ -692,7 +878,7 @@ impl Box {
         self
     }
 
-    pub fn get_back(&self) -> Elements {
+    pub fn back(&self) -> Elements {
         Elements::from(self.0.back)
     }
 }
@@ -710,21 +896,36 @@ impl VertexBufferView {
         self
     }
 
+    pub fn buffer_location(&self) -> GpuVirtualAddress {
+        GpuVirtualAddress(self.0.BufferLocation)
+    }
+
     pub fn set_size_in_bytes(mut self, size_in_bytes: Bytes) -> Self {
         self.0.SizeInBytes = size_in_bytes.0 as u32;
         self
+    }
+
+    pub fn size_in_bytes(&self) -> Bytes {
+        Bytes::from(self.0.SizeInBytes)
     }
 
     pub fn set_stride_in_bytes(mut self, stride_in_bytes: Bytes) -> Self {
         self.0.StrideInBytes = stride_in_bytes.0 as u32;
         self
     }
+
+    pub fn stride_in_bytes(&self) -> Bytes {
+        Bytes::from(self.0.StrideInBytes)
+    }
 }
 
 #[repr(transparent)]
-pub struct InputElementDesc(pub D3D12_INPUT_ELEMENT_DESC);
+pub struct InputElementDesc<'a>(
+    pub D3D12_INPUT_ELEMENT_DESC,
+    PhantomData<&'a std::ffi::CStr>,
+);
 
-impl Default for InputElementDesc {
+impl<'a> Default for InputElementDesc<'a> {
     fn default() -> Self {
         InputElementDesc(D3D12_INPUT_ELEMENT_DESC {
             SemanticName: std::ptr::null(),
@@ -735,21 +936,30 @@ impl Default for InputElementDesc {
             InputSlotClass:
         D3D12_INPUT_CLASSIFICATION_D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
             InstanceDataStepRate: 0,
-        })
+        },
+        PhantomData)
     }
 }
 
 // ToDo: macro for generating input element desc from vertex struct type?
 
-impl InputElementDesc {
+impl<'a> InputElementDesc<'a> {
     pub fn set_name(mut self, name: std::ffi::CString) -> Self {
         self.0.SemanticName = name.into_raw() as *const i8;
         self
     }
 
-    pub fn set_index(mut self, index: UINT) -> Self {
-        self.0.SemanticIndex = index;
+    pub fn name(&self) -> &'a std::ffi::CStr {
+        unsafe { std::ffi::CStr::from_ptr(self.0.SemanticName) }
+    }
+
+    pub fn set_index(mut self, index: Elements) -> Self {
+        self.0.SemanticIndex = index.0 as u32;
         self
+    }
+
+    pub fn index(&self) -> Elements {
+        Elements::from(self.0.SemanticIndex)
     }
 
     pub fn set_format(mut self, format: DxgiFormat) -> Self {
@@ -757,9 +967,17 @@ impl InputElementDesc {
         self
     }
 
-    pub fn set_input_slot(mut self, slot: UINT) -> Self {
-        self.0.InputSlot = slot;
+    pub fn format(&self) -> DxgiFormat {
+        unsafe { std::mem::transmute(self.0.Format) }
+    }
+
+    pub fn set_input_slot(mut self, slot: Elements) -> Self {
+        self.0.InputSlot = slot.0 as u32;
         self
+    }
+
+    pub fn input_slot(&self) -> Elements {
+        Elements::from(self.0.InputSlot)
     }
 
     pub fn set_offset(mut self, offset: Bytes) -> Self {
@@ -767,14 +985,26 @@ impl InputElementDesc {
         self
     }
 
+    pub fn offset(&self) -> Bytes {
+        Bytes::from(self.0.AlignedByteOffset)
+    }
+
     pub fn set_input_slot_class(mut self, class: InputClassification) -> Self {
         self.0.InputSlotClass = class as i32;
         self
     }
 
+    pub fn input_slot_class(&self) -> InputClassification {
+        unsafe { std::mem::transmute(self.0.InputSlotClass) }
+    }
+
     pub fn set_instance_data_steprate(mut self, step_rate: Elements) -> Self {
         self.0.InstanceDataStepRate = step_rate.0 as u32;
         self
+    }
+
+    pub fn instance_data_steprate(&self) -> Elements {
+        Elements::from(self.0.InstanceDataStepRate)
     }
 }
 
@@ -782,7 +1012,7 @@ impl InputElementDesc {
 // the raw C string (const char*) "SemanticName". Since this memory has to be
 // valid until the destruction of this struct, we need to regain that memory
 // back so it can be destroyed correctly
-impl Drop for InputElementDesc {
+impl<'a> Drop for InputElementDesc<'a> {
     fn drop(&mut self) {
         unsafe {
             let _regained_name = std::ffi::CString::from_raw(
@@ -792,7 +1022,7 @@ impl Drop for InputElementDesc {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 #[repr(transparent)]
 pub struct IndexBufferView(pub D3D12_INDEX_BUFFER_VIEW);
 
@@ -812,6 +1042,36 @@ impl IndexBufferView {
             SizeInBytes: (element_size * element_count).0 as u32,
             Format: format as i32,
         })
+    }
+
+    pub fn set_buffer_location(
+        mut self,
+        buffer_location: GpuVirtualAddress,
+    ) -> Self {
+        self.0.BufferLocation = buffer_location.0;
+        self
+    }
+
+    pub fn buffer_location(&self) -> GpuVirtualAddress {
+        GpuVirtualAddress(self.0.BufferLocation)
+    }
+
+    pub fn set_size_in_bytes(mut self, size_in_bytes: Bytes) -> Self {
+        self.0.SizeInBytes = size_in_bytes.0 as u32;
+        self
+    }
+
+    pub fn size_in_bytes(&self) -> Bytes {
+        Bytes::from(self.0.SizeInBytes)
+    }
+
+    pub fn set_format(mut self, format: DxgiFormat) -> Self {
+        self.0.Format = format as i32;
+        self
+    }
+
+    pub fn format(&self) -> DxgiFormat {
+        unsafe { std::mem::transmute(self.0.Format) }
     }
 }
 
@@ -856,71 +1116,262 @@ impl Default for StreamOutputDesc {
         })
     }
 }
-
+#[derive(Default)]
 #[repr(transparent)]
 pub struct RenderTargetBlendDesc(pub D3D12_RENDER_TARGET_BLEND_DESC);
 
-impl Default for RenderTargetBlendDesc {
-    fn default() -> Self {
-        Self(D3D12_RENDER_TARGET_BLEND_DESC {
-            BlendEnable: 0,
-            LogicOpEnable: 0,
-            SrcBlend: Blend::One as i32,
-            DestBlend: Blend::Zero as i32,
-            BlendOp: BlendOp::Add as i32,
-            SrcBlendAlpha: Blend::One as i32,
-            DestBlendAlpha: Blend::Zero as i32,
-            BlendOpAlpha: BlendOp::Add as i32,
-            LogicOp: LogicOp::NoOp as i32,
-            RenderTargetWriteMask:
-                D3D12_COLOR_WRITE_ENABLE_D3D12_COLOR_WRITE_ENABLE_ALL as u8,
-        })
+impl RenderTargetBlendDesc {
+    pub fn set_blend_enable(mut self, blend_enable: bool) -> Self {
+        self.0.BlendEnable = blend_enable as i32;
+        self
+    }
+
+    pub fn blend_enable(&self) -> bool {
+        self.0.BlendEnable != 0
+    }
+
+    pub fn set_logic_op_enable(mut self, logic_op_enable: bool) -> Self {
+        self.0.LogicOpEnable = logic_op_enable as i32;
+        self
+    }
+
+    pub fn logic_op_enable(&self) -> bool {
+        self.0.LogicOpEnable != 0
+    }
+
+    pub fn set_src_blend(mut self, src_blend: Blend) -> Self {
+        self.0.SrcBlend = src_blend as i32;
+        self
+    }
+
+    pub fn src_blend(&self) -> Blend {
+        unsafe { std::mem::transmute(self.0.SrcBlend) }
+    }
+
+    pub fn set_dest_blend(mut self, dest_blend: Blend) -> Self {
+        self.0.DestBlend = dest_blend as i32;
+        self
+    }
+
+    pub fn dest_blend(&self) -> Blend {
+        unsafe { std::mem::transmute(self.0.DestBlend) }
+    }
+
+    pub fn set_blend_op(mut self, blend_op: BlendOp) -> Self {
+        self.0.BlendOp = blend_op as i32;
+        self
+    }
+
+    pub fn blend_op(&self) -> BlendOp {
+        unsafe { std::mem::transmute(self.0.BlendOp) }
+    }
+
+    pub fn set_src_blend_alpha(mut self, src_blend_alpha: Blend) -> Self {
+        self.0.SrcBlendAlpha = src_blend_alpha as i32;
+        self
+    }
+
+    pub fn src_blend_alpha(&self) -> Blend {
+        unsafe { std::mem::transmute(self.0.SrcBlendAlpha) }
+    }
+
+    pub fn set_dest_blend_alpha(mut self, dest_blend_alpha: Blend) -> Self {
+        self.0.DestBlendAlpha = dest_blend_alpha as i32;
+        self
+    }
+
+    pub fn dest_blend_alpha(&self) -> Blend {
+        unsafe { std::mem::transmute(self.0.DestBlendAlpha) }
+    }
+
+    pub fn set_blend_op_alpha(mut self, blend_op_alpha: Blend) -> Self {
+        self.0.BlendOpAlpha = blend_op_alpha as i32;
+        self
+    }
+
+    pub fn blend_op_alpha(&self) -> Blend {
+        unsafe { std::mem::transmute(self.0.BlendOpAlpha) }
+    }
+
+    pub fn set_logic_op(mut self, logic_op: LogicOp) -> Self {
+        self.0.LogicOp = logic_op as i32;
+        self
+    }
+
+    pub fn logic_op(&self) -> LogicOp {
+        unsafe { std::mem::transmute(self.0.LogicOp) }
+    }
+
+    pub fn set_render_target_write_mask(
+        mut self,
+        render_target_write_mask: u8,
+    ) -> Self {
+        self.0.RenderTargetWriteMask = render_target_write_mask;
+        self
+    }
+
+    pub fn render_target_write_mask(&self) -> u8 {
+        self.0.RenderTargetWriteMask
     }
 }
 
+#[derive(Default)]
 #[repr(transparent)]
 pub struct BlendDesc(pub D3D12_BLEND_DESC);
 
-impl Default for BlendDesc {
-    fn default() -> Self {
-        Self(D3D12_BLEND_DESC {
-            AlphaToCoverageEnable: 0,
-            IndependentBlendEnable: 0,
-            RenderTarget: [RenderTargetBlendDesc::default().0; 8usize],
-        })
+impl BlendDesc {
+    pub fn set_alpha_to_coverage_enable(
+        mut self,
+        alpha_to_coverage_enable: bool,
+    ) -> Self {
+        self.0.AlphaToCoverageEnable = alpha_to_coverage_enable as i32;
+        self
+    }
+
+    pub fn alpha_to_coverage_enable(&self) -> bool {
+        self.0.AlphaToCoverageEnable != 0
+    }
+
+    pub fn set_independent_blend_enable(
+        mut self,
+        independent_blend_enable: bool,
+    ) -> Self {
+        self.0.IndependentBlendEnable = independent_blend_enable as i32;
+        self
+    }
+
+    pub fn independent_blend_enable(&self) -> bool {
+        self.0.IndependentBlendEnable != 0
+    }
+
+    pub fn set_render_target(
+        mut self,
+        render_targets: [RenderTargetBlendDesc; 8usize],
+    ) -> Self {
+        // transmute is okay due to repr::transparent
+        self.0.RenderTarget = unsafe { std::mem::transmute(render_targets) };
+        self
+    }
+
+    pub fn render_targets(&self) -> [RenderTargetBlendDesc; 8usize] {
+        // transmute is okay due to repr::transparent
+        unsafe { std::mem::transmute(self.0.RenderTarget) }
     }
 }
-
+#[derive(Default)]
 #[repr(transparent)]
 pub struct RasterizerDesc(pub D3D12_RASTERIZER_DESC);
 
-impl Default for RasterizerDesc {
-    fn default() -> Self {
-        Self(D3D12_RASTERIZER_DESC {
-            FillMode: FillMode::Solid as i32,
-            CullMode: CullMode::None as i32,
-            FrontCounterClockwise: 0,
-            DepthBias: 0,
-            DepthBiasClamp: 0.,
-            SlopeScaledDepthBias: 0.,
-            DepthClipEnable: 0,
-            MultisampleEnable: 0,
-            AntialiasedLineEnable: 0,
-            ForcedSampleCount: 0,
-            ConservativeRaster: ConservativeRasterizationMode::Off as i32,
-        })
-    }
-}
-
 impl RasterizerDesc {
-    pub fn set_fill_mode(mut self, mode: FillMode) -> Self {
-        self.0.FillMode = mode as i32;
+    pub fn set_fill_mode(mut self, fill_mode: FillMode) -> Self {
+        self.0.FillMode = fill_mode as i32;
         self
     }
 
-    pub fn set_cull_mode(mut self, mode: CullMode) -> Self {
-        self.0.CullMode = mode as i32;
+    pub fn fill_mode(&self) -> FillMode {
+        unsafe { std::mem::transmute(self.0.FillMode) }
+    }
+
+    pub fn set_cull_mode(mut self, cull_mode: CullMode) -> Self {
+        self.0.CullMode = cull_mode as i32;
         self
+    }
+
+    pub fn cull_mode(&self) -> CullMode {
+        unsafe { std::mem::transmute(self.0.CullMode) }
+    }
+
+    pub fn set_front_counter_clockwise(
+        mut self,
+        front_counter_clockwise: bool,
+    ) -> Self {
+        self.0.FrontCounterClockwise = front_counter_clockwise as i32;
+        self
+    }
+
+    pub fn front_counter_clockwise(&self) -> bool {
+        self.0.FrontCounterClockwise != 0
+    }
+
+    pub fn set_depth_bias(mut self, depth_bias: i32) -> Self {
+        self.0.DepthBias = depth_bias;
+        self
+    }
+
+    pub fn depth_bias(&self) -> i32 {
+        self.0.DepthBias
+    }
+
+    pub fn set_depth_bias_clamp(mut self, depth_bias_clamp: f32) -> Self {
+        self.0.DepthBiasClamp = depth_bias_clamp;
+        self
+    }
+
+    pub fn depth_bias_clamp(&self) -> f32 {
+        self.0.DepthBiasClamp
+    }
+
+    pub fn set_slope_scaled_depth_bias(
+        mut self,
+        slope_scaled_depth_bias: f32,
+    ) -> Self {
+        self.0.SlopeScaledDepthBias = slope_scaled_depth_bias;
+        self
+    }
+
+    pub fn slope_scaled_depth_bias(&self) -> f32 {
+        self.0.SlopeScaledDepthBias
+    }
+
+    pub fn set_depth_clip_enable(mut self, depth_clip_enable: bool) -> Self {
+        self.0.DepthClipEnable = depth_clip_enable as i32;
+        self
+    }
+
+    pub fn depth_clip_enable(&self) -> bool {
+        self.0.DepthClipEnable != 0
+    }
+
+    pub fn set_multisample_enable(mut self, multisample_enable: bool) -> Self {
+        self.0.MultisampleEnable = multisample_enable as i32;
+        self
+    }
+
+    pub fn multisample_enable(&self) -> bool {
+        self.0.MultisampleEnable != 0
+    }
+
+    pub fn set_antialiased_line_enable(
+        mut self,
+        antialiased_line_enable: bool,
+    ) -> Self {
+        self.0.AntialiasedLineEnable = antialiased_line_enable as i32;
+        self
+    }
+
+    pub fn antialiased_line_enable(&self) -> bool {
+        self.0.AntialiasedLineEnable != 0
+    }
+
+    pub fn set_forced_sample_count(mut self, forced_sample_count: u32) -> Self {
+        self.0.ForcedSampleCount = forced_sample_count;
+        self
+    }
+
+    pub fn forced_sample_count(&self) -> u32 {
+        self.0.ForcedSampleCount
+    }
+
+    pub fn set_conservative_raster(
+        mut self,
+        conservative_raster: ConservativeRasterizationMode,
+    ) -> Self {
+        self.0.ConservativeRaster = conservative_raster as i32;
+        self
+    }
+
+    pub fn conservative_raster(&self) -> ConservativeRasterizationMode {
+        unsafe { std::mem::transmute(self.0.ConservativeRaster) }
     }
 }
 
@@ -930,11 +1381,52 @@ pub struct DepthStencilOpDesc(pub D3D12_DEPTH_STENCILOP_DESC);
 impl Default for DepthStencilOpDesc {
     fn default() -> Self {
         Self(D3D12_DEPTH_STENCILOP_DESC {
-            StencilFailOp: DepthStencilOp::Zero as i32,
-            StencilDepthFailOp: DepthStencilOp::Zero as i32,
-            StencilPassOp: DepthStencilOp::Zero as i32,
+            StencilFailOp: StencilOp::Zero as i32,
+            StencilDepthFailOp: StencilOp::Zero as i32,
+            StencilPassOp: StencilOp::Zero as i32,
             StencilFunc: ComparisonFunc::Never as i32,
         })
+    }
+}
+
+impl DepthStencilOpDesc {
+    pub fn set_stencil_fail_op(mut self, stencil_fail_op: StencilOp) -> Self {
+        self.0.StencilFailOp = stencil_fail_op as i32;
+        self
+    }
+
+    pub fn stencil_fail_op(&self) -> StencilOp {
+        unsafe { std::mem::transmute(self.0.StencilFailOp) }
+    }
+
+    pub fn set_stencil_depth_fail_op(
+        mut self,
+        stencil_depth_fail_op: StencilOp,
+    ) -> Self {
+        self.0.StencilDepthFailOp = stencil_depth_fail_op as i32;
+        self
+    }
+
+    pub fn stencil_depth_fail_op(&self) -> StencilOp {
+        unsafe { std::mem::transmute(self.0.StencilDepthFailOp) }
+    }
+
+    pub fn set_stencil_pass_op(mut self, stencil_pass_op: StencilOp) -> Self {
+        self.0.StencilPassOp = stencil_pass_op as i32;
+        self
+    }
+
+    pub fn stencil_pass_op(&self) -> StencilOp {
+        unsafe { std::mem::transmute(self.0.StencilPassOp) }
+    }
+
+    pub fn set_stencil_func(mut self, stencil_func: ComparisonFunc) -> Self {
+        self.0.StencilFunc = stencil_func as i32;
+        self
+    }
+
+    pub fn stencil_func(&self) -> ComparisonFunc {
+        unsafe { std::mem::transmute(self.0.StencilFunc) }
     }
 }
 
@@ -962,17 +1454,29 @@ impl DepthStencilDesc {
         self
     }
 
+    pub fn depth_enable(&self) -> bool {
+        self.0.DepthEnable != 0
+    }
+
     pub fn set_depth_write_mask(
         mut self,
-        depth_write_mask: D3D12_DEPTH_WRITE_MASK,
+        depth_write_mask: DepthWriteMask,
     ) -> Self {
-        self.0.DepthWriteMask = depth_write_mask;
+        self.0.DepthWriteMask = depth_write_mask as i32;
         self
     }
 
-    pub fn set_depth_func(mut self, depth_func: D3D12_COMPARISON_FUNC) -> Self {
-        self.0.DepthFunc = depth_func;
+    pub fn depth_write_mask(&self) -> DepthWriteMask {
+        unsafe { std::mem::transmute(self.0.DepthWriteMask) }
+    }
+
+    pub fn set_depth_func(mut self, depth_func: ComparisonFunc) -> Self {
+        self.0.DepthFunc = depth_func as i32;
         self
+    }
+
+    pub fn depth_func(&self) -> ComparisonFunc {
+        unsafe { std::mem::transmute(self.0.DepthFunc) }
     }
 
     pub fn set_stencil_enable(mut self, stencil_enable: bool) -> Self {
@@ -980,9 +1484,17 @@ impl DepthStencilDesc {
         self
     }
 
+    pub fn stencil_enable(&self) -> bool {
+        self.0.StencilEnable != 0
+    }
+
     pub fn set_stencil_read_mask(mut self, stencil_read_mask: u8) -> Self {
         self.0.StencilReadMask = stencil_read_mask;
         self
+    }
+
+    pub fn stencil_read_mask(&self) -> u8 {
+        self.0.StencilReadMask
     }
 
     pub fn set_stencil_write_mask(mut self, stencil_write_mask: u8) -> Self {
@@ -990,23 +1502,33 @@ impl DepthStencilDesc {
         self
     }
 
+    pub fn stencil_write_mask(&self) -> u8 {
+        self.0.StencilWriteMask
+    }
+
     pub fn set_front_face(mut self, front_face: DepthStencilOpDesc) -> Self {
         self.0.FrontFace = front_face.0;
         self
+    }
+
+    pub fn front_face(&self) -> DepthStencilOpDesc {
+        DepthStencilOpDesc(self.0.FrontFace)
     }
 
     pub fn set_back_face(mut self, back_face: DepthStencilOpDesc) -> Self {
         self.0.BackFace = back_face.0;
         self
     }
-}
 
-pub type InputLayout = Vec<InputElementDesc>;
+    pub fn back_face(&self) -> DepthStencilOpDesc {
+        DepthStencilOpDesc(self.0.BackFace)
+    }
+}
 
 #[repr(transparent)]
 pub struct InputLayoutDesc<'a>(
     pub D3D12_INPUT_LAYOUT_DESC,
-    PhantomData<&'a InputLayout>,
+    PhantomData<&'a [InputElementDesc<'a>]>,
 );
 
 impl Default for InputLayoutDesc<'_> {
@@ -1022,7 +1544,10 @@ impl Default for InputLayoutDesc<'_> {
 }
 
 impl<'a> InputLayoutDesc<'a> {
-    pub fn from_input_layout(mut self, layout: &'a InputLayout) -> Self {
+    pub fn from_input_elements(
+        mut self,
+        layout: &'a [InputElementDesc<'a>],
+    ) -> Self {
         self.0.pInputElementDescs =
             layout.as_ptr() as *const D3D12_INPUT_ELEMENT_DESC;
         self.0.NumElements = layout.len() as u32;
@@ -1046,6 +1571,35 @@ impl<'a> Default for CachedPipelineState<'a> {
             },
             PhantomData,
         )
+    }
+}
+
+impl<'a> CachedPipelineState<'a> {
+    pub fn set_cached_blob(mut self, cached_blob: &'a [u8]) -> Self {
+        self.0.pCachedBlob = cached_blob.as_ptr() as *const std::ffi::c_void;
+        self.1 = PhantomData;
+        self
+    }
+
+    pub fn cached_blob(&self) -> &'a [u8] {
+        unsafe {
+            slice::from_raw_parts(
+                self.0.pCachedBlob as *const u8,
+                self.0.CachedBlobSizeInBytes as usize,
+            )
+        }
+    }
+
+    pub fn set_cached_blob_size_in_bytes(
+        mut self,
+        cached_blob_size_in_bytes: Bytes,
+    ) -> Self {
+        self.0.CachedBlobSizeInBytes = cached_blob_size_in_bytes.0;
+        self
+    }
+
+    pub fn cached_blob_size_in_bytes(&self) -> Bytes {
+        Bytes::from(self.0.CachedBlobSizeInBytes)
     }
 }
 
@@ -2539,7 +3093,6 @@ impl<'rs, 'ams, 'ms, 'ps, 'cp>
         self.root_signature = PipelineStateSubobject::new(
             PipelineStateSubobjectType::RootSignature,
             root_signature.this,
-            // 0x4242424242424242 as *mut _,
         );
         self.rs_phantom_data = PhantomData;
         self
@@ -2552,9 +3105,6 @@ impl<'rs, 'ams, 'ms, 'ps, 'cp>
         self.amplification_shader = PipelineStateSubobject::new(
             PipelineStateSubobjectType::AS,
             bytecode.0,
-            // unsafe {
-            //     std::mem::transmute([0x43u8; size_of::<ShaderBytecode>()])
-            // },
         );
         self.ams_phantom_data = PhantomData;
         self
@@ -2567,9 +3117,6 @@ impl<'rs, 'ams, 'ms, 'ps, 'cp>
         self.mesh_shader = PipelineStateSubobject::new(
             PipelineStateSubobjectType::MS,
             bytecode.0,
-            // unsafe {
-            //     std::mem::transmute([0x44u8; size_of::<ShaderBytecode>()])
-            // },
         );
         self.ms_phantom_data = PhantomData;
         self

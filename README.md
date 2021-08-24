@@ -18,6 +18,7 @@ A list of currently implemented examples (note their code can be dirty and shoul
 - dynamic indexing using SM6.6 dynamic resources (basically a clone of the previous example with changes to indexing method and Agility SDK exports)
 - mesh shaders (loosely based on Microsoft sample)
 - heterogeneous multiadapter (closely follows Microsoft sample, so currently it is the most recommended sample to start exploring these bindings)
+- interprocess communication (demonstrates usage of a shared heap by two processes - producer and consumer).
 
 Examples that are planned to be added in the near future include port of Microsoft's D3D12nBodyGravity sample and DXR showcase.
 

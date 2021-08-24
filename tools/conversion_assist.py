@@ -241,20 +241,26 @@ pub struct {struct_name}(pub {raw_struct_name});
 
 """ \
             .replace("UINT64", "u64") \
+            .replace("UINT8", "u8") \
             .replace("UINT", "u32") \
-            .replace("FLOAT", "f32")
+            .replace("FLOAT", "f32") \
+            .replace("LONG", "i32") \
+            .replace("BOOL", "bool")
 
         all_methods_source += setter_source
         member_name = camel_case_to_snake(raw_name)
 
-        getter_source = f"""    pub fn get_{member_name}(&self) -> {ty} {{
+        getter_source = f"""    pub fn {member_name}(&self) -> {ty} {{
         self.0.{raw_name}
     }}
 
 """ \
             .replace("UINT64", "u64") \
+            .replace("UINT8", "u8") \
             .replace("UINT", "u32") \
-            .replace("FLOAT", "f32")
+            .replace("FLOAT", "f32") \
+            .replace("LONG", "i32") \
+            .replace("BOOL", "bool")
 
         all_methods_source += getter_source
 

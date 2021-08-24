@@ -387,7 +387,10 @@ impl Pipeline {
 
             // Reset fence value
             direct_command_queue
-                .signal(&frame_resource_fence, if is_producer_process { 0 } else { 1 })
+                .signal(
+                    &frame_resource_fence,
+                    if is_producer_process { 0 } else { 1 },
+                )
                 .expect("Cannot signal fence");
         }
 
