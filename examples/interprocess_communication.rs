@@ -187,7 +187,7 @@ struct Pipeline {
     render_targets: Vec<Resource>,
     direct_command_allocators: Vec<CommandAllocator>,
     shared_heap: Heap,
-    cross_process_resources: Vec<Resource>,
+    cross_process_resource: Resource,
     root_signature: RootSignature,
     pipeline_state: PipelineState,
 
@@ -201,10 +201,10 @@ struct Pipeline {
 
     frame_resource_fence: Fence,
     frame_resource_fence_event: Win32Event,
-    // shared_resource_fence: Fence,
-    // shared_resource_fence_event: Win32Event,
+    shared_resource_fence: Fence,
+    shared_resource_fence_event: Win32Event,
     current_frame_resource_fence_value: u64,
-    // current_shared_fence_value: u64,
+    current_shared_fence_value: u64,
     frame_resources_fence_values: Vec<u64>,
     // shared_fence_values: Vec<u64>,
 }
@@ -224,7 +224,8 @@ impl Pipeline {
 
         let factory =
             DxgiFactory::new(factory_flags).expect("Cannot create factory");
-        let (device, is_software_adapter) = create_device(&factory);
+        let (device, is_software_adapter) =
+            create_device(&factory, !is_producer_process);
 
         let debug_device;
         if USE_DEBUG {
@@ -325,26 +326,18 @@ impl Pipeline {
         }
         trace!("Successfully created and opened heaps");
 
-        let mut cross_process_resources = vec![];
-
-        for frame_idx in 0..FRAMES_IN_FLIGHT {
-            cross_process_resources.push(
-                device
-                    .create_placed_resource(
-                        &shared_heap,
-                        frame_idx * texture_size,
-                        &cross_adapter_desc,
-                        ResourceStates::CommonOrPresent,
-                        None,
-                    )
-                    .expect("Cannot create placed resource"),
-            );
-            cross_process_resources
-                .last()
-                .unwrap()
-                .set_name(&format!("shared texture {}", frame_idx))
-                .expect("Cannot set resource name");
-        }
+        let mut cross_process_resource = device
+            .create_placed_resource(
+                &shared_heap,
+                texture_size,
+                &cross_adapter_desc,
+                ResourceStates::CommonOrPresent,
+                None,
+            )
+            .expect("Cannot create placed resource");
+        cross_process_resource
+            .set_name(&format!("shared texture"))
+            .expect("Cannot set resource name");
 
         let root_signature = create_root_signature(&device);
 
@@ -368,6 +361,14 @@ impl Pipeline {
             create_scene_constant_buffer(&device, is_producer_process);
 
         trace!("Created triangle constant buffer");
+        let (
+            frame_resource_fence,
+            frame_resource_fence_event,
+            shared_resource_fence,
+            shared_resource_fence_event,
+        ) = create_fences(&device, &direct_command_queue, is_producer_process);
+
+        trace!("Created fences");
 
         {
             direct_command_list
@@ -375,18 +376,22 @@ impl Pipeline {
                 .expect("Cannot close command list");
             direct_command_queue
                 .execute_command_lists(slice::from_ref(&direct_command_list));
+            direct_command_queue
+                .signal(&frame_resource_fence, 1)
+                .expect("Cannot signal fence");
+            frame_resource_fence
+                .set_event_on_completion(1, &frame_resource_fence_event)
+                .expect("Cannot set fence event");
+
+            frame_resource_fence_event.wait();
+
+            // Reset fence value
+            direct_command_queue
+                .signal(&frame_resource_fence, if is_producer_process { 0 } else { 1 })
+                .expect("Cannot signal fence");
         }
 
         trace!("Executed command lists");
-
-        let (
-            frame_resource_fence,
-            frame_resource_fence_event,
-            // shared_resource_fence,
-            // shared_resource_fence_event,
-        ) = create_fences(&device, &direct_command_queue, is_producer_process);
-
-        trace!("Created fences");
 
         Self {
             is_producer_process,
@@ -403,7 +408,7 @@ impl Pipeline {
             render_targets,
             direct_command_allocators,
             shared_heap,
-            cross_process_resources,
+            cross_process_resource,
             root_signature,
             pipeline_state: pso,
             direct_command_list,
@@ -414,10 +419,10 @@ impl Pipeline {
 
             frame_resource_fence,
             frame_resource_fence_event,
-            // shared_resource_fence,
-            // shared_resource_fence_event,
+            shared_resource_fence,
+            shared_resource_fence_event,
             current_frame_resource_fence_value: 0,
-            // current_shared_fence_value: 0,
+            current_shared_fence_value: if is_producer_process { 0 } else { 1 },
             frame_resources_fence_values: vec![0, 0, 0],
             // shared_fence_values: vec![0, 0, 0],
         }
@@ -501,9 +506,7 @@ impl Pipeline {
             ),
             ResourceBarrier::transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(
-                        &self.cross_process_resources[self.frame_index],
-                    )
+                    .set_resource(&self.cross_process_resource)
                     .set_state_before(ResourceStates::CommonOrPresent)
                     .set_state_after(ResourceStates::CopyDest),
             ),
@@ -511,7 +514,7 @@ impl Pipeline {
 
         self.direct_command_list.copy_resource(
             &self.render_targets[self.frame_index],
-            &self.cross_process_resources[self.frame_index],
+            &self.cross_process_resource,
         );
 
         self.direct_command_list.resource_barrier(&[
@@ -523,9 +526,7 @@ impl Pipeline {
             ),
             ResourceBarrier::transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(
-                        &self.cross_process_resources[self.frame_index],
-                    )
+                    .set_resource(&self.cross_process_resource)
                     .set_state_before(ResourceStates::CopyDest)
                     .set_state_after(ResourceStates::CommonOrPresent),
             ),
@@ -566,16 +567,14 @@ impl Pipeline {
             ),
             ResourceBarrier::transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(
-                        &self.cross_process_resources[self.frame_index],
-                    )
+                    .set_resource(&self.cross_process_resource)
                     .set_state_before(ResourceStates::CommonOrPresent)
                     .set_state_after(ResourceStates::CopySource),
             ),
         ]);
 
         self.direct_command_list.copy_resource(
-            &self.cross_process_resources[self.frame_index],
+            &self.cross_process_resource,
             &self.render_targets[self.frame_index],
         );
 
@@ -588,9 +587,7 @@ impl Pipeline {
             ),
             ResourceBarrier::transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(
-                        &self.cross_process_resources[self.frame_index],
-                    )
+                    .set_resource(&self.cross_process_resource)
                     .set_state_before(ResourceStates::CopySource)
                     .set_state_after(ResourceStates::CommonOrPresent),
             ),
@@ -634,20 +631,6 @@ impl Pipeline {
                 &ResourceTransitionBarrier::default()
                     .set_resource(&self.render_targets[self.frame_index])
                     .set_state_before(ResourceStates::RenderTarget)
-                    .set_state_after(ResourceStates::CopySource),
-            ),
-        ));
-
-        self.direct_command_list.copy_resource(
-            &self.render_targets[self.frame_index],
-            &self.cross_process_resources[self.frame_index],
-        );
-
-        self.direct_command_list.resource_barrier(slice::from_ref(
-            &ResourceBarrier::transition(
-                &ResourceTransitionBarrier::default()
-                    .set_resource(&self.render_targets[self.frame_index])
-                    .set_state_before(ResourceStates::CopySource)
                     .set_state_after(ResourceStates::CommonOrPresent),
             ),
         ));
@@ -658,6 +641,22 @@ impl Pipeline {
     }
 
     fn render(&mut self) {
+        trace!("Rendering frame, idx {}", self.frame_index);
+        let completed_shared_resource_fence_value =
+            self.shared_resource_fence.get_completed_value();
+        if completed_shared_resource_fence_value
+            < self.current_shared_fence_value
+        {
+            self.shared_resource_fence
+                .set_event_on_completion(
+                    self.current_shared_fence_value,
+                    &self.shared_resource_fence_event,
+                )
+                .expect("Cannot set fence event");
+
+            self.shared_resource_fence_event.wait();
+        }
+
         if self.is_producer_process {
             self.populate_producer_command_list();
         } else {
@@ -666,8 +665,8 @@ impl Pipeline {
 
         self.direct_command_queue
             .execute_command_lists(slice::from_ref(&self.direct_command_list));
-        self.current_frame_resource_fence_value += 1;
 
+        self.current_frame_resource_fence_value += 1;
         self.direct_command_queue
             .signal(
                 &self.frame_resource_fence,
@@ -678,6 +677,16 @@ impl Pipeline {
         self.frame_resources_fence_values[self.frame_index] =
             self.current_frame_resource_fence_value;
 
+        self.current_shared_fence_value += 1;
+        self.direct_command_queue
+            .signal(
+                &self.shared_resource_fence,
+                self.current_shared_fence_value,
+            )
+            .expect("Cannot signal direct command queue");
+        // The other process will increase fence value, so we'll wait on it
+        self.current_shared_fence_value += 1;
+
         self.swapchain.present(1, 0).expect("Cannot present");
 
         self.move_to_next_frame();
@@ -687,9 +696,9 @@ impl Pipeline {
         self.frame_index =
             self.swapchain.get_current_back_buffer_index().0 as usize;
 
-        let completed_fence_value =
+        let completed_frame_fence_value =
             self.frame_resource_fence.get_completed_value();
-        if completed_fence_value
+        if completed_frame_fence_value
             < self.frame_resources_fence_values[self.frame_index]
         {
             self.frame_resource_fence
@@ -708,36 +717,36 @@ fn create_fences(
     device: &Device,
     direct_command_queue: &CommandQueue,
     is_producer_process: bool,
-) -> (Fence, Win32Event) {
-    // let frame_resource_fence = device
-    //     .create_fence(0, FenceFlags::None)
-    //     .expect("Cannot create frame_resource_fence");
+) -> (Fence, Win32Event, Fence, Win32Event) {
+    let frame_resource_fence = device
+        .create_fence(0, FenceFlags::None)
+        .expect("Cannot create frame_resource_fence");
     let frame_resource_fence_event = Win32Event::default();
 
-    let frame_resource_fence;
-    // let shared_resource_fence_event = Win32Event::default();
+    let shared_resource_fence;
+    let shared_resource_fence_event = Win32Event::default();
 
     if is_producer_process {
-        frame_resource_fence = device
+        shared_resource_fence = device
             .create_fence(0, FenceFlags::Shared | FenceFlags::CrossAdapter)
             .expect("Cannot create fence");
 
-        let frame_resource_fence_handle = device
+        let shared_resource_fence_handle = device
             .create_shared_handle(
-                &frame_resource_fence.clone().into(),
+                &shared_resource_fence.clone().into(),
                 "CrossProcessResourceFence",
             )
             .expect(
                 "Cannot create shared handle for CrossProcessResourceFence",
             );
     } else {
-        let frame_resource_fence_handle = device
+        let shared_resource_fence_handle = device
             .open_shared_handle_by_name("CrossProcessResourceFence")
             .expect("Cannot open CrossProcessConsumerFence handle");
-        frame_resource_fence = device
-            .open_shared_fence_handle(frame_resource_fence_handle)
+        shared_resource_fence = device
+            .open_shared_fence_handle(shared_resource_fence_handle)
             .expect("Cannot open frame_resource_fence handle");
-        frame_resource_fence_handle.close();
+        shared_resource_fence_handle.close();
     }
 
     // direct_command_queue
@@ -755,8 +764,8 @@ fn create_fences(
     (
         frame_resource_fence,
         frame_resource_fence_event,
-        // shared_resource_fence,
-        // shared_resource_fence_event,
+        shared_resource_fence,
+        shared_resource_fence_event,
     )
 }
 
@@ -1138,9 +1147,9 @@ fn get_hardware_adapter(factory: &DxgiFactory) -> DxgiAdapter {
     adapters.remove(0)
 }
 
-fn create_device(factory: &DxgiFactory) -> (Device, bool) {
+fn create_device(factory: &DxgiFactory, use_warp: bool) -> (Device, bool) {
     let adapter;
-    if USE_WARP_ADAPTER {
+    if use_warp {
         adapter = factory
             .enum_warp_adapter()
             .expect("Cannot enum warp adapter");
