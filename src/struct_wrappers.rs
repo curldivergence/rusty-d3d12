@@ -7,10 +7,10 @@ use std::{convert::TryFrom, marker::PhantomData, mem::size_of};
 
 use widestring::WideCStr;
 
-use crate::raw_bindings::*;
 use crate::utils::*;
 use crate::{const_wrappers::*, PipelineState};
 use crate::{enum_wrappers::*, RootSignature};
+use crate::{raw_bindings::*, DXError};
 
 use crate::Resource;
 
@@ -33,7 +33,7 @@ impl Default for DxgiSwapchainDesc {
             Height: 0,
             Format: DXGI_FORMAT_DXGI_FORMAT_R8G8B8A8_UNORM,
             Stereo: 0,
-            SampleDesc: DxgiSampleDesc::default().0,
+            SampleDesc: SampleDesc::default().0,
             BufferUsage: DXGI_USAGE_RENDER_TARGET_OUTPUT,
             BufferCount: 2,
             Scaling: DXGI_SCALING_DXGI_SCALING_STRETCH,
@@ -82,13 +82,13 @@ impl DxgiSwapchainDesc {
         self.0.Stereo != 0
     }
 
-    pub fn set_sample_desc(mut self, sample_desc: &DxgiSampleDesc) -> Self {
+    pub fn set_sample_desc(mut self, sample_desc: &SampleDesc) -> Self {
         self.0.SampleDesc = sample_desc.0;
         self
     }
 
-    pub fn sample_desc(&self) -> DxgiSampleDesc {
-        DxgiSampleDesc(self.0.SampleDesc)
+    pub fn sample_desc(&self) -> SampleDesc {
+        SampleDesc(self.0.SampleDesc)
     }
 
     pub fn set_buffer_usage(mut self, buffer_usage: DxgiUsage) -> Self {
@@ -210,9 +210,9 @@ impl std::fmt::Debug for DxgiAdapterDesc {
 
 #[derive(Default)]
 #[repr(transparent)]
-pub struct DxgiSampleDesc(pub DXGI_SAMPLE_DESC);
+pub struct SampleDesc(pub DXGI_SAMPLE_DESC);
 
-impl DxgiSampleDesc {
+impl SampleDesc {
     pub fn set_count(mut self, count: u32) -> Self {
         self.0.Count = count;
         self
@@ -303,13 +303,13 @@ impl ResourceDesc {
         unsafe { std::mem::transmute(self.0.Format) }
     }
 
-    pub fn set_sample_desc(mut self, sample_desc: DxgiSampleDesc) -> Self {
+    pub fn set_sample_desc(mut self, sample_desc: SampleDesc) -> Self {
         self.0.SampleDesc = sample_desc.0;
         self
     }
 
-    pub fn sample_desc(&self) -> DxgiSampleDesc {
-        DxgiSampleDesc(self.0.SampleDesc)
+    pub fn sample_desc(&self) -> SampleDesc {
+        SampleDesc(self.0.SampleDesc)
     }
 
     pub fn set_layout(mut self, layout: D3D12_TEXTURE_LAYOUT) -> Self {
@@ -1100,22 +1100,148 @@ impl<'a> ShaderBytecode<'a> {
             PhantomData,
         )
     }
+
+    pub fn from_raw_parts(
+        bytecode: *const u8,
+        length: usize,
+        phantom: PhantomData<&'a [u8]>,
+    ) -> Self {
+        Self(
+            D3D12_SHADER_BYTECODE {
+                pShaderBytecode: bytecode as *const std::ffi::c_void,
+                BytecodeLength: length as u64,
+            },
+            phantom,
+        )
+    }
+}
+
+pub struct SoDeclarationEntry(pub D3D12_SO_DECLARATION_ENTRY);
+
+impl SoDeclarationEntry {
+    pub fn set_stream(mut self, stream: u32) -> Self {
+        self.0.Stream = stream;
+        self
+    }
+
+    pub fn stream(&self) -> u32 {
+        self.0.Stream
+    }
+
+    pub fn set_semantic_name(mut self, name: std::ffi::CString) -> Self {
+        self.0.SemanticName = name.into_raw() as *const i8;
+        self
+    }
+
+    pub fn semantic_name(&self) -> &std::ffi::CStr {
+        unsafe { std::ffi::CStr::from_ptr(self.0.SemanticName) }
+    }
+
+    pub fn set_semantic_index(mut self, semantic_index: Elements) -> Self {
+        self.0.SemanticIndex = semantic_index.0 as u32;
+        self
+    }
+
+    pub fn semantic_index(&self) -> Elements {
+        Elements::from(self.0.SemanticIndex)
+    }
+
+    pub fn set_start_component(mut self, start_component: Elements) -> Self {
+        self.0.StartComponent = start_component.0 as u8;
+        self
+    }
+
+    pub fn start_component(&self) -> Elements {
+        Elements::from(self.0.StartComponent)
+    }
+
+    pub fn set_component_count(mut self, component_count: Elements) -> Self {
+        self.0.ComponentCount = component_count.0 as u8;
+        self
+    }
+
+    pub fn component_count(&self) -> Elements {
+        Elements::from(self.0.ComponentCount)
+    }
+
+    pub fn set_output_slot(mut self, output_slot: Elements) -> Self {
+        self.0.OutputSlot = output_slot.0 as u8;
+        self
+    }
+
+    pub fn output_slot(&self) -> Elements {
+        Elements::from(self.0.OutputSlot)
+    }
 }
 
 #[repr(transparent)]
-pub struct StreamOutputDesc(pub D3D12_STREAM_OUTPUT_DESC);
+pub struct StreamOutputDesc<'a>(
+    pub D3D12_STREAM_OUTPUT_DESC,
+    PhantomData<&'a [SoDeclarationEntry]>,
+);
 
-impl Default for StreamOutputDesc {
+impl<'a> Default for StreamOutputDesc<'a> {
     fn default() -> Self {
-        Self(D3D12_STREAM_OUTPUT_DESC {
-            pSODeclaration: std::ptr::null(),
-            NumEntries: 0,
-            pBufferStrides: std::ptr::null(),
-            NumStrides: 0,
-            RasterizedStream: 0,
-        })
+        Self(
+            D3D12_STREAM_OUTPUT_DESC {
+                pSODeclaration: std::ptr::null(),
+                NumEntries: 0,
+                pBufferStrides: std::ptr::null(),
+                NumStrides: 0,
+                RasterizedStream: 0,
+            },
+            PhantomData,
+        )
     }
 }
+
+impl<'a> StreamOutputDesc<'a> {
+    pub fn set_so_declarations(
+        mut self,
+        so_declaration: &[SoDeclarationEntry],
+    ) -> Self {
+        self.0.pSODeclaration =
+            so_declaration.as_ptr() as *const D3D12_SO_DECLARATION_ENTRY;
+        self.0.NumEntries = so_declaration.len() as u32;
+        self
+    }
+
+    pub fn so_declaration(&self) -> &[SoDeclarationEntry] {
+        unsafe {
+            slice::from_raw_parts(
+                self.0.pSODeclaration as *const SoDeclarationEntry,
+                self.0.NumEntries as usize,
+            )
+        }
+    }
+
+    // ToDo: Elements? (it would require a copy loop since Elements is 64 bit)
+    pub fn set_buffer_strides(mut self, buffer_strides: &[u32]) -> Self {
+        self.0.pBufferStrides = buffer_strides.as_ptr() as *const u32;
+        self.0.NumStrides = buffer_strides.len() as u32;
+        self
+    }
+
+    pub fn buffer_strides(&self) -> &[u32] {
+        unsafe {
+            slice::from_raw_parts(
+                self.0.pBufferStrides as *const u32,
+                self.0.NumStrides as usize,
+            )
+        }
+    }
+
+    // ToDo: Elements? (
+    pub fn set_rasterized_stream(mut self, rasterized_stream: u32) -> Self {
+        self.0.RasterizedStream = rasterized_stream;
+        self
+    }
+
+    pub fn rasterized_stream(&self) -> u32 {
+        self.0.RasterizedStream
+    }
+}
+
 #[derive(Default)]
 #[repr(transparent)]
 pub struct RenderTargetBlendDesc(pub D3D12_RENDER_TARGET_BLEND_DESC);
@@ -1603,15 +1729,19 @@ impl<'a> CachedPipelineState<'a> {
     }
 }
 
+// ToDo: different lifetimes for all shaders?
 #[repr(transparent)]
-pub struct GraphicsPipelineStateDesc<'rs, 'vs, 'ps>(
+pub struct GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il>(
     pub D3D12_GRAPHICS_PIPELINE_STATE_DESC,
     PhantomData<&'rs RootSignature>,
-    PhantomData<&'vs ShaderBytecode<'vs>>,
-    PhantomData<&'ps ShaderBytecode<'ps>>,
+    PhantomData<&'sh [u8]>,
+    PhantomData<&'so StreamOutputDesc<'so>>,
+    PhantomData<&'il InputLayoutDesc<'il>>,
 );
 
-impl<'rs, 'vs, 'ps> Default for GraphicsPipelineStateDesc<'rs, 'vs, 'ps> {
+impl<'rs, 'sh, 'so, 'il> Default
+    for GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il>
+{
     fn default() -> Self {
         Self(
             D3D12_GRAPHICS_PIPELINE_STATE_DESC {
@@ -1629,10 +1759,11 @@ impl<'rs, 'vs, 'ps> Default for GraphicsPipelineStateDesc<'rs, 'vs, 'ps> {
                 InputLayout: InputLayoutDesc::default().0,
                 IBStripCutValue: IndexBufferStripCut::Disabled as i32,
                 PrimitiveTopologyType: PrimitiveTopologyType::Undefined as i32,
-                NumRenderTargets: 0,
-                RTVFormats: [DxgiFormat::Unknown as i32; 8usize],
+                NumRenderTargets: SIMULTANEOUS_RENDER_TARGET_COUNT as u32,
+                RTVFormats: [DxgiFormat::Unknown as i32;
+                    SIMULTANEOUS_RENDER_TARGET_COUNT],
                 DSVFormat: DxgiFormat::Unknown as i32,
-                SampleDesc: DxgiSampleDesc::default().0,
+                SampleDesc: SampleDesc::default().0,
                 NodeMask: 0,
                 CachedPSO: CachedPipelineState::default().0,
                 Flags: PipelineStateFlags::None.bits(),
@@ -1640,11 +1771,12 @@ impl<'rs, 'vs, 'ps> Default for GraphicsPipelineStateDesc<'rs, 'vs, 'ps> {
             PhantomData,
             PhantomData,
             PhantomData,
+            PhantomData,
         )
     }
 }
 
-impl<'rs, 'vs, 'ps> GraphicsPipelineStateDesc<'rs, 'vs, 'ps> {
+impl<'rs, 'sh, 'so, 'il> GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il> {
     pub fn set_root_signature(
         mut self,
         root_signature: &'rs RootSignature,
@@ -1654,27 +1786,120 @@ impl<'rs, 'vs, 'ps> GraphicsPipelineStateDesc<'rs, 'vs, 'ps> {
         self
     }
 
-    pub fn set_vertex_shader_bytecode(
-        mut self,
-        bytecode: &'vs ShaderBytecode,
-    ) -> Self {
+    pub fn root_signature(&self) -> RootSignature {
+        let root_signature = RootSignature {
+            this: self.0.pRootSignature,
+        };
+        root_signature.add_ref();
+        root_signature
+    }
+
+    pub fn set_vs_bytecode(mut self, bytecode: &'sh ShaderBytecode) -> Self {
         self.0.VS = bytecode.0;
-        self.1 = PhantomData;
+        self.2 = PhantomData;
         self
     }
 
-    pub fn set_pixel_shader_bytecode(
-        mut self,
-        bytecode: &'ps ShaderBytecode,
-    ) -> Self {
+    pub fn vs_bytecode(&self) -> &'sh ShaderBytecode {
+        &ShaderBytecode::from_raw_parts(
+            self.0.VS.pShaderBytecode as *const u8,
+            self.0.VS.BytecodeLength as usize,
+            self.2,
+        )
+    }
+
+    pub fn set_ps_bytecode(mut self, bytecode: &'sh ShaderBytecode) -> Self {
         self.0.PS = bytecode.0;
         self.2 = PhantomData;
         self
     }
 
+    pub fn ps_bytecode(&self) -> &'sh ShaderBytecode {
+        let bytes = unsafe {
+            slice::from_raw_parts(
+                self.0.PS.pShaderBytecode as *const u8,
+                self.0.PS.BytecodeLength as usize,
+            )
+        };
+        &ShaderBytecode::from_bytes(bytes)
+    }
+
+    pub fn set_ds_bytecode(mut self, bytecode: &'sh ShaderBytecode) -> Self {
+        self.0.DS = bytecode.0;
+        self.2 = PhantomData;
+        self
+    }
+
+    pub fn ds_bytecode(&self) -> &'sh ShaderBytecode {
+        let bytes = unsafe {
+            slice::from_raw_parts(
+                self.0.DS.pShaderBytecode as *const u8,
+                self.0.DS.BytecodeLength as usize,
+            )
+        };
+        &ShaderBytecode::from_bytes(bytes)
+    }
+
+    pub fn set_hs_bytecode(mut self, bytecode: &'sh ShaderBytecode) -> Self {
+        self.0.HS = bytecode.0;
+        self.2 = PhantomData;
+        self
+    }
+
+    pub fn hs_bytecode(&self) -> &'sh ShaderBytecode {
+        let bytes = unsafe {
+            slice::from_raw_parts(
+                self.0.HS.pShaderBytecode as *const u8,
+                self.0.HS.BytecodeLength as usize,
+            )
+        };
+        &ShaderBytecode::from_bytes(bytes)
+    }
+
+    pub fn set_gs_bytecode(mut self, bytecode: &'sh ShaderBytecode) -> Self {
+        self.0.GS = bytecode.0;
+        self.2 = PhantomData;
+        self
+    }
+
+    pub fn gs_bytecode(&self) -> &'sh ShaderBytecode {
+        let bytes = unsafe {
+            slice::from_raw_parts(
+                self.0.GS.pShaderBytecode as *const u8,
+                self.0.GS.BytecodeLength as usize,
+            )
+        };
+        &ShaderBytecode::from_bytes(bytes)
+    }
+
+    pub fn set_stream_output(
+        mut self,
+        stream_output: StreamOutputDesc,
+    ) -> Self {
+        self.0.StreamOutput = stream_output.0;
+        self
+    }
+
+    pub fn stream_output(&self) -> &'so StreamOutputDesc {
+        &StreamOutputDesc(self.0.StreamOutput, PhantomData)
+    }
+
     pub fn set_blend_state(mut self, blend_state: &BlendDesc) -> Self {
         self.0.BlendState = blend_state.0;
         self
+    }
+
+    pub fn blend_state(&self) -> BlendDesc {
+        BlendDesc(self.0.BlendState)
+    }
+
+    pub fn set_sample_mask(mut self, sample_mask: u32) -> Self {
+        self.0.SampleMask = sample_mask;
+        self
+    }
+
+    pub fn sample_mask(&self) -> u32 {
+        self.0.SampleMask
     }
 
     pub fn set_rasterizer_state(
@@ -1685,6 +1910,10 @@ impl<'rs, 'vs, 'ps> GraphicsPipelineStateDesc<'rs, 'vs, 'ps> {
         self
     }
 
+    pub fn rasterizer_state(&self) -> RasterizerDesc {
+        RasterizerDesc(self.0.RasterizerState)
+    }
+
     pub fn set_depth_stencil_state(
         mut self,
         depth_stencil_state: &DepthStencilDesc,
@@ -1693,9 +1922,29 @@ impl<'rs, 'vs, 'ps> GraphicsPipelineStateDesc<'rs, 'vs, 'ps> {
         self
     }
 
+    pub fn depth_stencil_state(&self) -> DepthStencilDesc {
+        DepthStencilDesc(self.0.DepthStencilState)
+    }
+
     pub fn set_input_layout(mut self, input_layout: &InputLayoutDesc) -> Self {
         self.0.InputLayout = input_layout.0;
         self
+    }
+
+    pub fn input_layout(&self) -> &'il InputLayoutDesc {
+        &InputLayoutDesc(self.0.InputLayout, PhantomData)
+    }
+
+    pub fn set_ib_strip_cut_value(
+        mut self,
+        ib_strip_cut_value: IndexBufferStripCut,
+    ) -> Self {
+        self.0.IBStripCutValue = ib_strip_cut_value as i32;
+        self
+    }
+
+    pub fn ib_strip_cut_value(&self) -> IndexBufferStripCut {
+        unsafe { std::mem::transmute(self.0.IBStripCutValue) }
     }
 
     pub fn set_primitive_topology_type(
@@ -1706,27 +1955,68 @@ impl<'rs, 'vs, 'ps> GraphicsPipelineStateDesc<'rs, 'vs, 'ps> {
         self
     }
 
-    pub fn set_num_render_targets(
-        mut self,
-        num_render_targets: Elements,
-    ) -> Self {
-        self.0.NumRenderTargets = num_render_targets.0 as u32;
-        self
+    pub fn primitive_topology_type(&self) -> PrimitiveTopologyType {
+        unsafe { std::mem::transmute(self.0.PrimitiveTopologyType) }
     }
 
-    // ToDo: eliminate loop here and in other similar places
+    // ToDo: there still are conversion loops out there, they need to be located
+    // and eliminated
     pub fn set_rtv_formats(mut self, rtv_formats: &[DxgiFormat]) -> Self {
-        let mut hw_formats = [DxgiFormat::Unknown as i32; 8usize];
+        let mut hw_formats =
+            [DxgiFormat::Unknown as i32; SIMULTANEOUS_RENDER_TARGET_COUNT];
         for format_index in 0..rtv_formats.len() {
             hw_formats[format_index] = rtv_formats[format_index] as i32;
         }
         self.0.RTVFormats = hw_formats;
+        self.0.NumRenderTargets = hw_formats.len() as u32;
         self
+    }
+
+    pub fn rtv_formats(&self) -> &[DxgiFormat] {
+        unsafe {
+            slice::from_raw_parts(
+                self.0.RTVFormats.as_ptr() as *const DxgiFormat,
+                self.0.NumRenderTargets as usize,
+            )
+        }
     }
 
     pub fn set_dsv_format(mut self, dsv_format: DxgiFormat) -> Self {
         self.0.DSVFormat = dsv_format as i32;
         self
+    }
+
+    pub fn d_s_v_format(&self) -> DxgiFormat {
+        unsafe { std::mem::transmute(self.0.DSVFormat) }
+    }
+
+    pub fn set_sample_desc(mut self, sample_desc: SampleDesc) -> Self {
+        self.0.SampleDesc = sample_desc.0;
+        self
+    }
+
+    pub fn sample_desc(&self) -> SampleDesc {
+        SampleDesc(self.0.SampleDesc)
+    }
+
+    pub fn set_node_mask(mut self, node_mask: u32) -> Self {
+        self.0.NodeMask = node_mask;
+        self
+    }
+
+    pub fn node_mask(&self) -> u32 {
+        self.0.NodeMask
+    }
+
+    pub fn set_cached_pso(mut self, cached_pso: CachedPipelineState) -> Self {
+        self.0.CachedPSO = cached_pso.0;
+        self
+    }
+
+    // ToDo: probably it'd be simpler to just have one lifetime
+    // parameter on GraphicsPipelineStateDesc?
+    pub fn cached_pso(&self) -> &'sh CachedPipelineState {
+        &CachedPipelineState(self.0.CachedPSO, PhantomData)
     }
 
     pub fn set_flags(
@@ -1735,6 +2025,10 @@ impl<'rs, 'vs, 'ps> GraphicsPipelineStateDesc<'rs, 'vs, 'ps> {
     ) -> Self {
         self.0.Flags = pipeline_state_flags.bits();
         self
+    }
+
+    pub fn flags(&self) -> PipelineStateFlags {
+        unsafe { std::mem::transmute(self.0.Flags) }
     }
 }
 
@@ -3057,7 +3351,7 @@ impl<'rs, 'ams, 'ms, 'ps, 'cp> Default
         );
         pso_desc.sample_desc = PipelineStateSubobject::new(
             PipelineStateSubobjectType::SampleDesc,
-            DxgiSampleDesc::default().0,
+            SampleDesc::default().0,
             // unsafe {
             //     std::mem::transmute([42u8; size_of::<DXGI_SAMPLE_DESC>()])
             // },
