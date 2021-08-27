@@ -200,7 +200,7 @@ def parse_struct():
 
     # print(lines)
 
-    struct_name_ptrn = re.compile(r"^\s*pub\s+struct\s+([a-zA-Z0-9_]+)\s+{\s*$")
+    struct_name_ptrn = re.compile(r"^\s*pub\s+(struct|union)\s+([a-zA-Z0-9_]+)\s+{\s*$")
     struct_member_ptrn = re.compile(r"^\s*pub\s+([a-zA-Z0-9_]+)\s*:\s+([a-zA-Z0-9_ \*\[\]:;]+)\s*,\s*$")
 
     raw_struct_name = None
@@ -210,7 +210,7 @@ def parse_struct():
     for ln in lines:
         m = struct_name_ptrn.match(ln)
         if m:
-            raw_struct_name = m.groups()[0]
+            raw_struct_name = m.groups()[1]
             continue
         m = struct_member_ptrn.match(ln)
         if m:

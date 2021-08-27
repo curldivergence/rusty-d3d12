@@ -2,6 +2,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
+use std::ffi::CStr;
 use std::slice;
 use std::{convert::TryFrom, marker::PhantomData, mem::size_of};
 
@@ -922,11 +923,11 @@ impl VertexBufferView {
 #[repr(transparent)]
 pub struct InputElementDesc<'a>(
     pub D3D12_INPUT_ELEMENT_DESC,
-    PhantomData<&'a std::ffi::CStr>,
+    PhantomData<&'a CStr>,
 );
 
 impl<'a> Default for InputElementDesc<'a> {
-    fn default() -> Self {
+    fn default() -> InputElementDesc<'a> {
         InputElementDesc(D3D12_INPUT_ELEMENT_DESC {
             SemanticName: std::ptr::null(),
             SemanticIndex: 0,
@@ -937,19 +938,21 @@ impl<'a> Default for InputElementDesc<'a> {
         D3D12_INPUT_CLASSIFICATION_D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
             InstanceDataStepRate: 0,
         },
-        PhantomData)
+        PhantomData
+    )
     }
 }
 
 // ToDo: macro for generating input element desc from vertex struct type?
 
 impl<'a> InputElementDesc<'a> {
-    pub fn set_name(mut self, name: std::ffi::CString) -> Self {
-        self.0.SemanticName = name.into_raw() as *const i8;
+    pub fn set_name(mut self, name: &'a CStr) -> InputElementDesc<'a> {
+        self.0.SemanticName = name.as_ptr() as *const i8;
+        self.1 = PhantomData;
         self
     }
 
-    pub fn name(&self) -> &'a std::ffi::CStr {
+    pub fn name(&self) -> &std::ffi::CStr {
         unsafe { std::ffi::CStr::from_ptr(self.0.SemanticName) }
     }
 
@@ -1005,20 +1008,6 @@ impl<'a> InputElementDesc<'a> {
 
     pub fn instance_data_steprate(&self) -> Elements {
         Elements::from(self.0.InstanceDataStepRate)
-    }
-}
-
-// We need this because we transfer ownership of the CString "name" into
-// the raw C string (const char*) "SemanticName". Since this memory has to be
-// valid until the destruction of this struct, we need to regain that memory
-// back so it can be destroyed correctly
-impl<'a> Drop for InputElementDesc<'a> {
-    fn drop(&mut self) {
-        unsafe {
-            let _regained_name = std::ffi::CString::from_raw(
-                self.0.SemanticName as *mut std::os::raw::c_char,
-            );
-        }
     }
 }
 
@@ -1079,7 +1068,7 @@ impl IndexBufferView {
 pub struct ShaderBytecode<'a>(pub D3D12_SHADER_BYTECODE, PhantomData<&'a [u8]>);
 
 impl<'a> Default for ShaderBytecode<'a> {
-    fn default() -> Self {
+    fn default() -> ShaderBytecode<'a> {
         ShaderBytecode(
             D3D12_SHADER_BYTECODE {
                 pShaderBytecode: std::ptr::null(),
@@ -1091,7 +1080,7 @@ impl<'a> Default for ShaderBytecode<'a> {
 }
 
 impl<'a> ShaderBytecode<'a> {
-    pub fn from_bytes(data: &'a [u8]) -> Self {
+    pub fn from_bytes(data: &'a [u8]) -> ShaderBytecode<'a> {
         Self(
             D3D12_SHADER_BYTECODE {
                 pShaderBytecode: data.as_ptr() as *const std::ffi::c_void,
@@ -1104,21 +1093,23 @@ impl<'a> ShaderBytecode<'a> {
     pub fn from_raw_parts(
         bytecode: *const u8,
         length: usize,
-        phantom: PhantomData<&'a [u8]>,
-    ) -> Self {
+    ) -> ShaderBytecode<'a> {
         Self(
             D3D12_SHADER_BYTECODE {
                 pShaderBytecode: bytecode as *const std::ffi::c_void,
                 BytecodeLength: length as u64,
             },
-            phantom,
+            PhantomData,
         )
     }
 }
 
-pub struct SoDeclarationEntry(pub D3D12_SO_DECLARATION_ENTRY);
+pub struct SoDeclarationEntry<'a>(
+    pub D3D12_SO_DECLARATION_ENTRY,
+    PhantomData<&'a CStr>,
+);
 
-impl SoDeclarationEntry {
+impl<'a> SoDeclarationEntry<'a> {
     pub fn set_stream(mut self, stream: u32) -> Self {
         self.0.Stream = stream;
         self
@@ -1128,8 +1119,8 @@ impl SoDeclarationEntry {
         self.0.Stream
     }
 
-    pub fn set_semantic_name(mut self, name: std::ffi::CString) -> Self {
-        self.0.SemanticName = name.into_raw() as *const i8;
+    pub fn set_semantic_name(mut self, name: &'a CStr) -> Self {
+        self.0.SemanticName = name.as_ptr();
         self
     }
 
@@ -1177,7 +1168,7 @@ impl SoDeclarationEntry {
 #[repr(transparent)]
 pub struct StreamOutputDesc<'a>(
     pub D3D12_STREAM_OUTPUT_DESC,
-    PhantomData<&'a [SoDeclarationEntry]>,
+    PhantomData<&'a [SoDeclarationEntry<'a>]>,
 );
 
 impl<'a> Default for StreamOutputDesc<'a> {
@@ -1198,15 +1189,15 @@ impl<'a> Default for StreamOutputDesc<'a> {
 impl<'a> StreamOutputDesc<'a> {
     pub fn set_so_declarations(
         mut self,
-        so_declaration: &[SoDeclarationEntry],
-    ) -> Self {
+        so_declaration: &'a [SoDeclarationEntry],
+    ) -> StreamOutputDesc<'a> {
         self.0.pSODeclaration =
             so_declaration.as_ptr() as *const D3D12_SO_DECLARATION_ENTRY;
         self.0.NumEntries = so_declaration.len() as u32;
         self
     }
 
-    pub fn so_declaration(&self) -> &[SoDeclarationEntry] {
+    pub fn so_declaration(&self) -> &'a [SoDeclarationEntry] {
         unsafe {
             slice::from_raw_parts(
                 self.0.pSODeclaration as *const SoDeclarationEntry,
@@ -1222,7 +1213,7 @@ impl<'a> StreamOutputDesc<'a> {
         self
     }
 
-    pub fn buffer_strides(&self) -> &[u32] {
+    pub fn buffer_strides(&self) -> &'a [u32] {
         unsafe {
             slice::from_raw_parts(
                 self.0.pBufferStrides as *const u32,
@@ -1703,6 +1694,7 @@ impl<'a> Default for CachedPipelineState<'a> {
 impl<'a> CachedPipelineState<'a> {
     pub fn set_cached_blob(mut self, cached_blob: &'a [u8]) -> Self {
         self.0.pCachedBlob = cached_blob.as_ptr() as *const std::ffi::c_void;
+        self.0.CachedBlobSizeInBytes = cached_blob.len() as u64;
         self.1 = PhantomData;
         self
     }
@@ -1715,18 +1707,6 @@ impl<'a> CachedPipelineState<'a> {
             )
         }
     }
-
-    pub fn set_cached_blob_size_in_bytes(
-        mut self,
-        cached_blob_size_in_bytes: Bytes,
-    ) -> Self {
-        self.0.CachedBlobSizeInBytes = cached_blob_size_in_bytes.0;
-        self
-    }
-
-    pub fn cached_blob_size_in_bytes(&self) -> Bytes {
-        Bytes::from(self.0.CachedBlobSizeInBytes)
-    }
 }
 
 // ToDo: different lifetimes for all shaders?
@@ -1734,7 +1714,7 @@ impl<'a> CachedPipelineState<'a> {
 pub struct GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il>(
     pub D3D12_GRAPHICS_PIPELINE_STATE_DESC,
     PhantomData<&'rs RootSignature>,
-    PhantomData<&'sh [u8]>,
+    PhantomData<&'sh ShaderBytecode<'sh>>,
     PhantomData<&'so StreamOutputDesc<'so>>,
     PhantomData<&'il InputLayoutDesc<'il>>,
 );
@@ -1768,10 +1748,10 @@ impl<'rs, 'sh, 'so, 'il> Default
                 CachedPSO: CachedPipelineState::default().0,
                 Flags: PipelineStateFlags::None.bits(),
             },
-            PhantomData,
-            PhantomData,
-            PhantomData,
-            PhantomData,
+            PhantomData, // rs
+            PhantomData, // sh
+            PhantomData, // so
+            PhantomData, // il
         )
     }
 }
@@ -1780,7 +1760,7 @@ impl<'rs, 'sh, 'so, 'il> GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il> {
     pub fn set_root_signature(
         mut self,
         root_signature: &'rs RootSignature,
-    ) -> Self {
+    ) -> GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il> {
         self.0.pRootSignature = root_signature.this;
         self.1 = PhantomData;
         self
@@ -1794,94 +1774,99 @@ impl<'rs, 'sh, 'so, 'il> GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il> {
         root_signature
     }
 
-    pub fn set_vs_bytecode(mut self, bytecode: &'sh ShaderBytecode) -> Self {
+    pub fn set_vs_bytecode(
+        mut self,
+        bytecode: &'sh ShaderBytecode,
+    ) -> GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il> {
         self.0.VS = bytecode.0;
         self.2 = PhantomData;
         self
     }
 
     pub fn vs_bytecode(&self) -> &'sh ShaderBytecode {
-        &ShaderBytecode::from_raw_parts(
-            self.0.VS.pShaderBytecode as *const u8,
-            self.0.VS.BytecodeLength as usize,
-            self.2,
-        )
+        unsafe {
+            &*(&self.0.VS as *const D3D12_SHADER_BYTECODE
+                as *const ShaderBytecode)
+        }
     }
 
-    pub fn set_ps_bytecode(mut self, bytecode: &'sh ShaderBytecode) -> Self {
+    pub fn set_ps_bytecode(
+        mut self,
+        bytecode: &'sh ShaderBytecode,
+    ) -> GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il> {
         self.0.PS = bytecode.0;
         self.2 = PhantomData;
         self
     }
 
     pub fn ps_bytecode(&self) -> &'sh ShaderBytecode {
-        let bytes = unsafe {
-            slice::from_raw_parts(
-                self.0.PS.pShaderBytecode as *const u8,
-                self.0.PS.BytecodeLength as usize,
-            )
-        };
-        &ShaderBytecode::from_bytes(bytes)
+        unsafe {
+            &*(&self.0.PS as *const D3D12_SHADER_BYTECODE
+                as *const ShaderBytecode)
+        }
     }
 
-    pub fn set_ds_bytecode(mut self, bytecode: &'sh ShaderBytecode) -> Self {
+    pub fn set_ds_bytecode(
+        mut self,
+        bytecode: &'sh ShaderBytecode,
+    ) -> GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il> {
         self.0.DS = bytecode.0;
         self.2 = PhantomData;
         self
     }
 
     pub fn ds_bytecode(&self) -> &'sh ShaderBytecode {
-        let bytes = unsafe {
-            slice::from_raw_parts(
-                self.0.DS.pShaderBytecode as *const u8,
-                self.0.DS.BytecodeLength as usize,
-            )
-        };
-        &ShaderBytecode::from_bytes(bytes)
+        unsafe {
+            &*(&self.0.DS as *const D3D12_SHADER_BYTECODE
+                as *const ShaderBytecode)
+        }
     }
 
-    pub fn set_hs_bytecode(mut self, bytecode: &'sh ShaderBytecode) -> Self {
+    pub fn set_hs_bytecode(
+        mut self,
+        bytecode: &'sh ShaderBytecode,
+    ) -> GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il> {
         self.0.HS = bytecode.0;
         self.2 = PhantomData;
         self
     }
 
     pub fn hs_bytecode(&self) -> &'sh ShaderBytecode {
-        let bytes = unsafe {
-            slice::from_raw_parts(
-                self.0.HS.pShaderBytecode as *const u8,
-                self.0.HS.BytecodeLength as usize,
-            )
-        };
-        &ShaderBytecode::from_bytes(bytes)
+        unsafe {
+            &*(&self.0.HS as *const D3D12_SHADER_BYTECODE
+                as *const ShaderBytecode)
+        }
     }
 
-    pub fn set_gs_bytecode(mut self, bytecode: &'sh ShaderBytecode) -> Self {
+    pub fn set_gs_bytecode(
+        mut self,
+        bytecode: &'sh ShaderBytecode,
+    ) -> GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il> {
         self.0.GS = bytecode.0;
         self.2 = PhantomData;
         self
     }
 
     pub fn gs_bytecode(&self) -> &'sh ShaderBytecode {
-        let bytes = unsafe {
-            slice::from_raw_parts(
-                self.0.GS.pShaderBytecode as *const u8,
-                self.0.GS.BytecodeLength as usize,
-            )
-        };
-        &ShaderBytecode::from_bytes(bytes)
+        unsafe {
+            &*(&self.0.GS as *const D3D12_SHADER_BYTECODE
+                as *const ShaderBytecode)
+        }
     }
 
     pub fn set_stream_output(
         mut self,
         stream_output: StreamOutputDesc,
-    ) -> Self {
+    ) -> GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il> {
         self.0.StreamOutput = stream_output.0;
         self
     }
 
     pub fn stream_output(&self) -> &'so StreamOutputDesc {
-        &StreamOutputDesc(self.0.StreamOutput, PhantomData)
+        unsafe {
+            &*(&self.0.StreamOutput as *const D3D12_STREAM_OUTPUT_DESC
+                as *const StreamOutputDesc)
+        }
     }
 
     pub fn set_blend_state(mut self, blend_state: &BlendDesc) -> Self {
@@ -1926,13 +1911,20 @@ impl<'rs, 'sh, 'so, 'il> GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il> {
         DepthStencilDesc(self.0.DepthStencilState)
     }
 
-    pub fn set_input_layout(mut self, input_layout: &InputLayoutDesc) -> Self {
+    pub fn set_input_layout(
+        mut self,
+        input_layout: &'il InputLayoutDesc,
+    ) -> GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il> {
         self.0.InputLayout = input_layout.0;
+        self.4 = PhantomData;
         self
     }
 
     pub fn input_layout(&self) -> &'il InputLayoutDesc {
-        &InputLayoutDesc(self.0.InputLayout, PhantomData)
+        unsafe {
+            &*(&self.0.InputLayout as *const D3D12_INPUT_LAYOUT_DESC
+                as *const InputLayoutDesc)
+        }
     }
 
     pub fn set_ib_strip_cut_value(
@@ -1986,7 +1978,7 @@ impl<'rs, 'sh, 'so, 'il> GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il> {
         self
     }
 
-    pub fn d_s_v_format(&self) -> DxgiFormat {
+    pub fn dsv_format(&self) -> DxgiFormat {
         unsafe { std::mem::transmute(self.0.DSVFormat) }
     }
 
@@ -2008,15 +2000,22 @@ impl<'rs, 'sh, 'so, 'il> GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il> {
         self.0.NodeMask
     }
 
-    pub fn set_cached_pso(mut self, cached_pso: CachedPipelineState) -> Self {
+    pub fn set_cached_pso(
+        mut self,
+        cached_pso: &'sh CachedPipelineState,
+    ) -> GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il> {
         self.0.CachedPSO = cached_pso.0;
+        self.2 = PhantomData;
         self
     }
 
     // ToDo: probably it'd be simpler to just have one lifetime
     // parameter on GraphicsPipelineStateDesc?
     pub fn cached_pso(&self) -> &'sh CachedPipelineState {
-        &CachedPipelineState(self.0.CachedPSO, PhantomData)
+        unsafe {
+            &*(&self.0.CachedPSO as *const D3D12_CACHED_PIPELINE_STATE
+                as *const CachedPipelineState)
+        }
     }
 
     pub fn set_flags(
@@ -2053,24 +2052,42 @@ impl SubresourceFootprint {
         self
     }
 
-    pub fn set_width(mut self, width: u32) -> Self {
+    pub fn format(&self) -> DxgiFormat {
+        self.0.Format
+    }
+
+    pub fn set_width(mut self, width: Elements) -> Self {
         self.0.Width = width;
         self
     }
 
-    pub fn set_height(mut self, height: u32) -> Self {
+    pub fn width(&self) -> Elements {
+        self.0.Width
+    }
+
+    pub fn set_height(mut self, height: Elements) -> Self {
         self.0.Height = height;
         self
     }
+    pub fn height(&self) -> Elements {
+        self.0.Height
+    }
 
-    pub fn set_depth(mut self, depth: u32) -> Self {
+    pub fn set_depth(mut self, depth: Elements) -> Self {
         self.0.Depth = depth;
         self
     }
 
-    pub fn set_row_pitch(mut self, row_pitch: u32) -> Self {
+    pub fn depth(&self) -> Elements {
+        self.0.Depth
+    }
+    pub fn set_row_pitch(mut self, row_pitch: Bytes) -> Self {
         self.0.RowPitch = row_pitch;
         self
+    }
+
+    pub fn row_pitch(&self) -> Bytes {
+        self.0.RowPitch
     }
 }
 
@@ -2088,14 +2105,22 @@ impl Default for PlacedSubresourceFootprint {
 }
 
 impl PlacedSubresourceFootprint {
-    pub fn set_offset(mut self, offset: u64) -> Self {
+    pub fn set_offset(mut self, offset: Bytes) -> Self {
         self.0.Offset = offset;
         self
+    }
+
+    pub fn offset(&self) -> Bytes {
+        self.0.Offset
     }
 
     pub fn set_footprint(mut self, footprint: SubresourceFootprint) -> Self {
         self.0.Footprint = footprint.0;
         self
+    }
+
+    pub fn footprint(&self) -> SubresourceFootprint {
+        self.0.Footprint
     }
 }
 
@@ -2119,9 +2144,17 @@ impl ConstantBufferViewDesc {
         self
     }
 
+    pub fn buffer_location(&self) -> GpuVirtualAddress {
+        self.0.BufferLocation
+    }
+
     pub fn set_size_in_bytes(mut self, size_in_bytes: Bytes) -> Self {
         self.0.SizeInBytes = size_in_bytes.0 as u32;
         self
+    }
+
+    pub fn size_in_bytes(&self) -> Bytes {
+        self.0.SizeInBytes
     }
 }
 
@@ -2141,9 +2174,13 @@ impl Default for DescriptorHeapDesc {
 }
 
 impl DescriptorHeapDesc {
-    pub fn set_type(mut self, heap_type: DescriptorHeapType) -> Self {
+    pub fn set_heap_type(mut self, heap_type: DescriptorHeapType) -> Self {
         self.0.Type = heap_type as i32;
         self
+    }
+
+    pub fn heap_type(&self) -> DescriptorHeapType {
+        self.0.Type
     }
 
     pub fn set_num_descriptors(mut self, count: Elements) -> Self {
@@ -2151,9 +2188,26 @@ impl DescriptorHeapDesc {
         self
     }
 
+    pub fn num_descriptors(&self) -> Elements {
+        self.0.NumDescriptors
+    }
+
     pub fn set_flags(mut self, flags: DescriptorHeapFlags) -> Self {
         self.0.Flags = flags.bits();
         self
+    }
+
+    pub fn flags(&self) -> DescriptorHeapFlags {
+        self.0.Flags
+    }
+
+    pub fn set_node_mask(mut self, node_mask: u32) -> Self {
+        self.0.NodeMask = node_mask;
+        self
+    }
+
+    pub fn node_mask(&self) -> u32 {
+        self.0.NodeMask
     }
 }
 
@@ -2172,9 +2226,16 @@ impl Default for CommandQueueDesc {
 }
 
 impl CommandQueueDesc {
-    pub fn set_type(mut self, command_list_type: CommandListType) -> Self {
+    pub fn set_queue_type(
+        mut self,
+        command_list_type: CommandListType,
+    ) -> Self {
         self.0.Type = command_list_type as i32;
         self
+    }
+
+    pub fn queue_type(&self) -> CommandListType {
+        self.0.Type
     }
 
     pub fn set_priority(mut self, priority: CommandQueuePriority) -> Self {
@@ -2182,9 +2243,26 @@ impl CommandQueueDesc {
         self
     }
 
-    pub fn set_flags(mut self, flags: DescriptorHeapFlags) -> Self {
+    pub fn priority(&self) -> CommandQueuePriority {
+        self.0.Priority
+    }
+
+    pub fn set_flags(mut self, flags: CommandQueueFlags) -> Self {
         self.0.Flags = flags.bits();
         self
+    }
+
+    pub fn flags(&self) -> CommandQueueFlags {
+        self.0.Flags
+    }
+
+    pub fn set_node_mask(mut self, node_mask: u32) -> Self {
+        self.0.NodeMask = node_mask;
+        self
+    }
+
+    pub fn node_mask(&self) -> u32 {
+        self.0.NodeMask
     }
 }
 
@@ -2204,6 +2282,10 @@ impl FeatureDataRootSignature {
     ) -> Self {
         self.0.HighestVersion = version as i32;
         self
+    }
+
+    pub fn highest_version(&self) -> RootSignatureVersion {
+        self.0.HighestVersion
     }
 }
 
@@ -2231,9 +2313,17 @@ impl DescriptorRange {
         self
     }
 
+    pub fn range_type(&self) -> D3D12_DESCRIPTOR_RANGE_TYPE {
+        self.0.RangeType
+    }
+
     pub fn set_num_descriptors(mut self, num_descriptors: Elements) -> Self {
         self.0.NumDescriptors = num_descriptors.0 as u32;
         self
+    }
+
+    pub fn num_descriptors(&self) -> Elements {
+        self.0.NumDescriptors
     }
 
     pub fn set_base_shader_register(
@@ -2244,9 +2334,17 @@ impl DescriptorRange {
         self
     }
 
+    pub fn base_shader_register(&self) -> u32 {
+        self.0.BaseShaderRegister
+    }
+
     pub fn set_register_space(mut self, register_space: u32) -> Self {
         self.0.RegisterSpace = register_space;
         self
+    }
+
+    pub fn register_space(&self) -> u32 {
+        self.0.RegisterSpace
     }
 
     pub fn set_flags(mut self, flags: DescriptorRangeFlags) -> Self {
@@ -2254,6 +2352,11 @@ impl DescriptorRange {
         self
     }
 
+    pub fn flags(&self) -> DescriptorRangeFlags {
+        self.0.Flags
+    }
+
+    // ToDo: Elements?
     pub fn set_offset_in_descriptors_from_table_start(
         mut self,
         offset_in_descriptors_from_table_start: DescriptorRangeOffset,
@@ -2262,12 +2365,19 @@ impl DescriptorRange {
             offset_in_descriptors_from_table_start.0 as u32;
         self
     }
+
+    pub fn offset_in_descriptors_from_table_start(
+        &self,
+    ) -> DescriptorRangeOffset {
+        self.0.OffsetInDescriptorsFromTableStart
+    }
 }
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
 pub struct RootParameter(pub D3D12_ROOT_PARAMETER1);
 
+// ToDo: change union wrappers to enums?
 impl RootParameter {
     pub fn set_parameter_type(
         mut self,
@@ -2285,14 +2395,26 @@ impl RootParameter {
         self
     }
 
+    pub fn descriptor_table(&self) -> RootDescriptorTable {
+        self.0.DescriptorTable
+    }
+
     pub fn set_constants(mut self, constants: &RootConstants) -> Self {
         self.0.__bindgen_anon_1.Constants = constants.0;
         self
     }
 
+    pub fn constants(&self) -> RootConstants {
+        self.0.Constants
+    }
+
     pub fn set_descriptor(mut self, descriptor: &RootDescriptor) -> Self {
         self.0.__bindgen_anon_1.Descriptor = descriptor.0;
         self
+    }
+
+    pub fn descriptor(&self) -> D3D12_ROOT_DESCRIPTOR1 {
+        self.0.Descriptor
     }
 
     pub fn set_shader_visibility(
@@ -2301,6 +2423,10 @@ impl RootParameter {
     ) -> Self {
         self.0.ShaderVisibility = shader_visibility as i32;
         self
+    }
+
+    pub fn shader_visibility(&self) -> ShaderVisibility {
+        self.0.ShaderVisibility
     }
 }
 
@@ -2322,6 +2448,16 @@ impl<'a> RootDescriptorTable<'a> {
         self.1 = PhantomData;
         self
     }
+
+    pub fn descriptor_ranges(&self) -> &'a [DescriptorRange] {
+        unsafe {
+            std::slice::from_raw_parts(
+                self.0.pDescriptorRanges as *const D3D12_DESCRIPTOR_RANGE1
+                    as *const DescriptorRange,
+                self.0.NumDescriptorRanges as usize,
+            )
+        }
+    }
 }
 
 #[derive(Default, Debug)]
@@ -2334,14 +2470,26 @@ impl RootConstants {
         self
     }
 
+    // ToDo: Elements? Or introduce Index newtype?
+    pub fn shader_register(&self) -> u32 {
+        self.0.ShaderRegister
+    }
     pub fn set_register_space(mut self, register_space: u32) -> Self {
         self.0.RegisterSpace = register_space;
         self
     }
 
+    pub fn register_space(&self) -> u32 {
+        self.0.RegisterSpace
+    }
+
     pub fn set_num_32_bit_values(mut self, num32_bit_values: Elements) -> Self {
         self.0.Num32BitValues = num32_bit_values.0 as u32;
         self
+    }
+
+    pub fn num32_bit_values(&self) -> u32 {
+        self.0.Num32BitValues
     }
 }
 
@@ -2355,14 +2503,27 @@ impl RootDescriptor {
         self
     }
 
+    // ToDo: Elements? Or introduce Index newtype?
+    pub fn shader_register(&self) -> u32 {
+        self.0.ShaderRegister
+    }
+
     pub fn set_register_space(mut self, register_space: Elements) -> Self {
         self.0.RegisterSpace = register_space.0 as u32;
         self
     }
 
+    pub fn register_space(&self) -> u32 {
+        self.0.RegisterSpace
+    }
+
     pub fn set_flags(mut self, flags: RootDescriptorFlags) -> Self {
         self.0.Flags = flags.bits();
         self
+    }
+
+    pub fn flags(&self) -> RootDescriptorFlags {
+        self.0.Flags
     }
 }
 
@@ -2376,9 +2537,17 @@ impl SamplerDesc {
         self
     }
 
+    pub fn filter(&self) -> D3D12_FILTER {
+        self.0.Filter
+    }
+
     pub fn set_address_u(mut self, address_u: TextureAddressMode) -> Self {
         self.0.AddressU = address_u as i32;
         self
+    }
+
+    pub fn address_u(&self) -> D3D12_TEXTURE_ADDRESS_MODE {
+        self.0.AddressU
     }
 
     pub fn set_address_v(mut self, address_v: TextureAddressMode) -> Self {
@@ -2386,9 +2555,17 @@ impl SamplerDesc {
         self
     }
 
+    pub fn address_v(&self) -> D3D12_TEXTURE_ADDRESS_MODE {
+        self.0.AddressV
+    }
+
     pub fn set_address_w(mut self, address_w: TextureAddressMode) -> Self {
         self.0.AddressW = address_w as i32;
         self
+    }
+
+    pub fn address_w(&self) -> D3D12_TEXTURE_ADDRESS_MODE {
+        self.0.AddressW
     }
 
     pub fn set_mip_lod_bias(mut self, mip_lod_bias: f32) -> Self {
@@ -2396,9 +2573,17 @@ impl SamplerDesc {
         self
     }
 
+    pub fn mip_l_o_d_bias(&self) -> f32 {
+        self.0.MipLODBias
+    }
+
     pub fn set_max_anisotropy(mut self, max_anisotropy: u32) -> Self {
         self.0.MaxAnisotropy = max_anisotropy;
         self
+    }
+
+    pub fn max_anisotropy(&self) -> u32 {
+        self.0.MaxAnisotropy
     }
 
     pub fn set_comparison_func(
@@ -2409,10 +2594,18 @@ impl SamplerDesc {
         self
     }
 
+    pub fn comparison_func(&self) -> D3D12_COMPARISON_FUNC {
+        self.0.ComparisonFunc
+    }
+
     // ToDo: newtype for vec4 etc.?
     pub fn set_border_color(mut self, border_color: [f32; 4usize]) -> Self {
         self.0.BorderColor = border_color;
         self
+    }
+
+    pub fn border_color(&self) -> [f32; 4usize] {
+        self.0.BorderColor
     }
 
     pub fn set_min_lod(mut self, min_lod: f32) -> Self {
@@ -2420,9 +2613,17 @@ impl SamplerDesc {
         self
     }
 
+    pub fn min_l_o_d(&self) -> f32 {
+        self.0.MinLOD
+    }
+
     pub fn set_max_lod(mut self, max_lod: f32) -> Self {
         self.0.MaxLOD = max_lod;
         self
+    }
+
+    pub fn max_l_o_d(&self) -> f32 {
+        self.0.MaxLOD
     }
 }
 
@@ -2464,9 +2665,17 @@ impl StaticSamplerDesc {
         self
     }
 
+    pub fn filter(&self) -> D3D12_FILTER {
+        self.0.Filter
+    }
+
     pub fn set_address_u(mut self, address_u: TextureAddressMode) -> Self {
         self.0.AddressU = address_u as i32;
         self
+    }
+
+    pub fn address_u(&self) -> D3D12_TEXTURE_ADDRESS_MODE {
+        self.0.AddressU
     }
 
     pub fn set_address_v(mut self, address_v: TextureAddressMode) -> Self {
@@ -2474,9 +2683,17 @@ impl StaticSamplerDesc {
         self
     }
 
+    pub fn address_v(&self) -> D3D12_TEXTURE_ADDRESS_MODE {
+        self.0.AddressV
+    }
+
     pub fn set_address_w(mut self, address_w: TextureAddressMode) -> Self {
         self.0.AddressW = address_w as i32;
         self
+    }
+
+    pub fn address_w(&self) -> D3D12_TEXTURE_ADDRESS_MODE {
+        self.0.AddressW
     }
 
     pub fn set_mip_lod_bias(mut self, mip_lod_bias: f32) -> Self {
@@ -2484,9 +2701,17 @@ impl StaticSamplerDesc {
         self
     }
 
+    pub fn mip_l_o_d_bias(&self) -> f32 {
+        self.0.MipLODBias
+    }
+
     pub fn set_max_anisotropy(mut self, max_anisotropy: u32) -> Self {
         self.0.MaxAnisotropy = max_anisotropy;
         self
+    }
+
+    pub fn max_anisotropy(&self) -> u32 {
+        self.0.MaxAnisotropy
     }
 
     pub fn set_comparison_func(
@@ -2497,9 +2722,17 @@ impl StaticSamplerDesc {
         self
     }
 
+    pub fn comparison_func(&self) -> D3D12_COMPARISON_FUNC {
+        self.0.ComparisonFunc
+    }
+
     pub fn set_border_color(mut self, border_color: StaticBorderColor) -> Self {
         self.0.BorderColor = border_color as i32;
         self
+    }
+
+    pub fn border_color(&self) -> D3D12_STATIC_BORDER_COLOR {
+        self.0.BorderColor
     }
 
     pub fn set_min_lod(mut self, min_lod: f32) -> Self {
@@ -2507,9 +2740,17 @@ impl StaticSamplerDesc {
         self
     }
 
+    pub fn min_l_o_d(&self) -> f32 {
+        self.0.MinLOD
+    }
+
     pub fn set_max_lod(mut self, max_lod: f32) -> Self {
         self.0.MaxLOD = max_lod;
         self
+    }
+
+    pub fn max_l_o_d(&self) -> f32 {
+        self.0.MaxLOD
     }
 
     pub fn set_shader_register(mut self, shader_register: Elements) -> Self {
@@ -2517,9 +2758,17 @@ impl StaticSamplerDesc {
         self
     }
 
+    pub fn shader_register(&self) -> u32 {
+        self.0.ShaderRegister
+    }
+
     pub fn set_register_space(mut self, register_space: Elements) -> Self {
         self.0.RegisterSpace = register_space.0 as u32;
         self
+    }
+
+    pub fn register_space(&self) -> u32 {
+        self.0.RegisterSpace
     }
 
     pub fn set_shader_visibility(
@@ -2528,6 +2777,10 @@ impl StaticSamplerDesc {
     ) -> Self {
         self.0.ShaderVisibility = shader_visibility as i32;
         self
+    }
+
+    pub fn shader_visibility(&self) -> D3D12_SHADER_VISIBILITY {
+        self.0.ShaderVisibility
     }
 }
 
@@ -2552,6 +2805,10 @@ impl VersionedRootSignatureDesc {
         self.0.__bindgen_anon_1.Desc_1_1 = desc_1_1.0;
         self
     }
+
+    pub fn desc_1_1(&self) -> RootSignatureDesc {
+        self.0.__bindgen_anon_1.Desc_1_1
+    }
 }
 
 #[derive(Default, Debug)]
@@ -2571,6 +2828,16 @@ impl<'a, 'b> RootSignatureDesc<'a, 'b> {
         self
     }
 
+    pub fn parameters(&self) -> &'a [RootParameter] {
+        unsafe {
+            slice::from_raw_parts(
+                self.0.pParameters as *const D3D12_ROOT_PARAMETER1
+                    as *const RootParameter,
+                self.0.NumParameters as usize,
+            )
+        }
+    }
+
     pub fn set_static_samplers(
         mut self,
         static_samplers: &'b [StaticSamplerDesc],
@@ -2582,9 +2849,23 @@ impl<'a, 'b> RootSignatureDesc<'a, 'b> {
         self
     }
 
+    pub fn static_samplers(&self) -> &'a [StaticSamplerDesc] {
+        unsafe {
+            slice::from_raw_parts(
+                self.0.pStaticSamplers as *const D3D12_STATIC_SAMPLER_DESC
+                    as *const StaticSamplerDesc,
+                self.0.NumStaticSamplers as usize,
+            )
+        }
+    }
+
     pub fn set_flags(mut self, flags: RootSignatureFlags) -> Self {
         self.0.Flags = flags.bits();
         self
+    }
+
+    pub fn flags(&self) -> RootSignatureFlags {
+        self.0.Flags
     }
 }
 
@@ -2596,10 +2877,14 @@ pub struct SubresourceData<'a>(
 );
 
 impl<'a> SubresourceData<'a> {
-    pub fn set_data<T>(mut self, data: &'a [T]) -> Self {
+    pub fn set_data(mut self, data: &'a [u8]) -> Self {
         self.0.pData = data.as_ptr() as *const std::ffi::c_void;
         self.1 = PhantomData;
         self
+    }
+
+    pub fn data(&self) -> &'a [u8] {
+        unimplemented!("We don't know data size here")
     }
 
     pub fn set_row_pitch(mut self, row_pitch: Bytes) -> Self {
@@ -2607,9 +2892,17 @@ impl<'a> SubresourceData<'a> {
         self
     }
 
+    pub fn row_pitch(&self) -> Bytes {
+        self.0.RowPitch
+    }
+
     pub fn set_slice_pitch(mut self, slice_pitch: Bytes) -> Self {
         self.0.SlicePitch = slice_pitch.0 as i64;
         self
+    }
+
+    pub fn slice_pitch(&self) -> Bytes {
+        self.0.SlicePitch
     }
 }
 
@@ -2623,9 +2916,17 @@ impl ShaderResourceViewDesc {
         self
     }
 
+    pub fn format(&self) -> DXGI_FORMAT {
+        self.0.Format
+    }
+
     pub fn set_view_dimension(mut self, view_dimension: SrvDimension) -> Self {
         self.0.ViewDimension = view_dimension as i32;
         self
+    }
+
+    pub fn view_dimension(&self) -> D3D12_SRV_DIMENSION {
+        self.0.ViewDimension
     }
 
     pub fn set_shader4_component_mapping(
@@ -2634,6 +2935,10 @@ impl ShaderResourceViewDesc {
     ) -> Self {
         self.0.Shader4ComponentMapping = shader4_component_mapping.into();
         self
+    }
+
+    pub fn shader4_component_mapping(&self) -> ShaderComponentMapping {
+        self.0.Shader4ComponentMapping
     }
 
     pub fn set_buffer(mut self, buffer: &BufferSrv) -> Self {
