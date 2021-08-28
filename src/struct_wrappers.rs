@@ -487,6 +487,7 @@ impl ResourceBarrier {
         unsafe { ResourceBarrierFlags::from_bits_unchecked(self.0.Flags) }
     }
 
+    // ToDo: rename it
     pub fn new_transition(desc: &ResourceTransitionBarrier) -> Self {
         Self(D3D12_RESOURCE_BARRIER {
             Type: ResourceBarrierType::Transition as i32,
@@ -2450,7 +2451,7 @@ impl DescriptorRange {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 #[repr(transparent)]
 pub struct RootParameter(pub D3D12_ROOT_PARAMETER1);
 
@@ -3070,6 +3071,8 @@ impl ShaderResourceViewDesc {
         self.0.Shader4ComponentMapping.into()
     }
 
+    // ToDo: rename these new* since at the call site they look 
+    // like a regular setter. Another option is to remove Default derive
     pub fn new_buffer(mut self, buffer: &BufferSrv) -> Self {
         self.0.ViewDimension = SrvDimension::Buffer as i32;
         self.0.__bindgen_anon_1.Buffer = buffer.0;

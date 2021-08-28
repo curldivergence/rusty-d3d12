@@ -55,15 +55,17 @@ struct Vertex {
 }
 
 impl Vertex {
-    fn make_desc() -> InputLayout {
+    fn make_desc() -> Vec<InputElementDesc<'static>> {
         vec![
             InputElementDesc::default()
-                .set_name(CString::new("POSITION").unwrap())
+                .set_name("POSITION")
+                .unwrap()
                 .set_format(Format::R32G32B32_Float)
                 .set_input_slot(0)
                 .set_offset(Bytes(offset_of!(Self, position) as u64)),
             InputElementDesc::default()
-                .set_name(CString::new("TEXCOORD").unwrap())
+                .set_name("TEXCOORD")
+                .unwrap()
                 .set_format(Format::R32G32_Float)
                 .set_input_slot(0)
                 .set_offset(Bytes(offset_of!(Self, uv) as u64)),
@@ -144,7 +146,7 @@ impl HelloTextureSample {
         let fence_event = Win32Event::default();
 
         let swapchain = create_swapchain(factory, &command_queue, hwnd);
-        let frame_index = swapchain.get_current_back_buffer_index().0 as u32;
+        let frame_index = swapchain.get_current_back_buffer_index() as u32;
 
         let viewport_desc = Viewport::default()
             .set_width(WINDOW_WIDTH as f32)
@@ -237,11 +239,11 @@ impl HelloTextureSample {
         let vertex_buffer = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_type(HeapType::Upload),
+                &HeapProperties::default().set_heap_type(HeapType::Upload),
                 HeapFlags::None,
                 &ResourceDesc::default()
                     .set_dimension(ResourceDimension::Buffer)
-                    .set_width(Elements(vertex_buffer_size.0))
+                    .set_width(vertex_buffer_size.0)
                     .set_layout(TextureLayout::RowMajor),
                 ResourceStates::GenericRead,
                 None,
@@ -253,7 +255,7 @@ impl HelloTextureSample {
             .expect("Cannot set name on vertex buffer");
 
         let data = vertex_buffer
-            .map(Elements(0), None)
+            .map(0, None)
             .expect("Cannot map staging buffer");
         unsafe {
             std::ptr::copy_nonoverlapping(
@@ -282,18 +284,18 @@ impl HelloTextureSample {
     }
 
     fn setup_texture(&mut self) {
-        let texture_width = Elements(TEXTURE_WIDTH as u64);
-        let texture_height = Elements(TEXTURE_HEIGHT as u64);
+        let texture_width = TEXTURE_WIDTH;
+        let texture_height = TEXTURE_HEIGHT;
         let pixel_size = Bytes(4);
         self.texture = Some(
             self.device
                 .create_committed_resource(
-                    &HeapProperties::default().set_type(HeapType::Default),
+                    &HeapProperties::default().set_heap_type(HeapType::Default),
                     HeapFlags::None,
                     &ResourceDesc::default()
                         .set_format(Format::R8G8B8A8_UNorm)
-                        .set_width(Elements::from(texture_width.0))
-                        .set_height(Elements::from(texture_height.0))
+                        .set_width(texture_width as u64)
+                        .set_height(texture_height)
                         .set_dimension(ResourceDimension::Texture2D),
                     ResourceStates::CopyDest,
                     None,
@@ -309,8 +311,8 @@ impl HelloTextureSample {
 
         self.upload_texture((texture_width, texture_height, pixel_size));
 
-        self.command_list
-            .resource_barrier(&vec![ResourceBarrier::transition(
+        self.command_list.resource_barrier(&vec![
+            ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
                     .set_resource(
                         self.texture
@@ -319,7 +321,8 @@ impl HelloTextureSample {
                     )
                     .set_state_before(ResourceStates::CopyDest)
                     .set_state_after(ResourceStates::PixelShaderResource),
-            )]);
+            ),
+        ]);
 
         self.command_list
             .close()
@@ -330,10 +333,10 @@ impl HelloTextureSample {
         self.flush_gpu();
 
         let srv_desc = ShaderResourceViewDesc::default()
+            .new_texture_2d(&Tex2DSrv::default().set_mip_levels(1))
             .set_shader4_component_mapping(ShaderComponentMapping::default())
             .set_format(Format::R8G8B8A8_UNorm)
-            .set_view_dimension(SrvDimension::Texture2D)
-            .set_texture_2d(&Tex2DSrv::default().set_mip_levels(Elements(1)));
+            .set_view_dimension(SrvDimension::Texture2D);
         self.device.create_shader_resource_view(
             &self.texture.as_ref().expect("No texture has been created"),
             Some(&srv_desc),
@@ -343,27 +346,23 @@ impl HelloTextureSample {
 
     fn upload_texture(
         &mut self,
-        (texture_width, texture_height, pixel_size): (
-            Elements,
-            Elements,
-            Bytes,
-        ),
+        (texture_width, texture_height, pixel_size): (u32, u32, Bytes),
     ) {
         let upload_buffer_size = self
             .texture
             .as_ref()
             .expect("No texture has been created")
-                .get_required_intermediate_size(Elements(0), Elements(1))
+                .get_required_intermediate_size(0, 1)
                 .expect("Cannot get required intermediate size for texture staging buffer");
 
         self.texture_upload_heap = Some(
             self.device
                 .create_committed_resource(
-                    &HeapProperties::default().set_type(HeapType::Upload),
+                    &HeapProperties::default().set_heap_type(HeapType::Upload),
                     HeapFlags::None,
                     &ResourceDesc::default()
                         .set_dimension(ResourceDimension::Buffer)
-                        .set_width(Elements::from(upload_buffer_size.0))
+                        .set_width(upload_buffer_size.0)
                         .set_layout(TextureLayout::RowMajor),
                     ResourceStates::GenericRead,
                     None,
@@ -390,8 +389,8 @@ impl HelloTextureSample {
                     .as_ref()
                     .expect("No texture staging buffer has been created"),
                 Bytes(0),
-                Elements(0),
-                Elements(1),
+                0,
+                1,
                 &vec![texture_subresource_data],
             )
             .expect("Cannot update texture");
@@ -416,7 +415,7 @@ impl HelloTextureSample {
             .set_descriptor_heaps(std::slice::from_mut(&mut self.srv_heap));
 
         self.command_list.set_graphics_root_descriptor_table(
-            Elements(0),
+            0,
             self.srv_heap.get_gpu_descriptor_handle_for_heap_start(),
         );
 
@@ -424,20 +423,21 @@ impl HelloTextureSample {
         self.command_list
             .set_scissor_rects(&vec![self.scissor_desc]);
 
-        self.command_list
-            .resource_barrier(&vec![ResourceBarrier::transition(
+        self.command_list.resource_barrier(&vec![
+            ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
                     .set_resource(
                         &self.render_targets[self.frame_index as usize],
                     )
                     .set_state_before(ResourceStates::CommonOrPresent)
                     .set_state_after(ResourceStates::RenderTarget),
-            )]);
+            ),
+        ]);
 
         let rtv_handle = self
             .rtv_heap
             .get_cpu_descriptor_handle_for_heap_start()
-            .advance(Elements(self.frame_index as u64));
+            .advance(self.frame_index);
 
         self.command_list
             .set_render_targets(&mut [rtv_handle], false, None);
@@ -452,19 +452,14 @@ impl HelloTextureSample {
         self.command_list
             .set_primitive_topology(PrimitiveTopology::TriangleList);
         self.command_list.set_vertex_buffers(
-            Elements(0),
+            0,
             &vec![self.vertex_buffer_view.expect("No vertex buffer created")],
         );
 
-        self.command_list.draw_instanced(
-            Elements(3),
-            Elements(1),
-            Elements(0),
-            Elements(0),
-        );
+        self.command_list.draw_instanced(3, 1, 0, 0);
 
         self.command_list
-            .resource_barrier(&[ResourceBarrier::transition(
+            .resource_barrier(&[ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
                     .set_resource(
                         &self.render_targets[self.frame_index as usize],
@@ -491,7 +486,7 @@ impl HelloTextureSample {
         self.flush_gpu();
 
         self.frame_index =
-            self.swapchain.get_current_back_buffer_index().0 as u32;
+            self.swapchain.get_current_back_buffer_index() as u32;
     }
 
     fn flush_gpu(&mut self) {
@@ -531,18 +526,17 @@ fn create_pipeline_state(
     let vs_bytecode = ShaderBytecode::from_bytes(&vertex_shader);
     let ps_bytecode = ShaderBytecode::from_bytes(&pixel_shader);
 
+    let input_layout =
+        InputLayoutDesc::default().from_input_elements(&input_layout);
     let pso_desc = GraphicsPipelineStateDesc::default()
-        .set_input_layout(
-            &InputLayoutDesc::default().from_input_layout(&input_layout),
-        )
+        .set_input_layout(&input_layout)
         .set_root_signature(root_signature)
-        .set_vertex_shader_bytecode(&vs_bytecode)
-        .set_pixel_shader_bytecode(&ps_bytecode)
+        .set_vs_bytecode(&vs_bytecode)
+        .set_ps_bytecode(&ps_bytecode)
         .set_rasterizer_state(&RasterizerDesc::default())
         .set_blend_state(&BlendDesc::default())
         .set_depth_stencil_state(&DepthStencilDesc::default())
         .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
-        .set_num_render_targets(Elements(1))
         .set_rtv_formats(&[Format::R8G8B8A8_UNorm]);
 
     let pso = device
@@ -623,12 +617,11 @@ d3dx12.h as a dependency to have X12SerializeVersionedRootSignature"
 
     let ranges = vec![DescriptorRange::default()
         .set_range_type(DescriptorRangeType::Srv)
-        .set_num_descriptors(Elements(1))
+        .set_num_descriptors(1)
         .set_flags(DescriptorRangeFlags::DataStatic)];
 
     let root_parameters = vec![RootParameter::default()
-        .set_parameter_type(RootParameterType::DescriptorTable)
-        .set_descriptor_table(
+        .new_descriptor_table(
             &RootDescriptorTable::default().set_descriptor_ranges(&ranges),
         )
         .set_shader_visibility(ShaderVisibility::Pixel)];
@@ -643,7 +636,6 @@ d3dx12.h as a dependency to have X12SerializeVersionedRootSignature"
         .set_shader_visibility(ShaderVisibility::Pixel);
 
     let root_signature_desc = VersionedRootSignatureDesc::default()
-        .set_version(RootSignatureVersion::V1_1)
         .set_desc_1_1(
             &RootSignatureDesc::default()
                 .set_parameters(&root_parameters)
@@ -675,8 +667,8 @@ fn setup_heaps(
     let rtv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_type(DescriptorHeapType::RTV)
-                .set_num_descriptors(Elements::from(FRAMES_IN_FLIGHT)),
+                .set_heap_type(DescriptorHeapType::RTV)
+                .set_num_descriptors(FRAMES_IN_FLIGHT),
         )
         .expect("Cannot create RTV heap");
     rtv_heap
@@ -686,9 +678,9 @@ fn setup_heaps(
     let srv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_type(DescriptorHeapType::CBV_SRV_UAV)
+                .set_heap_type(DescriptorHeapType::CBV_SRV_UAV)
                 .set_flags(DescriptorHeapFlags::ShaderVisible)
-                .set_num_descriptors(Elements(1)),
+                .set_num_descriptors(1),
         )
         .expect("Cannot create SRV heap");
     srv_heap
@@ -700,13 +692,13 @@ fn setup_heaps(
     let mut render_targets = vec![];
     for frame_idx in 0..FRAMES_IN_FLIGHT {
         let render_target = swapchain
-            .get_buffer(Elements::from(frame_idx))
+            .get_buffer(frame_idx)
             .expect("Cannot get buffer from swapchain");
 
         device.create_render_target_view(&render_target, rtv_handle);
         render_targets.push(render_target);
 
-        rtv_handle = rtv_handle.advance(Elements(1));
+        rtv_handle = rtv_handle.advance(1);
     }
     (render_targets, rtv_heap, srv_heap)
 }
@@ -719,7 +711,7 @@ fn create_swapchain(
     let swapchain_desc = SwapchainDesc::default()
         .set_width(WINDOW_WIDTH)
         .set_height(WINDOW_HEIGHT)
-        .set_buffer_count(Elements::from(FRAMES_IN_FLIGHT));
+        .set_buffer_count(FRAMES_IN_FLIGHT);
     let swapchain = factory
         .create_swapchain(&command_queue, hwnd as *mut HWND__, &swapchain_desc)
         .expect("Cannot create swapchain");
@@ -751,14 +743,14 @@ fn create_device(factory: &DxgiFactory) -> Device {
 }
 
 fn generate_texture_data(
-    width: Elements,
-    height: Elements,
+    width: u32,
+    height: u32,
     pixel_size: Bytes,
 ) -> Vec<u8> {
-    let row_pitch = width.0 as u32 * pixel_size.0 as u32;
+    let row_pitch = width as u32 * pixel_size.0 as u32;
     let cell_pitch = row_pitch >> 3;
-    let cell_height = width.0 >> 3;
-    let texture_size = row_pitch * height.0 as u32;
+    let cell_height = width >> 3;
+    let texture_size = row_pitch * height as u32;
 
     let mut data: Vec<u8> = Vec::with_capacity(texture_size as usize);
     unsafe {
