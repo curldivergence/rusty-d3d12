@@ -16,7 +16,7 @@ macro_rules! impl_from {
 }
 
 macro_rules! impl_mul {
-    ($struct_type:ty, $integer_type:ty) => {
+    ($struct_type:tt, $integer_type:ty) => {
         impl std::ops::Mul<$integer_type> for $struct_type {
             type Output = Self;
 
@@ -24,11 +24,17 @@ macro_rules! impl_mul {
                 Self(self.0 * rhs as u64)
             }
         }
+
+        impl std::ops::Mul<$struct_type> for $integer_type {
+            type Output = $struct_type;
+
+            fn mul(self, rhs: $struct_type) -> Self::Output {
+                $struct_type(self as u64 * rhs.0 )
+            }
+        }
     };
 }
 
-// ToDo: let's see how it goes with just two types and if we should go back
-// to *Count/*Offset pairs
 /// Bytes
 
 #[derive(Copy, Clone, Debug)]
@@ -60,22 +66,14 @@ impl_mul!(Bytes, i64);
 impl_mul!(Bytes, usize);
 impl_mul!(Bytes, isize);
 
-impl std::ops::Mul<Bytes> for usize {
-    type Output = Bytes;
+// // Bytes * Elements = Bytes
+// impl std::ops::Mul<Elements> for Bytes {
+//     type Output = Self;
 
-    fn mul(self, rhs: Bytes) -> Self::Output {
-        Bytes(self as u64 * rhs.0)
-    }
-}
-
-// Bytes * Elements = Bytes
-impl std::ops::Mul<Elements> for Bytes {
-    type Output = Self;
-
-    fn mul(self, rhs: Elements) -> Self::Output {
-        Self(self.0 * rhs.0)
-    }
-}
+//     fn mul(self, rhs: Elements) -> Self::Output {
+//         Self(self.0 * rhs.0)
+//     }
+// }
 
 impl Into<usize> for Bytes {
     fn into(self) -> usize {
@@ -96,42 +94,44 @@ impl_from!(Bytes, isize);
 
 /// Elements
 
-#[derive(Copy, Clone, Debug)]
-pub struct Elements(pub u64);
+// ToDo: do we really need this newtype or not?
 
-// Elements + Elements = Elements
-impl std::ops::Add<Elements> for Elements {
-    type Output = Self;
+// #[derive(Copy, Clone, Debug)]
+// pub struct Elements(pub u64);
 
-    fn add(self, rhs: Self) -> Self::Output {
-        Self(self.0 + rhs.0)
-    }
-}
+// // Elements + Elements = Elements
+// impl std::ops::Add<Elements> for Elements {
+//     type Output = Self;
 
-impl std::ops::AddAssign<Elements> for Elements {
-    fn add_assign(&mut self, rhs: Self) {
-        *self = Self(self.0 + rhs.0);
-    }
-}
+//     fn add(self, rhs: Self) -> Self::Output {
+//         Self(self.0 + rhs.0)
+//     }
+// }
 
-impl_from!(Elements, u8);
-impl_from!(Elements, i8);
-impl_from!(Elements, u16);
-impl_from!(Elements, i16);
-impl_from!(Elements, u32);
-impl_from!(Elements, i32);
-impl_from!(Elements, u64);
-impl_from!(Elements, i64);
-impl_from!(Elements, usize);
-impl_from!(Elements, isize);
+// impl std::ops::AddAssign<Elements> for Elements {
+//     fn add_assign(&mut self, rhs: Self) {
+//         *self = Self(self.0 + rhs.0);
+//     }
+// }
 
-impl std::ops::Mul<u64> for Elements {
-    type Output = Self;
+// impl_from!(Elements, u8);
+// impl_from!(Elements, i8);
+// impl_from!(Elements, u16);
+// impl_from!(Elements, i16);
+// impl_from!(Elements, u32);
+// impl_from!(Elements, i32);
+// impl_from!(Elements, u64);
+// impl_from!(Elements, i64);
+// impl_from!(Elements, usize);
+// impl_from!(Elements, isize);
 
-    fn mul(self, rhs: u64) -> Self::Output {
-        Self::from(self.0 * rhs)
-    }
-}
+// impl std::ops::Mul<u64> for Elements {
+//     type Output = Self;
+
+//     fn mul(self, rhs: u64) -> Self::Output {
+//         Self::from(self.0 * rhs)
+//     }
+// }
 
 ///
 

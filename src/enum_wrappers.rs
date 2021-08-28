@@ -480,12 +480,6 @@ pub enum TextureCopyType {
         D3D12_TEXTURE_COPY_TYPE_D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
 }
 
-// ToDo: this type doesn't exist in d3d
-pub enum TextureLocationType {
-    PlacedFootprint(PlacedSubresourceFootprint),
-    SubresourceIndex(Elements),
-}
-
 bitflags! {
     pub struct DescriptorHeapFlags: i32 {
         const None = D3D12_DESCRIPTOR_HEAP_FLAGS_D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
@@ -595,6 +589,7 @@ bitflags! {
     }
 }
 
+#[derive(PartialEq)]
 #[repr(i32)]
 pub enum RootParameterType {
     DescriptorTable =
@@ -794,6 +789,11 @@ impl Into<u32> for ShaderComponentMapping {
     }
 }
 
+impl From<u32> for ShaderComponentMapping {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
 impl ShaderComponentMapping {
     pub fn default() -> Self {
         Self::encode(
@@ -2346,6 +2346,14 @@ pub enum TiledResourcesTier {
 
 #[derive(Copy, Clone)]
 #[repr(i32)]
+pub enum ResourceBindingTier {
+    Tier1 = D3D12_RESOURCE_BINDING_TIER_D3D12_RESOURCE_BINDING_TIER_1,
+    Tier2 = D3D12_RESOURCE_BINDING_TIER_D3D12_RESOURCE_BINDING_TIER_2,
+    Tier3 = D3D12_RESOURCE_BINDING_TIER_D3D12_RESOURCE_BINDING_TIER_3,
+}
+
+#[derive(Copy, Clone)]
+#[repr(i32)]
 pub enum ConservativeRasterizationTier {
     NotSupported = D3D12_CONSERVATIVE_RASTERIZATION_TIER_D3D12_CONSERVATIVE_RASTERIZATION_TIER_NOT_SUPPORTED,
     Tier1 = D3D12_CONSERVATIVE_RASTERIZATION_TIER_D3D12_CONSERVATIVE_RASTERIZATION_TIER_1,
@@ -2444,7 +2452,7 @@ pub enum QueryType {
 }
 
 bitflags! {
-    pub struct DxgiSwapChainFlag: i32 {
+    pub struct DxgiSwapChainFlags: i32 {
         const NonPrerotated = DXGI_SWAP_CHAIN_FLAG_DXGI_SWAP_CHAIN_FLAG_NONPREROTATED;
         const AllowModeSwitch = DXGI_SWAP_CHAIN_FLAG_DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
         const GdiCompatible = DXGI_SWAP_CHAIN_FLAG_DXGI_SWAP_CHAIN_FLAG_GDI_COMPATIBLE;

@@ -1124,28 +1124,23 @@ impl Device {
     pub fn get_copyable_footprints(
         &self,
         resource_desc: &ResourceDesc,
-        first_subresouce: Elements,
-        num_subresources: Elements,
+        first_subresouce: u32,
+        num_subresources: u32,
         base_offset: Bytes,
-    ) -> (
-        Vec<PlacedSubresourceFootprint>,
-        Vec<Elements>,
-        Vec<Bytes>,
-        Bytes,
-    ) {
+    ) -> (Vec<PlacedSubresourceFootprint>, Vec<u32>, Vec<Bytes>, Bytes) {
         let mut placed_subresource_footprints: Vec<PlacedSubresourceFootprint> =
-            Vec::with_capacity(num_subresources.0 as usize);
+            Vec::with_capacity(num_subresources as usize);
         unsafe {
-            placed_subresource_footprints.set_len(num_subresources.0 as usize)
+            placed_subresource_footprints.set_len(num_subresources as usize)
         }
 
         let mut num_rows: Vec<u32> =
-            Vec::with_capacity(num_subresources.0 as usize);
-        unsafe { num_rows.set_len(num_subresources.0 as usize) }
+            Vec::with_capacity(num_subresources as usize);
+        unsafe { num_rows.set_len(num_subresources as usize) }
 
         let mut row_sizes: Vec<Bytes> =
-            Vec::with_capacity(num_subresources.0 as usize);
-        unsafe { row_sizes.set_len(num_subresources.0 as usize) }
+            Vec::with_capacity(num_subresources as usize);
+        unsafe { row_sizes.set_len(num_subresources as usize) }
 
         let mut total_bytes = 0u64;
 
@@ -1154,8 +1149,8 @@ impl Device {
                 self.this,
                 GetCopyableFootprints,
                 &resource_desc.0 as *const D3D12_RESOURCE_DESC,
-                first_subresouce.0 as u32,
-                num_subresources.0 as u32,
+                first_subresouce,
+                num_subresources,
                 base_offset.0,
                 placed_subresource_footprints.as_mut_ptr()
                     as *mut D3D12_PLACED_SUBRESOURCE_FOOTPRINT,
@@ -1164,11 +1159,6 @@ impl Device {
                 &mut total_bytes
             )
         }
-
-        let num_rows = num_rows
-            .into_iter()
-            .map(|value| Elements(value as u64))
-            .collect::<Vec<Elements>>();
 
         (
             placed_subresource_footprints,
@@ -1411,13 +1401,13 @@ impl_com_object_refcount_unnamed!(DxgiSwapchain);
 impl_com_object_clone_drop!(DxgiSwapchain);
 
 impl DxgiSwapchain {
-    pub fn get_buffer(&self, index: Elements) -> DxResult<Resource> {
+    pub fn get_buffer(&self, index: u32) -> DxResult<Resource> {
         let mut buffer: *mut ID3D12Resource = std::ptr::null_mut();
         unsafe {
             dx_try!(
                 self.this,
                 GetBuffer,
-                index.0 as u32,
+                index,
                 &IID_ID3D12Resource,
                 cast_to_ppv(&mut buffer)
             )
@@ -1426,10 +1416,8 @@ impl DxgiSwapchain {
         Ok(Resource { this: buffer })
     }
 
-    pub fn get_current_back_buffer_index(&self) -> Elements {
-        Elements::from(unsafe {
-            dx_call!(self.this, GetCurrentBackBufferIndex,)
-        })
+    pub fn get_current_back_buffer_index(&self) -> u32 {
+        u32::from(unsafe { dx_call!(self.this, GetCurrentBackBufferIndex,) })
     }
 
     // ToDo: flags
@@ -1491,11 +1479,10 @@ pub struct CpuDescriptorHandle {
 
 impl CpuDescriptorHandle {
     #[must_use]
-    pub fn advance(self, distance: Elements) -> Self {
+    pub fn advance(self, distance: u32) -> Self {
         CpuDescriptorHandle {
             hw_handle: D3D12_CPU_DESCRIPTOR_HANDLE {
-                ptr: self.hw_handle.ptr
-                    + (distance.0 as u32 * self.handle_size) as u64,
+                ptr: self.hw_handle.ptr + (distance * self.handle_size) as u64,
             },
             handle_size: self.handle_size,
         }
@@ -1509,11 +1496,10 @@ pub struct GpuDescriptorHandle {
 }
 
 impl GpuDescriptorHandle {
-    pub fn advance(self, distance: Elements) -> Self {
+    pub fn advance(self, distance: u32) -> Self {
         GpuDescriptorHandle {
             hw_handle: D3D12_GPU_DESCRIPTOR_HANDLE {
-                ptr: self.hw_handle.ptr
-                    + (distance.0 as u32 * self.handle_size) as u64,
+                ptr: self.hw_handle.ptr + (distance * self.handle_size) as u64,
             },
             handle_size: self.handle_size,
         }
@@ -1530,7 +1516,7 @@ impl_com_object_set_get_name!(Resource);
 impl Resource {
     pub fn map(
         &self,
-        subresource: Elements,
+        subresource: u32,
         range: Option<&Range>,
     ) -> DxResult<*mut u8> {
         let mut data: *mut u8 = std::ptr::null_mut();
@@ -1538,7 +1524,7 @@ impl Resource {
             dx_try!(
                 self.this,
                 Map,
-                subresource.0 as u32,
+                subresource,
                 match range {
                     Some(rng) => &rng.0,
                     None => std::ptr::null(),
@@ -1591,8 +1577,8 @@ impl Resource {
     // from d3dx12.h
     pub fn get_required_intermediate_size(
         &self,
-        first_subresouce: Elements,
-        num_subresources: Elements,
+        first_subresouce: u32,
+        num_subresources: u32,
     ) -> DxResult<Bytes> {
         let resource_desc = self.get_desc();
 
@@ -1830,9 +1816,9 @@ impl CommandList {
     pub fn copy_texture_region(
         &self,
         dest_location: &TextureCopyLocation,
-        dest_x: Elements, // ToDo: is it really Elements?
-        dest_y: Elements,
-        dest_z: Elements,
+        dest_x: u32, // ToDo: is it really u32?
+        dest_y: u32,
+        dest_z: u32,
         source_location: &TextureCopyLocation,
         source_box: Option<&Box>,
     ) {
@@ -1841,9 +1827,9 @@ impl CommandList {
                 self.this,
                 CopyTextureRegion,
                 &dest_location.0,
-                dest_x.0 as u32,
-                dest_y.0 as u32,
-                dest_z.0 as u32,
+                dest_x,
+                dest_y,
+                dest_z,
                 &source_location.0,
                 match source_box {
                     Some(&b) => &b.0,
@@ -1855,14 +1841,14 @@ impl CommandList {
 
     pub fn set_vertex_buffers(
         &self,
-        start_slot: Elements,
+        start_slot: u32,
         views: &[VertexBufferView],
     ) {
         unsafe {
             dx_call!(
                 self.this,
                 IASetVertexBuffers,
-                start_slot.0 as u32,
+                start_slot,
                 views.len() as UINT,
                 views.as_ptr() as *const D3D12_VERTEX_BUFFER_VIEW
             )
@@ -1889,14 +1875,14 @@ impl CommandList {
 
     pub fn set_graphics_root_descriptor_table(
         &self,
-        parameter_index: Elements,
+        parameter_index: u32,
         base_descriptor: GpuDescriptorHandle,
     ) {
         unsafe {
             dx_call!(
                 self.this,
                 SetGraphicsRootDescriptorTable,
-                parameter_index.0 as u32,
+                parameter_index,
                 base_descriptor.hw_handle
             )
         }
@@ -1904,49 +1890,49 @@ impl CommandList {
 
     pub fn set_graphics_root_32bit_constant(
         &self,
-        root_parameter_index: Elements,
+        root_parameter_index: u32,
         src_data: u32,
-        dest_offset: Elements,
+        dest_offset: u32,
     ) {
         unsafe {
             dx_call!(
                 self.this,
                 SetGraphicsRoot32BitConstant,
-                root_parameter_index.0 as u32,
+                root_parameter_index,
                 src_data,
-                dest_offset.0 as u32
+                dest_offset
             )
         }
     }
 
     pub fn set_graphics_root_32bit_constants(
         &self,
-        root_parameter_index: Elements,
+        root_parameter_index: u32,
         src_data: &[u32],
-        dest_offset: Elements,
+        dest_offset: u32,
     ) {
         unsafe {
             dx_call!(
                 self.this,
                 SetGraphicsRoot32BitConstants,
-                root_parameter_index.0 as u32,
+                root_parameter_index,
                 src_data.len() as u32,
                 src_data.as_ptr() as *const std::ffi::c_void,
-                dest_offset.0 as u32
+                dest_offset
             )
         }
     }
 
     pub fn set_graphics_root_shader_resource_view(
         &self,
-        root_parameter_index: Elements,
+        root_parameter_index: u32,
         buffer_location: GpuVirtualAddress,
     ) {
         unsafe {
             dx_call!(
                 self.this,
                 SetGraphicsRootShaderResourceView,
-                root_parameter_index.0 as u32,
+                root_parameter_index,
                 buffer_location.0
             )
         }
@@ -1954,14 +1940,14 @@ impl CommandList {
 
     pub fn set_graphics_root_constant_buffer_view(
         &self,
-        root_parameter_index: Elements,
+        root_parameter_index: u32,
         buffer_location: GpuVirtualAddress,
     ) {
         unsafe {
             dx_call!(
                 self.this,
                 SetGraphicsRootConstantBufferView,
-                root_parameter_index.0 as u32,
+                root_parameter_index,
                 buffer_location.0
             )
         }
@@ -1969,14 +1955,14 @@ impl CommandList {
 
     pub fn set_graphics_root_unordered_access_view(
         &self,
-        root_parameter_index: Elements,
+        root_parameter_index: u32,
         buffer_location: GpuVirtualAddress,
     ) {
         unsafe {
             dx_call!(
                 self.this,
                 SetComputeRootUnorderedAccessView,
-                root_parameter_index.0 as u32,
+                root_parameter_index,
                 buffer_location.0
             )
         }
@@ -1984,57 +1970,57 @@ impl CommandList {
 
     pub fn draw_indexed_instanced(
         &self,
-        index_count_per_instance: Elements,
-        instance_count: Elements,
-        start_index_location: Elements,
-        base_vertex_location: INT, // ToDo
-        start_instance_location: Elements,
+        index_count_per_instance: u32,
+        instance_count: u32,
+        start_index_location: u32,
+        base_vertex_location: i32,
+        start_instance_location: u32,
     ) {
         unsafe {
             dx_call!(
                 self.this,
                 DrawIndexedInstanced,
-                index_count_per_instance.0 as u32,
-                instance_count.0 as u32,
-                start_index_location.0 as u32,
+                index_count_per_instance,
+                instance_count,
+                start_index_location,
                 base_vertex_location,
-                start_instance_location.0 as u32
+                start_instance_location
             )
         }
     }
 
     pub fn draw_instanced(
         &self,
-        vertex_count_per_instance: Elements,
-        instance_count: Elements,
-        start_vertex_location: Elements,
-        start_instance_location: Elements,
+        vertex_count_per_instance: u32,
+        instance_count: u32,
+        start_vertex_location: u32,
+        start_instance_location: u32,
     ) {
         unsafe {
             dx_call!(
                 self.this,
                 DrawInstanced,
-                vertex_count_per_instance.0 as u32,
-                instance_count.0 as u32,
-                start_vertex_location.0 as u32,
-                start_instance_location.0 as u32
+                vertex_count_per_instance,
+                instance_count,
+                start_vertex_location,
+                start_instance_location
             )
         }
     }
 
     pub fn dispatch_mesh(
         &self,
-        thread_group_count_x: Elements,
-        thread_group_count_y: Elements,
-        thread_group_count_z: Elements,
+        thread_group_count_x: u32,
+        thread_group_count_y: u32,
+        thread_group_count_z: u32,
     ) {
         unsafe {
             dx_call!(
                 self.this,
                 DispatchMesh,
-                thread_group_count_x.0 as u32,
-                thread_group_count_y.0 as u32,
-                thread_group_count_z.0 as u32
+                thread_group_count_x,
+                thread_group_count_y,
+                thread_group_count_z
             )
         }
     }
@@ -2054,7 +2040,7 @@ impl CommandList {
         &self,
         query_heap: &QueryHeap,
         query_type: QueryType,
-        index: Elements,
+        index: u32,
     ) {
         unsafe {
             dx_call!(
@@ -2062,7 +2048,7 @@ impl CommandList {
                 BeginQuery,
                 query_heap.this,
                 query_type as i32,
-                index.0 as u32
+                index
             );
         }
     }
@@ -2071,7 +2057,7 @@ impl CommandList {
         &self,
         query_heap: &QueryHeap,
         query_type: QueryType,
-        index: Elements,
+        index: u32,
     ) {
         unsafe {
             dx_call!(
@@ -2079,7 +2065,7 @@ impl CommandList {
                 EndQuery,
                 query_heap.this,
                 query_type as i32,
-                index.0 as u32
+                index
             );
         }
     }
@@ -2088,8 +2074,8 @@ impl CommandList {
         &self,
         query_heap: &QueryHeap,
         query_type: QueryType,
-        start_index: Elements,
-        num_queries: Elements,
+        start_index: u32,
+        num_queries: u32,
         destination_buffer: &Resource,
         aligned_destination_buffer_offset: Bytes,
     ) {
@@ -2099,8 +2085,8 @@ impl CommandList {
                 ResolveQueryData,
                 query_heap.this,
                 query_type as i32,
-                start_index.0 as u32,
-                num_queries.0 as u32,
+                start_index,
+                num_queries,
                 destination_buffer.this,
                 aligned_destination_buffer_offset.0
             );
@@ -2112,26 +2098,26 @@ impl CommandList {
         &self,
         destination_resource: &Resource,
         intermediate_resource: &Resource,
-        first_subresouce: Elements,
-        num_subresources: Elements,
+        first_subresouce: u32,
+        num_subresources: u32,
         required_size: Bytes,
         layouts: &[PlacedSubresourceFootprint],
-        num_rows: &[Elements],
+        num_rows: &[u32],
         row_sizes_in_bytes: &[Bytes],
         source_data: &[SubresourceData],
     ) -> DxResult<Bytes> {
         // ToDo: implement validation as in the original function
 
-        let data = intermediate_resource.map(Elements(0), None)?;
+        let data = intermediate_resource.map(0, None)?;
 
         unsafe {
-            for i in 0..num_subresources.0 as usize {
+            for i in 0..num_subresources as usize {
                 let dest_data = D3D12_MEMCPY_DEST {
                     pData: data.offset(layouts[i].0.Offset as isize)
                         as *mut std::ffi::c_void,
                     RowPitch: layouts[i].0.Footprint.RowPitch as u64,
                     SlicePitch: (layouts[i].0.Footprint.RowPitch as u64)
-                        * num_rows[i].0,
+                        * num_rows[i] as u64,
                 };
 
                 memcpy_subresource(
@@ -2139,7 +2125,7 @@ impl CommandList {
                     &source_data[i].0,
                     row_sizes_in_bytes[i],
                     num_rows[i],
-                    Elements(layouts[i].0.Footprint.Depth as u64),
+                    layouts[i].0.Footprint.Depth,
                 );
             }
         }
@@ -2155,23 +2141,21 @@ impl CommandList {
                 Bytes(layouts[0].0.Footprint.Width as u64),
             );
         } else {
-            for i in 0..num_subresources.0 as usize {
-                let dest_location = TextureCopyLocation::new(
+            for i in 0..num_subresources as usize {
+                let dest_location = TextureCopyLocation::new_subresource_index(
                     destination_resource,
-                    &TextureLocationType::SubresourceIndex(
-                        Elements(i as u64) + first_subresouce,
-                    ),
+                    i as u32 + first_subresouce,
                 );
-                let source_location = TextureCopyLocation::new(
+                let source_location = TextureCopyLocation::new_placed_footprint(
                     intermediate_resource,
-                    &TextureLocationType::PlacedFootprint(layouts[i]),
+                    &layouts[i],
                 );
 
                 self.copy_texture_region(
                     &dest_location,
-                    Elements(0),
-                    Elements(0),
-                    Elements(0),
+                    0,
+                    0,
+                    0,
                     &source_location,
                     None,
                 );
@@ -2188,8 +2172,8 @@ impl CommandList {
         destination_resource: &Resource,
         intermediate_resource: &Resource,
         intermediate_offset: Bytes,
-        first_subresouce: Elements,
-        num_subresources: Elements,
+        first_subresouce: u32,
+        num_subresources: u32,
         source_data: &[SubresourceData],
     ) -> DxResult<Bytes> {
         let allocation_size = Bytes::from(
@@ -2236,17 +2220,18 @@ unsafe fn memcpy_subresource(
     dest: &D3D12_MEMCPY_DEST,
     src: &D3D12_SUBRESOURCE_DATA,
     row_sizes_in_bytes: Bytes,
-    num_rows: Elements,
-    num_slices: Elements,
+    num_rows: u32,
+    num_slices: u32,
 ) {
-    for z in 0..num_slices.0 {
-        let dest_slice = dest.pData.offset((dest.SlicePitch * z) as isize);
+    for z in 0..num_slices {
+        let dest_slice =
+            dest.pData.offset((dest.SlicePitch * z as u64) as isize);
         let src_slice = src.pData.offset((src.SlicePitch * z as i64) as isize);
 
-        for y in 0..num_rows.0 {
+        for y in 0..num_rows {
             std::ptr::copy_nonoverlapping(
                 src_slice.offset((src.RowPitch * y as i64) as isize),
-                dest_slice.offset((dest.RowPitch * y) as isize),
+                dest_slice.offset((dest.RowPitch * y as u64) as isize),
                 row_sizes_in_bytes.0 as usize,
             );
         }

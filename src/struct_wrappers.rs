@@ -19,7 +19,7 @@ use crate::Resource;
 // if a struct is not identical to the raw one,
 // it should be placed directly in lib.rs
 
-// ToDo: make internal members private after adding all the type-safe getters?
+// ToDo: make internal members private since we have type-safe getters?
 
 pub struct GpuVirtualAddress(pub D3D12_GPU_VIRTUAL_ADDRESS);
 
@@ -101,13 +101,13 @@ impl DxgiSwapchainDesc {
         unsafe { DxgiUsage::from_bits_unchecked(self.0.BufferUsage) }
     }
 
-    pub fn set_buffer_count(mut self, buffer_count: Elements) -> Self {
-        self.0.BufferCount = buffer_count.0 as u32;
+    pub fn set_buffer_count(mut self, buffer_count: u32) -> Self {
+        self.0.BufferCount = buffer_count as u32;
         self
     }
 
-    pub fn buffer_count(&self) -> Elements {
-        Elements::from(self.0.BufferCount)
+    pub fn buffer_count(&self) -> u32 {
+        self.0.BufferCount
     }
 
     pub fn set_scaling(mut self, scaling: DxgiScaling) -> Self {
@@ -137,12 +137,12 @@ impl DxgiSwapchainDesc {
         unsafe { std::mem::transmute(self.0.AlphaMode) }
     }
 
-    pub fn set_flags(mut self, flags: DxgiSwapChainFlag) -> Self {
+    pub fn set_flags(mut self, flags: DxgiSwapChainFlags) -> Self {
         self.0.Flags = flags.bits() as u32;
         self
     }
 
-    pub fn flags(&self) -> DxgiSwapChainFlag {
+    pub fn flags(&self) -> DxgiSwapChainFlags {
         unsafe { std::mem::transmute(self.0.Flags) }
     }
 }
@@ -256,34 +256,31 @@ impl ResourceDesc {
         Bytes(self.0.Alignment)
     }
 
-    pub fn set_width(mut self, width: Elements) -> Self {
-        self.0.Width = width.0;
+    pub fn set_width(mut self, width: u64) -> Self {
+        self.0.Width = width;
         self
     }
 
-    pub fn width(&self) -> Elements {
-        Elements(self.0.Width)
+    pub fn width(&self) -> u64 {
+        self.0.Width
     }
 
-    pub fn set_height(mut self, height: Elements) -> Self {
-        self.0.Height = height.0 as u32;
+    pub fn set_height(mut self, height: u32) -> Self {
+        self.0.Height = height;
         self
     }
 
-    pub fn height(&self) -> Elements {
-        Elements::from(self.0.Height)
+    pub fn height(&self) -> u32 {
+        self.0.Height
     }
 
-    pub fn set_depth_or_array_size(
-        mut self,
-        depth_or_array_size: Elements,
-    ) -> Self {
-        self.0.DepthOrArraySize = depth_or_array_size.0 as u16;
+    pub fn set_depth_or_array_size(mut self, depth_or_array_size: u16) -> Self {
+        self.0.DepthOrArraySize = depth_or_array_size;
         self
     }
 
-    pub fn depth_or_array_size(&self) -> Elements {
-        Elements::from(self.0.DepthOrArraySize)
+    pub fn depth_or_array_size(&self) -> u16 {
+        self.0.DepthOrArraySize
     }
 
     pub fn set_mip_levels(mut self, mip_levels: u16) -> Self {
@@ -313,7 +310,7 @@ impl ResourceDesc {
         SampleDesc(self.0.SampleDesc)
     }
 
-    pub fn set_layout(mut self, layout: D3D12_TEXTURE_LAYOUT) -> Self {
+    pub fn set_layout(mut self, layout: TextureLayout) -> Self {
         self.0.Layout = layout as i32;
         self
     }
@@ -327,8 +324,8 @@ impl ResourceDesc {
         self
     }
 
-    pub fn flags(&self) -> D3D12_RESOURCE_FLAGS {
-        unsafe { std::mem::transmute(self.0.Flags) }
+    pub fn flags(&self) -> ResourceFlags {
+        unsafe { ResourceFlags::from_bits_unchecked(self.0.Flags) }
     }
 }
 
@@ -462,44 +459,10 @@ impl ResourceBarrier {
     }
 
     pub fn flags(&self) -> ResourceBarrierFlags {
-        unsafe { std::mem::transmute(self.0.Flags) }
+        unsafe { ResourceBarrierFlags::from_bits_unchecked(self.0.Flags) }
     }
 
-    pub fn set_transition(
-        mut self,
-        barrier_desc: &ResourceTransitionBarrier,
-    ) -> Self {
-        self.0.__bindgen_anon_1.Transition = barrier_desc.0;
-        self
-    }
-
-    pub fn transition(&self) -> ResourceTransitionBarrier {
-        unsafe { ResourceTransitionBarrier(self.0.__bindgen_anon_1.Transition) }
-    }
-
-    pub fn set_aliasing(
-        mut self,
-        barrier_desc: &ResourceAliasingBarrier,
-    ) -> Self {
-        self.0.__bindgen_anon_1.Aliasing = barrier_desc.0;
-        self
-    }
-
-    pub fn aliasing(&self) -> ResourceAliasingBarrier {
-        unsafe { ResourceAliasingBarrier(self.0.__bindgen_anon_1.Aliasing) }
-    }
-
-    pub fn set_uav(mut self, barrier_desc: &ResourceUavBarrier) -> Self {
-        self.0.__bindgen_anon_1.UAV = barrier_desc.0;
-        self
-    }
-
-    pub fn uav(&self) -> ResourceUavBarrier {
-        unsafe { ResourceUavBarrier(self.0.__bindgen_anon_1.UAV) }
-    }
-
-    // Convenience methods
-    pub fn make_transition_barrier(desc: &ResourceTransitionBarrier) -> Self {
+    pub fn new_transition(desc: &ResourceTransitionBarrier) -> Self {
         Self(D3D12_RESOURCE_BARRIER {
             Type: ResourceBarrierType::Transition as i32,
             Flags: ResourceBarrierFlags::None.bits(),
@@ -509,7 +472,20 @@ impl ResourceBarrier {
         })
     }
 
-    pub fn make_aliasing_barrier(desc: &ResourceAliasingBarrier) -> Self {
+    pub fn transition(&self) -> Option<ResourceTransitionBarrier> {
+        unsafe {
+            match self.barrier_type() {
+                ResourceBarrierType::Transition => {
+                    Some(ResourceTransitionBarrier(
+                        self.0.__bindgen_anon_1.Transition,
+                    ))
+                }
+                _ => None,
+            }
+        }
+    }
+
+    pub fn new_aliasing(desc: &ResourceAliasingBarrier) -> Self {
         Self(D3D12_RESOURCE_BARRIER {
             Type: ResourceBarrierType::Aliasing as i32,
             Flags: ResourceBarrierFlags::None.bits(),
@@ -519,7 +495,18 @@ impl ResourceBarrier {
         })
     }
 
-    pub fn make_uav_barrier(desc: &ResourceUavBarrier) -> Self {
+    pub fn aliasing(&self) -> Option<ResourceAliasingBarrier> {
+        unsafe {
+            match self.barrier_type() {
+                ResourceBarrierType::Aliasing => Some(ResourceAliasingBarrier(
+                    self.0.__bindgen_anon_1.Aliasing,
+                )),
+                _ => None,
+            }
+        }
+    }
+
+    pub fn new_uav(desc: &ResourceUavBarrier) -> Self {
         Self(D3D12_RESOURCE_BARRIER {
             Type: ResourceBarrierType::Uav as i32,
             Flags: ResourceBarrierFlags::None.bits(),
@@ -527,6 +514,17 @@ impl ResourceBarrier {
                 UAV: desc.0,
             },
         })
+    }
+
+    pub fn uav(&self) -> Option<ResourceUavBarrier> {
+        unsafe {
+            match self.barrier_type() {
+                ResourceBarrierType::Uav => {
+                    Some(ResourceUavBarrier(self.0.__bindgen_anon_1.UAV))
+                }
+                _ => None,
+            }
+        }
     }
 }
 
@@ -540,6 +538,7 @@ impl ResourceTransitionBarrier {
         self
     }
 
+    // ToDo: return reference?
     pub fn resource(&self) -> Resource {
         let resource = Resource {
             this: self.0.pResource,
@@ -549,9 +548,9 @@ impl ResourceTransitionBarrier {
     }
 
     // None value means "all subresources"
-    pub fn set_subresource(mut self, subresource: Option<Elements>) -> Self {
+    pub fn set_subresource(mut self, subresource: Option<u32>) -> Self {
         match subresource {
-            Some(index) => self.0.Subresource = index.0 as u32,
+            Some(index) => self.0.Subresource = index,
             None => {
                 self.0.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES
             }
@@ -559,10 +558,10 @@ impl ResourceTransitionBarrier {
         self
     }
 
-    pub fn subresource(&self) -> Option<Elements> {
+    pub fn subresource(&self) -> Option<u32> {
         match self.0.Subresource {
             D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES => None,
-            _ => Some(Elements::from(self.0.Subresource)),
+            _ => Some(self.0.Subresource),
         }
     }
 
@@ -766,29 +765,27 @@ impl Rect {
 pub struct TextureCopyLocation(pub D3D12_TEXTURE_COPY_LOCATION);
 
 impl TextureCopyLocation {
-    pub fn new(resource: &Resource, location: &TextureLocationType) -> Self {
-        match location {
-            TextureLocationType::PlacedFootprint(footprint) => {
-                Self(D3D12_TEXTURE_COPY_LOCATION {
-                    pResource: resource.this,
-                    Type: TextureCopyType::PlacedFootprint as i32,
-                    __bindgen_anon_1:
-                        D3D12_TEXTURE_COPY_LOCATION__bindgen_ty_1 {
-                            PlacedFootprint: footprint.0,
-                        },
-                })
-            }
-            TextureLocationType::SubresourceIndex(index) => {
-                Self(D3D12_TEXTURE_COPY_LOCATION {
-                    pResource: resource.this,
-                    Type: TextureCopyType::SubresourceIndex as i32,
-                    __bindgen_anon_1:
-                        D3D12_TEXTURE_COPY_LOCATION__bindgen_ty_1 {
-                            SubresourceIndex: index.0 as u32,
-                        },
-                })
-            }
-        }
+    pub fn new_placed_footprint(
+        resource: &Resource,
+        footprint: &PlacedSubresourceFootprint,
+    ) -> Self {
+        Self(D3D12_TEXTURE_COPY_LOCATION {
+            pResource: resource.this,
+            Type: TextureCopyType::PlacedFootprint as i32,
+            __bindgen_anon_1: D3D12_TEXTURE_COPY_LOCATION__bindgen_ty_1 {
+                PlacedFootprint: footprint.0,
+            },
+        })
+    }
+
+    pub fn new_subresource_index(resource: &Resource, index: u32) -> Self {
+        Self(D3D12_TEXTURE_COPY_LOCATION {
+            pResource: resource.this,
+            Type: TextureCopyType::SubresourceIndex as i32,
+            __bindgen_anon_1: D3D12_TEXTURE_COPY_LOCATION__bindgen_ty_1 {
+                SubresourceIndex: index,
+            },
+        })
     }
 
     pub fn resource(&self) -> Resource {
@@ -800,14 +797,7 @@ impl TextureCopyLocation {
     }
 
     pub fn copy_type(&self) -> TextureCopyType {
-        match unsafe { std::mem::transmute(self.0.Type) } {
-            TextureCopyType::PlacedFootprint => {
-                TextureCopyType::PlacedFootprint
-            }
-            TextureCopyType::SubresourceIndex => {
-                TextureCopyType::SubresourceIndex
-            }
-        }
+        unsafe { std::mem::transmute(self.0.Type) }
     }
 }
 
@@ -829,58 +819,58 @@ impl Default for Box {
 }
 
 impl Box {
-    pub fn set_left(mut self, left: Elements) -> Self {
-        self.0.left = left.0 as u32;
+    pub fn set_left(mut self, left: u32) -> Self {
+        self.0.left = left;
         self
     }
 
-    pub fn left(&self) -> Elements {
-        Elements::from(self.0.left)
+    pub fn left(&self) -> u32 {
+        self.0.left
     }
 
-    pub fn set_top(mut self, top: Elements) -> Self {
-        self.0.top = top.0 as u32;
+    pub fn set_top(mut self, top: u32) -> Self {
+        self.0.top = top;
         self
     }
 
-    pub fn top(&self) -> Elements {
-        Elements::from(self.0.top)
+    pub fn top(&self) -> u32 {
+        self.0.top
     }
 
-    pub fn set_front(mut self, front: Elements) -> Self {
-        self.0.front = front.0 as u32;
+    pub fn set_front(mut self, front: u32) -> Self {
+        self.0.front = front;
         self
     }
 
-    pub fn front(&self) -> Elements {
-        Elements::from(self.0.front)
+    pub fn front(&self) -> u32 {
+        self.0.front
     }
 
-    pub fn set_right(mut self, right: Elements) -> Self {
-        self.0.right = right.0 as u32;
+    pub fn set_right(mut self, right: u32) -> Self {
+        self.0.right = right;
         self
     }
 
-    pub fn right(&self) -> Elements {
-        Elements::from(self.0.right)
+    pub fn right(&self) -> u32 {
+        self.0.right
     }
 
-    pub fn set_bottom(mut self, bottom: Elements) -> Self {
-        self.0.bottom = bottom.0 as u32;
+    pub fn set_bottom(mut self, bottom: u32) -> Self {
+        self.0.bottom = bottom;
         self
     }
 
-    pub fn bottom(&self) -> Elements {
-        Elements::from(self.0.bottom)
+    pub fn bottom(&self) -> u32 {
+        self.0.bottom
     }
 
-    pub fn set_back(mut self, back: Elements) -> Self {
-        self.0.back = back.0 as u32;
+    pub fn set_back(mut self, back: u32) -> Self {
+        self.0.back = back;
         self
     }
 
-    pub fn back(&self) -> Elements {
-        Elements::from(self.0.back)
+    pub fn back(&self) -> u32 {
+        self.0.back
     }
 }
 
@@ -952,17 +942,17 @@ impl<'a> InputElementDesc<'a> {
         self
     }
 
-    pub fn name(&self) -> &std::ffi::CStr {
+    pub fn name(&self) -> &'a std::ffi::CStr {
         unsafe { std::ffi::CStr::from_ptr(self.0.SemanticName) }
     }
 
-    pub fn set_index(mut self, index: Elements) -> Self {
-        self.0.SemanticIndex = index.0 as u32;
+    pub fn set_index(mut self, index: u32) -> Self {
+        self.0.SemanticIndex = index as u32;
         self
     }
 
-    pub fn index(&self) -> Elements {
-        Elements::from(self.0.SemanticIndex)
+    pub fn index(&self) -> u32 {
+        self.0.SemanticIndex
     }
 
     pub fn set_format(mut self, format: DxgiFormat) -> Self {
@@ -974,13 +964,13 @@ impl<'a> InputElementDesc<'a> {
         unsafe { std::mem::transmute(self.0.Format) }
     }
 
-    pub fn set_input_slot(mut self, slot: Elements) -> Self {
-        self.0.InputSlot = slot.0 as u32;
+    pub fn set_input_slot(mut self, slot: u32) -> Self {
+        self.0.InputSlot = slot;
         self
     }
 
-    pub fn input_slot(&self) -> Elements {
-        Elements::from(self.0.InputSlot)
+    pub fn input_slot(&self) -> u32 {
+        self.0.InputSlot
     }
 
     pub fn set_offset(mut self, offset: Bytes) -> Self {
@@ -1001,13 +991,13 @@ impl<'a> InputElementDesc<'a> {
         unsafe { std::mem::transmute(self.0.InputSlotClass) }
     }
 
-    pub fn set_instance_data_steprate(mut self, step_rate: Elements) -> Self {
-        self.0.InstanceDataStepRate = step_rate.0 as u32;
+    pub fn set_instance_data_step_rate(mut self, step_rate: u32) -> Self {
+        self.0.InstanceDataStepRate = step_rate;
         self
     }
 
-    pub fn instance_data_steprate(&self) -> Elements {
-        Elements::from(self.0.InstanceDataStepRate)
+    pub fn instance_data_step_rate(&self) -> u32 {
+        self.0.InstanceDataStepRate
     }
 }
 
@@ -1018,7 +1008,7 @@ pub struct IndexBufferView(pub D3D12_INDEX_BUFFER_VIEW);
 impl IndexBufferView {
     pub fn new(
         resource: &Resource,
-        element_count: Elements,
+        element_count: u32,
         element_size: Bytes,
     ) -> Self {
         let format: DxgiFormat = match element_size {
@@ -1089,19 +1079,6 @@ impl<'a> ShaderBytecode<'a> {
             PhantomData,
         )
     }
-
-    pub fn from_raw_parts(
-        bytecode: *const u8,
-        length: usize,
-    ) -> ShaderBytecode<'a> {
-        Self(
-            D3D12_SHADER_BYTECODE {
-                pShaderBytecode: bytecode as *const std::ffi::c_void,
-                BytecodeLength: length as u64,
-            },
-            PhantomData,
-        )
-    }
 }
 
 pub struct SoDeclarationEntry<'a>(
@@ -1128,40 +1105,40 @@ impl<'a> SoDeclarationEntry<'a> {
         unsafe { std::ffi::CStr::from_ptr(self.0.SemanticName) }
     }
 
-    pub fn set_semantic_index(mut self, semantic_index: Elements) -> Self {
-        self.0.SemanticIndex = semantic_index.0 as u32;
+    pub fn set_semantic_index(mut self, semantic_index: u32) -> Self {
+        self.0.SemanticIndex = semantic_index;
         self
     }
 
-    pub fn semantic_index(&self) -> Elements {
-        Elements::from(self.0.SemanticIndex)
+    pub fn semantic_index(&self) -> u32 {
+        self.0.SemanticIndex
     }
 
-    pub fn set_start_component(mut self, start_component: Elements) -> Self {
-        self.0.StartComponent = start_component.0 as u8;
+    pub fn set_start_component(mut self, start_component: u32) -> Self {
+        self.0.StartComponent = start_component as u8;
         self
     }
 
-    pub fn start_component(&self) -> Elements {
-        Elements::from(self.0.StartComponent)
+    pub fn start_component(&self) -> u8 {
+        self.0.StartComponent
     }
 
-    pub fn set_component_count(mut self, component_count: Elements) -> Self {
-        self.0.ComponentCount = component_count.0 as u8;
+    pub fn set_component_count(mut self, component_count: u32) -> Self {
+        self.0.ComponentCount = component_count as u8;
         self
     }
 
-    pub fn component_count(&self) -> Elements {
-        Elements::from(self.0.ComponentCount)
+    pub fn component_count(&self) -> u8 {
+        self.0.ComponentCount
     }
 
-    pub fn set_output_slot(mut self, output_slot: Elements) -> Self {
-        self.0.OutputSlot = output_slot.0 as u8;
+    pub fn set_output_slot(mut self, output_slot: u32) -> Self {
+        self.0.OutputSlot = output_slot as u8;
         self
     }
 
-    pub fn output_slot(&self) -> Elements {
-        Elements::from(self.0.OutputSlot)
+    pub fn output_slot(&self) -> u8 {
+        self.0.OutputSlot
     }
 }
 
@@ -1206,9 +1183,8 @@ impl<'a> StreamOutputDesc<'a> {
         }
     }
 
-    // ToDo: Elements? (it would require a copy loop since Elements is 64 bit)
     pub fn set_buffer_strides(mut self, buffer_strides: &[u32]) -> Self {
-        self.0.pBufferStrides = buffer_strides.as_ptr() as *const u32;
+        self.0.pBufferStrides = buffer_strides.as_ptr();
         self.0.NumStrides = buffer_strides.len() as u32;
         self
     }
@@ -1222,7 +1198,6 @@ impl<'a> StreamOutputDesc<'a> {
         }
     }
 
-    // ToDo: Elements? (
     pub fn set_rasterized_stream(mut self, rasterized_stream: u32) -> Self {
         self.0.RasterizedStream = rasterized_stream;
         self
@@ -1361,16 +1336,19 @@ impl BlendDesc {
         self.0.IndependentBlendEnable != 0
     }
 
-    pub fn set_render_target(
+    pub fn set_render_targets(
         mut self,
-        render_targets: [RenderTargetBlendDesc; 8usize],
+        render_targets: [RenderTargetBlendDesc;
+            SIMULTANEOUS_RENDER_TARGET_COUNT],
     ) -> Self {
         // transmute is okay due to repr::transparent
         self.0.RenderTarget = unsafe { std::mem::transmute(render_targets) };
         self
     }
 
-    pub fn render_targets(&self) -> [RenderTargetBlendDesc; 8usize] {
+    pub fn render_targets(
+        &self,
+    ) -> [RenderTargetBlendDesc; SIMULTANEOUS_RENDER_TARGET_COUNT] {
         // transmute is okay due to repr::transparent
         unsafe { std::mem::transmute(self.0.RenderTarget) }
     }
@@ -1951,16 +1929,11 @@ impl<'rs, 'sh, 'so, 'il> GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il> {
         unsafe { std::mem::transmute(self.0.PrimitiveTopologyType) }
     }
 
-    // ToDo: there still are conversion loops out there, they need to be located
-    // and eliminated
     pub fn set_rtv_formats(mut self, rtv_formats: &[DxgiFormat]) -> Self {
-        let mut hw_formats =
-            [DxgiFormat::Unknown as i32; SIMULTANEOUS_RENDER_TARGET_COUNT];
         for format_index in 0..rtv_formats.len() {
-            hw_formats[format_index] = rtv_formats[format_index] as i32;
+            self.0.RTVFormats[format_index] = rtv_formats[format_index] as i32;
         }
-        self.0.RTVFormats = hw_formats;
-        self.0.NumRenderTargets = hw_formats.len() as u32;
+        self.0.NumRenderTargets = rtv_formats.len() as u32;
         self
     }
 
@@ -2053,41 +2026,41 @@ impl SubresourceFootprint {
     }
 
     pub fn format(&self) -> DxgiFormat {
-        self.0.Format
+        unsafe { std::mem::transmute(self.0.Format) }
     }
 
-    pub fn set_width(mut self, width: Elements) -> Self {
+    pub fn set_width(mut self, width: u32) -> Self {
         self.0.Width = width;
         self
     }
 
-    pub fn width(&self) -> Elements {
+    pub fn width(&self) -> u32 {
         self.0.Width
     }
 
-    pub fn set_height(mut self, height: Elements) -> Self {
+    pub fn set_height(mut self, height: u32) -> Self {
         self.0.Height = height;
         self
     }
-    pub fn height(&self) -> Elements {
+    pub fn height(&self) -> u32 {
         self.0.Height
     }
 
-    pub fn set_depth(mut self, depth: Elements) -> Self {
+    pub fn set_depth(mut self, depth: u32) -> Self {
         self.0.Depth = depth;
         self
     }
 
-    pub fn depth(&self) -> Elements {
+    pub fn depth(&self) -> u32 {
         self.0.Depth
     }
     pub fn set_row_pitch(mut self, row_pitch: Bytes) -> Self {
-        self.0.RowPitch = row_pitch;
+        self.0.RowPitch = row_pitch.0 as u32;
         self
     }
 
     pub fn row_pitch(&self) -> Bytes {
-        self.0.RowPitch
+        Bytes::from(self.0.RowPitch)
     }
 }
 
@@ -2106,12 +2079,12 @@ impl Default for PlacedSubresourceFootprint {
 
 impl PlacedSubresourceFootprint {
     pub fn set_offset(mut self, offset: Bytes) -> Self {
-        self.0.Offset = offset;
+        self.0.Offset = offset.0 as u64;
         self
     }
 
     pub fn offset(&self) -> Bytes {
-        self.0.Offset
+        Bytes::from(self.0.Offset)
     }
 
     pub fn set_footprint(mut self, footprint: SubresourceFootprint) -> Self {
@@ -2120,7 +2093,7 @@ impl PlacedSubresourceFootprint {
     }
 
     pub fn footprint(&self) -> SubresourceFootprint {
-        self.0.Footprint
+        SubresourceFootprint(self.0.Footprint)
     }
 }
 
@@ -2145,7 +2118,7 @@ impl ConstantBufferViewDesc {
     }
 
     pub fn buffer_location(&self) -> GpuVirtualAddress {
-        self.0.BufferLocation
+        GpuVirtualAddress(self.0.BufferLocation)
     }
 
     pub fn set_size_in_bytes(mut self, size_in_bytes: Bytes) -> Self {
@@ -2154,7 +2127,7 @@ impl ConstantBufferViewDesc {
     }
 
     pub fn size_in_bytes(&self) -> Bytes {
-        self.0.SizeInBytes
+        Bytes::from(self.0.SizeInBytes)
     }
 }
 
@@ -2180,15 +2153,15 @@ impl DescriptorHeapDesc {
     }
 
     pub fn heap_type(&self) -> DescriptorHeapType {
-        self.0.Type
+        unsafe { std::mem::transmute(self.0.Type) }
     }
 
-    pub fn set_num_descriptors(mut self, count: Elements) -> Self {
-        self.0.NumDescriptors = count.0 as u32;
+    pub fn set_num_descriptors(mut self, count: u32) -> Self {
+        self.0.NumDescriptors = count;
         self
     }
 
-    pub fn num_descriptors(&self) -> Elements {
+    pub fn num_descriptors(&self) -> u32 {
         self.0.NumDescriptors
     }
 
@@ -2198,7 +2171,7 @@ impl DescriptorHeapDesc {
     }
 
     pub fn flags(&self) -> DescriptorHeapFlags {
-        self.0.Flags
+        unsafe { DescriptorHeapFlags::from_bits_unchecked(self.0.Flags) }
     }
 
     pub fn set_node_mask(mut self, node_mask: u32) -> Self {
@@ -2235,7 +2208,7 @@ impl CommandQueueDesc {
     }
 
     pub fn queue_type(&self) -> CommandListType {
-        self.0.Type
+        unsafe { std::mem::transmute(self.0.Type) }
     }
 
     pub fn set_priority(mut self, priority: CommandQueuePriority) -> Self {
@@ -2244,7 +2217,7 @@ impl CommandQueueDesc {
     }
 
     pub fn priority(&self) -> CommandQueuePriority {
-        self.0.Priority
+        unsafe { std::mem::transmute(self.0.Priority) }
     }
 
     pub fn set_flags(mut self, flags: CommandQueueFlags) -> Self {
@@ -2253,7 +2226,7 @@ impl CommandQueueDesc {
     }
 
     pub fn flags(&self) -> CommandQueueFlags {
-        self.0.Flags
+        unsafe { CommandQueueFlags::from_bits_unchecked(self.0.Flags) }
     }
 
     pub fn set_node_mask(mut self, node_mask: u32) -> Self {
@@ -2285,15 +2258,15 @@ impl FeatureDataRootSignature {
     }
 
     pub fn highest_version(&self) -> RootSignatureVersion {
-        self.0.HighestVersion
+        unsafe { std::mem::transmute(self.0.HighestVersion) }
     }
 }
 
 pub struct DescriptorRangeOffset(u32);
 
-impl From<Elements> for DescriptorRangeOffset {
-    fn from(count: Elements) -> Self {
-        Self(count.0 as u32)
+impl From<u32> for DescriptorRangeOffset {
+    fn from(count: u32) -> Self {
+        Self(count)
     }
 }
 
@@ -2313,16 +2286,16 @@ impl DescriptorRange {
         self
     }
 
-    pub fn range_type(&self) -> D3D12_DESCRIPTOR_RANGE_TYPE {
-        self.0.RangeType
+    pub fn range_type(&self) -> DescriptorRangeType {
+        unsafe { std::mem::transmute(self.0.RangeType) }
     }
 
-    pub fn set_num_descriptors(mut self, num_descriptors: Elements) -> Self {
-        self.0.NumDescriptors = num_descriptors.0 as u32;
+    pub fn set_num_descriptors(mut self, num_descriptors: u32) -> Self {
+        self.0.NumDescriptors = num_descriptors;
         self
     }
 
-    pub fn num_descriptors(&self) -> Elements {
+    pub fn num_descriptors(&self) -> u32 {
         self.0.NumDescriptors
     }
 
@@ -2353,68 +2326,123 @@ impl DescriptorRange {
     }
 
     pub fn flags(&self) -> DescriptorRangeFlags {
-        self.0.Flags
+        unsafe { DescriptorRangeFlags::from_bits_unchecked(self.0.Flags) }
     }
 
-    // ToDo: Elements?
     pub fn set_offset_in_descriptors_from_table_start(
         mut self,
         offset_in_descriptors_from_table_start: DescriptorRangeOffset,
     ) -> Self {
         self.0.OffsetInDescriptorsFromTableStart =
-            offset_in_descriptors_from_table_start.0 as u32;
+            offset_in_descriptors_from_table_start.0;
         self
     }
 
     pub fn offset_in_descriptors_from_table_start(
         &self,
     ) -> DescriptorRangeOffset {
-        self.0.OffsetInDescriptorsFromTableStart
+        DescriptorRangeOffset(self.0.OffsetInDescriptorsFromTableStart)
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 #[repr(transparent)]
 pub struct RootParameter(pub D3D12_ROOT_PARAMETER1);
 
-// ToDo: change union wrappers to enums?
 impl RootParameter {
-    pub fn set_parameter_type(
-        mut self,
-        parameter_type: RootParameterType,
-    ) -> Self {
-        self.0.ParameterType = parameter_type as i32;
-        self
+    pub fn parameter_type(&self) -> RootParameterType {
+        unsafe { std::mem::transmute(self.0.ParameterType) }
     }
 
-    pub fn set_descriptor_table(
+    // pub fn new_transition(desc: &ResourceTransitionBarrier) -> Self {
+    //     Self(D3D12_RESOURCE_BARRIER {
+    //         Type: ResourceBarrierType::Transition as i32,
+    //         Flags: ResourceBarrierFlags::None.bits(),
+    //         __bindgen_anon_1: D3D12_RESOURCE_BARRIER__bindgen_ty_1 {
+    //             Transition: desc.0,
+    //         },
+    //     })
+    // }
+
+    // pub fn transition(&self) -> Option<ResourceTransitionBarrier> {
+    //     unsafe {
+    //         match self.barrier_type() {
+    //             ResourceBarrierType::Transition => {
+    //                 Some(ResourceTransitionBarrier(
+    //                     self.0.__bindgen_anon_1.Transition,
+    //                 ))
+    //             }
+    //             _ => None,
+    //         }
+    //     }
+    // }
+
+    pub fn new_descriptor_table(
         mut self,
         descriptor_table: &RootDescriptorTable,
     ) -> Self {
+        self.0.ParameterType = RootParameterType::DescriptorTable as i32;
         self.0.__bindgen_anon_1.DescriptorTable = descriptor_table.0;
         self
     }
 
-    pub fn descriptor_table(&self) -> RootDescriptorTable {
-        self.0.DescriptorTable
+    pub fn descriptor_table(&self) -> Option<RootDescriptorTable> {
+        unsafe {
+            match self.parameter_type() {
+                RootParameterType::DescriptorTable => {
+                    Some(RootDescriptorTable(
+                        self.0.__bindgen_anon_1.DescriptorTable,
+                        PhantomData,
+                    ))
+                }
+                _ => None,
+            }
+        }
     }
 
-    pub fn set_constants(mut self, constants: &RootConstants) -> Self {
+    pub fn new_constants(mut self, constants: &RootConstants) -> Self {
+        self.0.ParameterType = RootParameterType::T32BitConstants as i32;
         self.0.__bindgen_anon_1.Constants = constants.0;
         self
     }
 
-    pub fn constants(&self) -> RootConstants {
-        self.0.Constants
+    pub fn constants(&self) -> Option<RootConstants> {
+        unsafe {
+            match self.parameter_type() {
+                RootParameterType::T32BitConstants => {
+                    Some(RootConstants(self.0.__bindgen_anon_1.Constants))
+                }
+                _ => None,
+            }
+        }
     }
 
-    pub fn set_descriptor(mut self, descriptor: &RootDescriptor) -> Self {
+    pub fn new_descriptor(
+        mut self,
+        descriptor: &RootDescriptor,
+        descriptor_type: RootParameterType,
+    ) -> Self {
+        assert!(
+            descriptor_type == RootParameterType::Cbv
+                || descriptor_type == RootParameterType::Srv
+                || descriptor_type == RootParameterType::Uav
+        );
+        self.0.ParameterType = descriptor_type as i32;
         self.0.__bindgen_anon_1.Descriptor = descriptor.0;
         self
     }
 
-    pub fn descriptor(&self) -> D3D12_ROOT_DESCRIPTOR1 {
-        self.0.Descriptor
+    pub fn descriptor(&self) -> Option<RootDescriptor> {
+        unsafe {
+            match self.parameter_type() {
+                RootParameterType::Cbv
+                | RootParameterType::Srv
+                | RootParameterType::Uav => {
+                    Some(RootDescriptor(self.0.__bindgen_anon_1.Descriptor))
+                }
+                _ => None,
+            }
+        }
     }
 
     pub fn set_shader_visibility(
@@ -2426,7 +2454,7 @@ impl RootParameter {
     }
 
     pub fn shader_visibility(&self) -> ShaderVisibility {
-        self.0.ShaderVisibility
+        unsafe { std::mem::transmute(self.0.ShaderVisibility) }
     }
 }
 
@@ -2470,7 +2498,6 @@ impl RootConstants {
         self
     }
 
-    // ToDo: Elements? Or introduce Index newtype?
     pub fn shader_register(&self) -> u32 {
         self.0.ShaderRegister
     }
@@ -2483,8 +2510,8 @@ impl RootConstants {
         self.0.RegisterSpace
     }
 
-    pub fn set_num_32_bit_values(mut self, num32_bit_values: Elements) -> Self {
-        self.0.Num32BitValues = num32_bit_values.0 as u32;
+    pub fn set_num_32_bit_values(mut self, num32_bit_values: u32) -> Self {
+        self.0.Num32BitValues = num32_bit_values;
         self
     }
 
@@ -2498,18 +2525,18 @@ impl RootConstants {
 pub struct RootDescriptor(pub D3D12_ROOT_DESCRIPTOR1);
 
 impl RootDescriptor {
-    pub fn set_shader_register(mut self, shader_register: Elements) -> Self {
-        self.0.ShaderRegister = shader_register.0 as u32;
+    pub fn set_shader_register(mut self, shader_register: u32) -> Self {
+        self.0.ShaderRegister = shader_register;
         self
     }
 
-    // ToDo: Elements? Or introduce Index newtype?
+    // ToDo: u32? Or introduce Index newtype?
     pub fn shader_register(&self) -> u32 {
         self.0.ShaderRegister
     }
 
-    pub fn set_register_space(mut self, register_space: Elements) -> Self {
-        self.0.RegisterSpace = register_space.0 as u32;
+    pub fn set_register_space(mut self, register_space: u32) -> Self {
+        self.0.RegisterSpace = register_space;
         self
     }
 
@@ -2523,7 +2550,7 @@ impl RootDescriptor {
     }
 
     pub fn flags(&self) -> RootDescriptorFlags {
-        self.0.Flags
+        unsafe { RootDescriptorFlags::from_bits_unchecked(self.0.Flags) }
     }
 }
 
@@ -2537,8 +2564,8 @@ impl SamplerDesc {
         self
     }
 
-    pub fn filter(&self) -> D3D12_FILTER {
-        self.0.Filter
+    pub fn filter(&self) -> Filter {
+        unsafe { std::mem::transmute(self.0.Filter) }
     }
 
     pub fn set_address_u(mut self, address_u: TextureAddressMode) -> Self {
@@ -2546,8 +2573,8 @@ impl SamplerDesc {
         self
     }
 
-    pub fn address_u(&self) -> D3D12_TEXTURE_ADDRESS_MODE {
-        self.0.AddressU
+    pub fn address_u(&self) -> TextureAddressMode {
+        unsafe { std::mem::transmute(self.0.AddressU) }
     }
 
     pub fn set_address_v(mut self, address_v: TextureAddressMode) -> Self {
@@ -2555,8 +2582,8 @@ impl SamplerDesc {
         self
     }
 
-    pub fn address_v(&self) -> D3D12_TEXTURE_ADDRESS_MODE {
-        self.0.AddressV
+    pub fn address_v(&self) -> TextureAddressMode {
+        unsafe { std::mem::transmute(self.0.AddressV) }
     }
 
     pub fn set_address_w(mut self, address_w: TextureAddressMode) -> Self {
@@ -2564,8 +2591,8 @@ impl SamplerDesc {
         self
     }
 
-    pub fn address_w(&self) -> D3D12_TEXTURE_ADDRESS_MODE {
-        self.0.AddressW
+    pub fn address_w(&self) -> TextureAddressMode {
+        unsafe { std::mem::transmute(self.0.AddressW) }
     }
 
     pub fn set_mip_lod_bias(mut self, mip_lod_bias: f32) -> Self {
@@ -2573,7 +2600,7 @@ impl SamplerDesc {
         self
     }
 
-    pub fn mip_l_o_d_bias(&self) -> f32 {
+    pub fn mip_lod_bias(&self) -> f32 {
         self.0.MipLODBias
     }
 
@@ -2594,8 +2621,8 @@ impl SamplerDesc {
         self
     }
 
-    pub fn comparison_func(&self) -> D3D12_COMPARISON_FUNC {
-        self.0.ComparisonFunc
+    pub fn comparison_func(&self) -> ComparisonFunc {
+        unsafe { std::mem::transmute(self.0.ComparisonFunc) }
     }
 
     // ToDo: newtype for vec4 etc.?
@@ -2613,7 +2640,7 @@ impl SamplerDesc {
         self
     }
 
-    pub fn min_l_o_d(&self) -> f32 {
+    pub fn min_lod(&self) -> f32 {
         self.0.MinLOD
     }
 
@@ -2622,7 +2649,7 @@ impl SamplerDesc {
         self
     }
 
-    pub fn max_l_o_d(&self) -> f32 {
+    pub fn max_lod(&self) -> f32 {
         self.0.MaxLOD
     }
 }
@@ -2665,8 +2692,8 @@ impl StaticSamplerDesc {
         self
     }
 
-    pub fn filter(&self) -> D3D12_FILTER {
-        self.0.Filter
+    pub fn filter(&self) -> Filter {
+        unsafe { std::mem::transmute(self.0.Filter) }
     }
 
     pub fn set_address_u(mut self, address_u: TextureAddressMode) -> Self {
@@ -2674,8 +2701,8 @@ impl StaticSamplerDesc {
         self
     }
 
-    pub fn address_u(&self) -> D3D12_TEXTURE_ADDRESS_MODE {
-        self.0.AddressU
+    pub fn address_u(&self) -> TextureAddressMode {
+        unsafe { std::mem::transmute(self.0.AddressU) }
     }
 
     pub fn set_address_v(mut self, address_v: TextureAddressMode) -> Self {
@@ -2683,8 +2710,8 @@ impl StaticSamplerDesc {
         self
     }
 
-    pub fn address_v(&self) -> D3D12_TEXTURE_ADDRESS_MODE {
-        self.0.AddressV
+    pub fn address_v(&self) -> TextureAddressMode {
+        unsafe { std::mem::transmute(self.0.AddressV) }
     }
 
     pub fn set_address_w(mut self, address_w: TextureAddressMode) -> Self {
@@ -2692,8 +2719,8 @@ impl StaticSamplerDesc {
         self
     }
 
-    pub fn address_w(&self) -> D3D12_TEXTURE_ADDRESS_MODE {
-        self.0.AddressW
+    pub fn address_w(&self) -> TextureAddressMode {
+        unsafe { std::mem::transmute(self.0.AddressW) }
     }
 
     pub fn set_mip_lod_bias(mut self, mip_lod_bias: f32) -> Self {
@@ -2701,7 +2728,7 @@ impl StaticSamplerDesc {
         self
     }
 
-    pub fn mip_l_o_d_bias(&self) -> f32 {
+    pub fn mip_lod_bias(&self) -> f32 {
         self.0.MipLODBias
     }
 
@@ -2722,8 +2749,8 @@ impl StaticSamplerDesc {
         self
     }
 
-    pub fn comparison_func(&self) -> D3D12_COMPARISON_FUNC {
-        self.0.ComparisonFunc
+    pub fn comparison_func(&self) -> ComparisonFunc {
+        unsafe { std::mem::transmute(self.0.ComparisonFunc) }
     }
 
     pub fn set_border_color(mut self, border_color: StaticBorderColor) -> Self {
@@ -2731,8 +2758,8 @@ impl StaticSamplerDesc {
         self
     }
 
-    pub fn border_color(&self) -> D3D12_STATIC_BORDER_COLOR {
-        self.0.BorderColor
+    pub fn border_color(&self) -> StaticBorderColor {
+        unsafe { std::mem::transmute(self.0.BorderColor) }
     }
 
     pub fn set_min_lod(mut self, min_lod: f32) -> Self {
@@ -2740,7 +2767,7 @@ impl StaticSamplerDesc {
         self
     }
 
-    pub fn min_l_o_d(&self) -> f32 {
+    pub fn min_lod(&self) -> f32 {
         self.0.MinLOD
     }
 
@@ -2749,12 +2776,12 @@ impl StaticSamplerDesc {
         self
     }
 
-    pub fn max_l_o_d(&self) -> f32 {
+    pub fn max_lod(&self) -> f32 {
         self.0.MaxLOD
     }
 
-    pub fn set_shader_register(mut self, shader_register: Elements) -> Self {
-        self.0.ShaderRegister = shader_register.0 as u32;
+    pub fn set_shader_register(mut self, shader_register: u32) -> Self {
+        self.0.ShaderRegister = shader_register;
         self
     }
 
@@ -2762,8 +2789,8 @@ impl StaticSamplerDesc {
         self.0.ShaderRegister
     }
 
-    pub fn set_register_space(mut self, register_space: Elements) -> Self {
-        self.0.RegisterSpace = register_space.0 as u32;
+    pub fn set_register_space(mut self, register_space: u32) -> Self {
+        self.0.RegisterSpace = register_space;
         self
     }
 
@@ -2779,8 +2806,8 @@ impl StaticSamplerDesc {
         self
     }
 
-    pub fn shader_visibility(&self) -> D3D12_SHADER_VISIBILITY {
-        self.0.ShaderVisibility
+    pub fn shader_visibility(&self) -> ShaderVisibility {
+        unsafe { std::mem::transmute(self.0.ShaderVisibility) }
     }
 }
 
@@ -2789,25 +2816,26 @@ impl StaticSamplerDesc {
 pub struct VersionedRootSignatureDesc(pub D3D12_VERSIONED_ROOT_SIGNATURE_DESC);
 
 impl VersionedRootSignatureDesc {
-    pub fn set_version(mut self, version: RootSignatureVersion) -> Self {
-        self.0.Version = version as i32;
-        self
-    }
-
     // RS v1.0 is not supported
-    pub fn set_desc_1_0(self, _desc_1_0: &RootSignatureDesc) -> Self {
-        unimplemented!();
-        // self.0.__bindgen_anon_1.Desc_1_0 = desc_1_0;
-        // self
-    }
+    // pub fn set_desc_1_0(self, _desc_1_0: &RootSignatureDesc) -> Self {
+    //     unimplemented!();
+    // }
 
     pub fn set_desc_1_1(mut self, desc_1_1: &RootSignatureDesc) -> Self {
+        self.0.Version =
+            D3D_ROOT_SIGNATURE_VERSION_D3D_ROOT_SIGNATURE_VERSION_1_1;
         self.0.__bindgen_anon_1.Desc_1_1 = desc_1_1.0;
         self
     }
 
     pub fn desc_1_1(&self) -> RootSignatureDesc {
-        self.0.__bindgen_anon_1.Desc_1_1
+        unsafe {
+            RootSignatureDesc(
+                self.0.__bindgen_anon_1.Desc_1_1,
+                PhantomData,
+                PhantomData,
+            )
+        }
     }
 }
 
@@ -2865,7 +2893,7 @@ impl<'a, 'b> RootSignatureDesc<'a, 'b> {
     }
 
     pub fn flags(&self) -> RootSignatureFlags {
-        self.0.Flags
+        unsafe { RootSignatureFlags::from_bits_unchecked(self.0.Flags) }
     }
 }
 
@@ -2883,17 +2911,13 @@ impl<'a> SubresourceData<'a> {
         self
     }
 
-    pub fn data(&self) -> &'a [u8] {
-        unimplemented!("We don't know data size here")
-    }
-
     pub fn set_row_pitch(mut self, row_pitch: Bytes) -> Self {
         self.0.RowPitch = row_pitch.0 as i64;
         self
     }
 
     pub fn row_pitch(&self) -> Bytes {
-        self.0.RowPitch
+        Bytes::from(self.0.RowPitch)
     }
 
     pub fn set_slice_pitch(mut self, slice_pitch: Bytes) -> Self {
@@ -2902,7 +2926,7 @@ impl<'a> SubresourceData<'a> {
     }
 
     pub fn slice_pitch(&self) -> Bytes {
-        self.0.SlicePitch
+        Bytes::from(self.0.SlicePitch)
     }
 }
 
@@ -2916,8 +2940,8 @@ impl ShaderResourceViewDesc {
         self
     }
 
-    pub fn format(&self) -> DXGI_FORMAT {
-        self.0.Format
+    pub fn format(&self) -> DxgiFormat {
+        unsafe { std::mem::transmute(self.0.Format) }
     }
 
     pub fn set_view_dimension(mut self, view_dimension: SrvDimension) -> Self {
@@ -2925,8 +2949,8 @@ impl ShaderResourceViewDesc {
         self
     }
 
-    pub fn view_dimension(&self) -> D3D12_SRV_DIMENSION {
-        self.0.ViewDimension
+    pub fn view_dimension(&self) -> SrvDimension {
+        unsafe { std::mem::transmute(self.0.ViewDimension) }
     }
 
     pub fn set_shader4_component_mapping(
@@ -2938,78 +2962,215 @@ impl ShaderResourceViewDesc {
     }
 
     pub fn shader4_component_mapping(&self) -> ShaderComponentMapping {
-        self.0.Shader4ComponentMapping
+        self.0.Shader4ComponentMapping.into()
     }
 
-    pub fn set_buffer(mut self, buffer: &BufferSrv) -> Self {
+    pub fn new_buffer(mut self, buffer: &BufferSrv) -> Self {
+        self.0.ViewDimension = SrvDimension::Buffer as i32;
         self.0.__bindgen_anon_1.Buffer = buffer.0;
         self
     }
 
-    pub fn set_texture_1d(mut self, texture_1d: &Tex1DSrv) -> Self {
+    pub fn buffer(&self) -> Option<BufferSrv> {
+        unsafe {
+            match self.view_dimension() {
+                SrvDimension::Buffer => {
+                    Some(BufferSrv(self.0.__bindgen_anon_1.Buffer))
+                }
+                _ => None,
+            }
+        }
+    }
+
+    pub fn new_texture_1d(mut self, texture_1d: &Tex1DSrv) -> Self {
+        self.0.ViewDimension = SrvDimension::Texture1D as i32;
         self.0.__bindgen_anon_1.Texture1D = texture_1d.0;
         self
     }
 
-    pub fn set_texture_1d_array(
+    pub fn texture_1d(&self) -> Option<Tex1DSrv> {
+        unsafe {
+            match self.view_dimension() {
+                SrvDimension::Texture1D => {
+                    Some(Tex1DSrv(self.0.__bindgen_anon_1.Texture1D))
+                }
+                _ => None,
+            }
+        }
+    }
+
+    pub fn new_texture_1d_array(
         mut self,
         texture_1d_array: &Tex1DArraySrv,
     ) -> Self {
+        self.0.ViewDimension = SrvDimension::Texture1DArray as i32;
         self.0.__bindgen_anon_1.Texture1DArray = texture_1d_array.0;
         self
     }
 
-    pub fn set_texture_2d(mut self, texture_2d: &Tex2DSrv) -> Self {
+    pub fn texture_1d_array(&self) -> Option<Tex1DArraySrv> {
+        unsafe {
+            match self.view_dimension() {
+                SrvDimension::Texture1DArray => {
+                    Some(Tex1DArraySrv(self.0.__bindgen_anon_1.Texture1DArray))
+                }
+                _ => None,
+            }
+        }
+    }
+
+    pub fn new_texture_2d(mut self, texture_2d: &Tex2DSrv) -> Self {
+        self.0.ViewDimension = SrvDimension::Texture2D as i32;
         self.0.__bindgen_anon_1.Texture2D = texture_2d.0;
         self
     }
 
-    pub fn set_texture_2d_array(
+    pub fn texture_2d(&self) -> Option<Tex2DSrv> {
+        unsafe {
+            match self.view_dimension() {
+                SrvDimension::Texture2D => {
+                    Some(Tex2DSrv(self.0.__bindgen_anon_1.Texture2D))
+                }
+                _ => None,
+            }
+        }
+    }
+
+    pub fn new_texture_2d_array(
         mut self,
         texture_2d_array: &Tex2DArraySrv,
     ) -> Self {
+        self.0.ViewDimension = SrvDimension::Texture2DArray as i32;
         self.0.__bindgen_anon_1.Texture2DArray = texture_2d_array.0;
         self
     }
 
-    pub fn set_texture_2d_ms(mut self, texture_2d_ms: &Tex2DMsSrv) -> Self {
+    pub fn texture_2d_array(&self) -> Option<Tex2DArraySrv> {
+        unsafe {
+            match self.view_dimension() {
+                SrvDimension::Texture2DArray => {
+                    Some(Tex2DArraySrv(self.0.__bindgen_anon_1.Texture2DArray))
+                }
+                _ => None,
+            }
+        }
+    }
+
+    pub fn new_texture_2d_ms(mut self, texture_2d_ms: &Tex2DMsSrv) -> Self {
+        self.0.ViewDimension = SrvDimension::Texture2DMs as i32;
         self.0.__bindgen_anon_1.Texture2DMS = texture_2d_ms.0;
         self
     }
 
-    pub fn set_texture_2d_ms_array(
+    pub fn texture_2d_ms(&self) -> Option<Tex2DMsSrv> {
+        unsafe {
+            match self.view_dimension() {
+                SrvDimension::Texture2DMs => {
+                    Some(Tex2DMsSrv(self.0.__bindgen_anon_1.Texture2DMS))
+                }
+                _ => None,
+            }
+        }
+    }
+
+    pub fn new_texture_2d_ms_array(
         mut self,
         texture_2d_ms_array: &Tex2DMsArraySrv,
     ) -> Self {
+        self.0.ViewDimension = SrvDimension::Texture2DMsArray as i32;
         self.0.__bindgen_anon_1.Texture2DMSArray = texture_2d_ms_array.0;
         self
     }
 
-    pub fn set_texture_3d(mut self, texture_3d: &Tex3DSrv) -> Self {
+    pub fn texture_2d_ms_array(&self) -> Option<Tex2DMsArraySrv> {
+        unsafe {
+            match self.view_dimension() {
+                SrvDimension::Texture2DMsArray => Some(Tex2DMsArraySrv(
+                    self.0.__bindgen_anon_1.Texture2DMSArray,
+                )),
+                _ => None,
+            }
+        }
+    }
+
+    pub fn new_texture_3d(mut self, texture_3d: &Tex3DSrv) -> Self {
+        self.0.ViewDimension = SrvDimension::Texture3D as i32;
         self.0.__bindgen_anon_1.Texture3D = texture_3d.0;
         self
     }
 
-    pub fn set_texture_cube(mut self, texture_cube: &TexcubeSrv) -> Self {
+    pub fn texture_3d(&self) -> Option<Tex3DSrv> {
+        unsafe {
+            match self.view_dimension() {
+                SrvDimension::Texture3D => {
+                    Some(Tex3DSrv(self.0.__bindgen_anon_1.Texture3D))
+                }
+                _ => None,
+            }
+        }
+    }
+
+    pub fn new_texture_cube(mut self, texture_cube: &TexcubeSrv) -> Self {
+        self.0.ViewDimension = SrvDimension::TextureCube as i32;
         self.0.__bindgen_anon_1.TextureCube = texture_cube.0;
         self
     }
 
-    pub fn set_texture_cube_array(
+    pub fn texture_cube(&self) -> Option<TexcubeSrv> {
+        unsafe {
+            match self.view_dimension() {
+                SrvDimension::TextureCube => {
+                    Some(TexcubeSrv(self.0.__bindgen_anon_1.TextureCube))
+                }
+                _ => None,
+            }
+        }
+    }
+
+    pub fn new_texture_cube_array(
         mut self,
         texture_cube_array: &TexcubeArraySrv,
     ) -> Self {
+        self.0.ViewDimension = SrvDimension::TextureCubeArray as i32;
         self.0.__bindgen_anon_1.TextureCubeArray = texture_cube_array.0;
         self
     }
 
-    pub fn set_raytracing_acceleration_structure(
+    pub fn texture_cube_array(&self) -> Option<TexcubeArraySrv> {
+        unsafe {
+            match self.view_dimension() {
+                SrvDimension::TextureCubeArray => Some(TexcubeArraySrv(
+                    self.0.__bindgen_anon_1.TextureCubeArray,
+                )),
+                _ => None,
+            }
+        }
+    }
+
+    pub fn new_raytracing_acceleration_structure(
         mut self,
         raytracing_acceleration_structure: &RaytracingAccelerationStructureSrv,
     ) -> Self {
+        self.0.ViewDimension =
+            SrvDimension::RaytracingAccelerationStructure as i32;
         self.0.__bindgen_anon_1.RaytracingAccelerationStructure =
             raytracing_acceleration_structure.0;
         self
+    }
+
+    pub fn raytracing_acceleration_structure(
+        &self,
+    ) -> Option<RaytracingAccelerationStructureSrv> {
+        unsafe {
+            match self.view_dimension() {
+                SrvDimension::RaytracingAccelerationStructure => {
+                    Some(RaytracingAccelerationStructureSrv(
+                        self.0.__bindgen_anon_1.RaytracingAccelerationStructure,
+                    ))
+                }
+                _ => None,
+            }
+        }
     }
 }
 
@@ -3018,14 +3179,22 @@ impl ShaderResourceViewDesc {
 pub struct BufferSrv(pub D3D12_BUFFER_SRV);
 
 impl BufferSrv {
-    pub fn set_first_element(mut self, first_element: Elements) -> Self {
-        self.0.FirstElement = first_element.0 as u64;
+    pub fn set_first_element(mut self, first_element: u64) -> Self {
+        self.0.FirstElement = first_element;
         self
     }
 
-    pub fn set_num_elements(mut self, num_elements: Elements) -> Self {
-        self.0.NumElements = num_elements.0 as u32;
+    pub fn first_element(&self) -> u64 {
+        self.0.FirstElement
+    }
+
+    pub fn set_num_elements(mut self, num_elements: u32) -> Self {
+        self.0.NumElements = num_elements;
         self
+    }
+
+    pub fn num_elements(&self) -> u32 {
+        self.0.NumElements
     }
 
     pub fn set_structure_byte_stride(
@@ -3036,9 +3205,18 @@ impl BufferSrv {
         self
     }
 
+    pub fn structure_byte_stride(&self) -> u32 {
+        self.0.StructureByteStride
+    }
+
     pub fn set_flags(mut self, flags: BufferSrvFlags) -> Self {
         self.0.Flags = flags.bits();
         self
+    }
+
+    pub fn flags(&self) -> BufferSrvFlags {
+        // ToDo: truncate instead of unchecked?
+        unsafe { BufferSrvFlags::from_bits_unchecked(self.0.Flags) }
     }
 }
 
@@ -3047,17 +3225,22 @@ impl BufferSrv {
 pub struct Tex1DSrv(pub D3D12_TEX1D_SRV);
 
 impl Tex1DSrv {
-    pub fn set_most_detailed_mip(
-        mut self,
-        most_detailed_mip: Elements,
-    ) -> Self {
-        self.0.MostDetailedMip = most_detailed_mip.0 as u32;
+    pub fn set_most_detailed_mip(mut self, most_detailed_mip: u32) -> Self {
+        self.0.MostDetailedMip = most_detailed_mip;
         self
     }
 
-    pub fn set_mip_levels(mut self, mip_levels: Elements) -> Self {
-        self.0.MipLevels = mip_levels.0 as u32;
+    pub fn most_detailed_mip(&self) -> u32 {
+        self.0.MostDetailedMip
+    }
+
+    pub fn set_mip_levels(mut self, mip_levels: u32) -> Self {
+        self.0.MipLevels = mip_levels;
         self
+    }
+
+    pub fn mip_levels(&self) -> u32 {
+        self.0.MipLevels
     }
 
     pub fn set_resource_min_lod_clamp(
@@ -3066,6 +3249,10 @@ impl Tex1DSrv {
     ) -> Self {
         self.0.ResourceMinLODClamp = resource_min_lod_clamp;
         self
+    }
+
+    pub fn resource_min_lod_clamp(&self) -> f32 {
+        self.0.ResourceMinLODClamp
     }
 }
 
@@ -3074,30 +3261,40 @@ impl Tex1DSrv {
 pub struct Tex1DArraySrv(pub D3D12_TEX1D_ARRAY_SRV);
 
 impl Tex1DArraySrv {
-    pub fn set_most_detailed_mip(
-        mut self,
-        most_detailed_mip: Elements,
-    ) -> Self {
-        self.0.MostDetailedMip = most_detailed_mip.0 as u32;
+    pub fn set_most_detailed_mip(mut self, most_detailed_mip: u32) -> Self {
+        self.0.MostDetailedMip = most_detailed_mip;
         self
     }
 
-    pub fn set_mip_levels(mut self, mip_levels: Elements) -> Self {
-        self.0.MipLevels = mip_levels.0 as u32;
+    pub fn most_detailed_mip(&self) -> u32 {
+        self.0.MostDetailedMip
+    }
+
+    pub fn set_mip_levels(mut self, mip_levels: u32) -> Self {
+        self.0.MipLevels = mip_levels;
         self
     }
 
-    pub fn set_first_array_slice(
-        mut self,
-        first_array_slice: Elements,
-    ) -> Self {
-        self.0.FirstArraySlice = first_array_slice.0 as u32;
+    pub fn mip_levels(&self) -> u32 {
+        self.0.MipLevels
+    }
+
+    pub fn set_first_array_slice(mut self, first_array_slice: u32) -> Self {
+        self.0.FirstArraySlice = first_array_slice;
         self
     }
 
-    pub fn set_array_size(mut self, array_size: Elements) -> Self {
-        self.0.ArraySize = array_size.0 as u32;
+    pub fn first_array_slice(&self) -> u32 {
+        self.0.FirstArraySlice
+    }
+
+    pub fn set_array_size(mut self, array_size: u32) -> Self {
+        self.0.ArraySize = array_size;
         self
+    }
+
+    pub fn array_size(&self) -> u32 {
+        self.0.ArraySize
     }
 
     pub fn set_resource_min_lod_clamp(
@@ -3106,6 +3303,10 @@ impl Tex1DArraySrv {
     ) -> Self {
         self.0.ResourceMinLODClamp = resource_min_lod_clamp;
         self
+    }
+
+    pub fn resource_min_lod_clamp(&self) -> f32 {
+        self.0.ResourceMinLODClamp
     }
 }
 
@@ -3114,22 +3315,31 @@ impl Tex1DArraySrv {
 pub struct Tex2DSrv(pub D3D12_TEX2D_SRV);
 
 impl Tex2DSrv {
-    pub fn set_most_detailed_mip(
-        mut self,
-        most_detailed_mip: Elements,
-    ) -> Self {
-        self.0.MostDetailedMip = most_detailed_mip.0 as u32;
+    pub fn set_most_detailed_mip(mut self, most_detailed_mip: u32) -> Self {
+        self.0.MostDetailedMip = most_detailed_mip;
         self
     }
 
-    pub fn set_mip_levels(mut self, mip_levels: Elements) -> Self {
-        self.0.MipLevels = mip_levels.0 as u32;
+    pub fn most_detailed_mip(&self) -> u32 {
+        self.0.MostDetailedMip
+    }
+
+    pub fn set_mip_levels(mut self, mip_levels: u32) -> Self {
+        self.0.MipLevels = mip_levels;
         self
     }
 
-    pub fn set_plane_slice(mut self, plane_slice: Elements) -> Self {
-        self.0.PlaneSlice = plane_slice.0 as u32;
+    pub fn mip_levels(&self) -> u32 {
+        self.0.MipLevels
+    }
+
+    pub fn set_plane_slice(mut self, plane_slice: u32) -> Self {
+        self.0.PlaneSlice = plane_slice;
         self
+    }
+
+    pub fn plane_slice(&self) -> u32 {
+        self.0.PlaneSlice
     }
 
     pub fn set_resource_min_lod_clamp(
@@ -3138,6 +3348,10 @@ impl Tex2DSrv {
     ) -> Self {
         self.0.ResourceMinLODClamp = resource_min_lod_clamp;
         self
+    }
+
+    pub fn resource_min_lod_clamp(&self) -> f32 {
+        self.0.ResourceMinLODClamp
     }
 }
 
@@ -3146,35 +3360,49 @@ impl Tex2DSrv {
 pub struct Tex2DArraySrv(pub D3D12_TEX2D_ARRAY_SRV);
 
 impl Tex2DArraySrv {
-    pub fn set_most_detailed_mip(
-        mut self,
-        most_detailed_mip: Elements,
-    ) -> Self {
-        self.0.MostDetailedMip = most_detailed_mip.0 as u32;
+    pub fn set_most_detailed_mip(mut self, most_detailed_mip: u32) -> Self {
+        self.0.MostDetailedMip = most_detailed_mip;
         self
     }
 
-    pub fn set_mip_levels(mut self, mip_levels: Elements) -> Self {
-        self.0.MipLevels = mip_levels.0 as u32;
+    pub fn most_detailed_mip(&self) -> u32 {
+        self.0.MostDetailedMip
+    }
+
+    pub fn set_mip_levels(mut self, mip_levels: u32) -> Self {
+        self.0.MipLevels = mip_levels;
         self
     }
 
-    pub fn set_first_array_slice(
-        mut self,
-        first_array_slice: Elements,
-    ) -> Self {
-        self.0.FirstArraySlice = first_array_slice.0 as u32;
+    pub fn mip_levels(&self) -> u32 {
+        self.0.MipLevels
+    }
+
+    pub fn set_first_array_slice(mut self, first_array_slice: u32) -> Self {
+        self.0.FirstArraySlice = first_array_slice;
         self
     }
 
-    pub fn set_array_size(mut self, array_size: Elements) -> Self {
-        self.0.ArraySize = array_size.0 as u32;
+    pub fn first_array_slice(&self) -> u32 {
+        self.0.FirstArraySlice
+    }
+
+    pub fn set_array_size(mut self, array_size: u32) -> Self {
+        self.0.ArraySize = array_size;
         self
     }
 
-    pub fn set_plane_slice(mut self, plane_slice: Elements) -> Self {
-        self.0.PlaneSlice = plane_slice.0 as u32;
+    pub fn array_size(&self) -> u32 {
+        self.0.ArraySize
+    }
+
+    pub fn set_plane_slice(mut self, plane_slice: u32) -> Self {
+        self.0.PlaneSlice = plane_slice;
         self
+    }
+
+    pub fn plane_slice(&self) -> u32 {
+        self.0.PlaneSlice
     }
 
     pub fn set_resource_min_lod_clamp(
@@ -3183,6 +3411,10 @@ impl Tex2DArraySrv {
     ) -> Self {
         self.0.ResourceMinLODClamp = resource_min_lod_clamp;
         self
+    }
+
+    pub fn resource_min_lod_clamp(&self) -> f32 {
+        self.0.ResourceMinLODClamp
     }
 }
 
@@ -3195,17 +3427,22 @@ pub struct Tex2DMsSrv(pub D3D12_TEX2DMS_SRV);
 pub struct Tex2DMsArraySrv(pub D3D12_TEX2DMS_ARRAY_SRV);
 
 impl Tex2DMsArraySrv {
-    pub fn set_first_array_slice(
-        mut self,
-        first_array_slice: Elements,
-    ) -> Self {
-        self.0.FirstArraySlice = first_array_slice.0 as u32;
+    pub fn set_first_array_slice(mut self, first_array_slice: u32) -> Self {
+        self.0.FirstArraySlice = first_array_slice;
         self
     }
 
-    pub fn set_array_size(mut self, array_size: Elements) -> Self {
-        self.0.ArraySize = array_size.0 as u32;
+    pub fn first_array_slice(&self) -> u32 {
+        self.0.FirstArraySlice
+    }
+
+    pub fn set_array_size(mut self, array_size: u32) -> Self {
+        self.0.ArraySize = array_size;
         self
+    }
+
+    pub fn array_size(&self) -> u32 {
+        self.0.ArraySize
     }
 }
 
@@ -3214,17 +3451,22 @@ impl Tex2DMsArraySrv {
 pub struct Tex3DSrv(pub D3D12_TEX3D_SRV);
 
 impl Tex3DSrv {
-    pub fn set_most_detailed_mip(
-        mut self,
-        most_detailed_mip: Elements,
-    ) -> Self {
-        self.0.MostDetailedMip = most_detailed_mip.0 as u32;
+    pub fn set_most_detailed_mip(mut self, most_detailed_mip: u32) -> Self {
+        self.0.MostDetailedMip = most_detailed_mip;
         self
     }
 
-    pub fn set_mip_levels(mut self, mip_levels: Elements) -> Self {
-        self.0.MipLevels = mip_levels.0 as u32;
+    pub fn most_detailed_mip(&self) -> u32 {
+        self.0.MostDetailedMip
+    }
+
+    pub fn set_mip_levels(mut self, mip_levels: u32) -> Self {
+        self.0.MipLevels = mip_levels;
         self
+    }
+
+    pub fn mip_levels(&self) -> u32 {
+        self.0.MipLevels
     }
 
     pub fn set_resource_min_lod_clamp(
@@ -3233,6 +3475,10 @@ impl Tex3DSrv {
     ) -> Self {
         self.0.ResourceMinLODClamp = resource_min_lod_clamp;
         self
+    }
+
+    pub fn resource_min_lod_clamp(&self) -> f32 {
+        self.0.ResourceMinLODClamp
     }
 }
 
@@ -3241,17 +3487,22 @@ impl Tex3DSrv {
 pub struct TexcubeSrv(pub D3D12_TEXCUBE_SRV);
 
 impl TexcubeSrv {
-    pub fn set_most_detailed_mip(
-        mut self,
-        most_detailed_mip: Elements,
-    ) -> Self {
-        self.0.MostDetailedMip = most_detailed_mip.0 as u32;
+    pub fn set_most_detailed_mip(mut self, most_detailed_mip: u32) -> Self {
+        self.0.MostDetailedMip = most_detailed_mip;
         self
     }
 
-    pub fn set_mip_levels(mut self, mip_levels: Elements) -> Self {
-        self.0.MipLevels = mip_levels.0 as u32;
+    pub fn most_detailed_mip(&self) -> u32 {
+        self.0.MostDetailedMip
+    }
+
+    pub fn set_mip_levels(mut self, mip_levels: u32) -> Self {
+        self.0.MipLevels = mip_levels;
         self
+    }
+
+    pub fn mip_levels(&self) -> u32 {
+        self.0.MipLevels
     }
 
     pub fn set_resource_min_lod_clamp(
@@ -3260,6 +3511,10 @@ impl TexcubeSrv {
     ) -> Self {
         self.0.ResourceMinLODClamp = resource_min_lod_clamp;
         self
+    }
+
+    pub fn resource_min_lod_clamp(&self) -> f32 {
+        self.0.ResourceMinLODClamp
     }
 }
 
@@ -3268,30 +3523,40 @@ impl TexcubeSrv {
 pub struct TexcubeArraySrv(pub D3D12_TEXCUBE_ARRAY_SRV);
 
 impl TexcubeArraySrv {
-    pub fn set_most_detailed_mip(
-        mut self,
-        most_detailed_mip: Elements,
-    ) -> Self {
-        self.0.MostDetailedMip = most_detailed_mip.0 as u32;
+    pub fn set_most_detailed_mip(mut self, most_detailed_mip: u32) -> Self {
+        self.0.MostDetailedMip = most_detailed_mip;
         self
     }
 
-    pub fn set_mip_levels(mut self, mip_levels: Elements) -> Self {
-        self.0.MipLevels = mip_levels.0 as u32;
+    pub fn most_detailed_mip(&self) -> u32 {
+        self.0.MostDetailedMip
+    }
+
+    pub fn set_mip_levels(mut self, mip_levels: u32) -> Self {
+        self.0.MipLevels = mip_levels;
         self
     }
 
-    pub fn set_first_2d_array_face(
-        mut self,
-        first_2d_array_face: Elements,
-    ) -> Self {
-        self.0.First2DArrayFace = first_2d_array_face.0 as u32;
+    pub fn mip_levels(&self) -> u32 {
+        self.0.MipLevels
+    }
+
+    pub fn set_first_2d_array_face(mut self, first_2d_array_face: u32) -> Self {
+        self.0.First2DArrayFace = first_2d_array_face;
         self
     }
 
-    pub fn set_num_cubes(mut self, num_cubes: Elements) -> Self {
-        self.0.NumCubes = num_cubes.0 as u32;
+    pub fn first2_d_array_face(&self) -> u32 {
+        self.0.First2DArrayFace
+    }
+
+    pub fn set_num_cubes(mut self, num_cubes: u32) -> Self {
+        self.0.NumCubes = num_cubes;
         self
+    }
+
+    pub fn num_cubes(&self) -> u32 {
+        self.0.NumCubes
     }
 
     pub fn set_resource_min_lod_clamp(
@@ -3300,6 +3565,10 @@ impl TexcubeArraySrv {
     ) -> Self {
         self.0.ResourceMinLODClamp = resource_min_lod_clamp;
         self
+    }
+
+    pub fn resource_min_lod_clamp(&self) -> f32 {
+        self.0.ResourceMinLODClamp
     }
 }
 
@@ -3314,6 +3583,10 @@ impl RaytracingAccelerationStructureSrv {
         self.0.Location = location.0;
         self
     }
+
+    pub fn location(&self) -> GpuVirtualAddress {
+        GpuVirtualAddress(self.0.Location)
+    }
 }
 
 #[derive(Default, Debug)]
@@ -3326,9 +3599,17 @@ impl ClearValue {
         self
     }
 
+    pub fn format(&self) -> DxgiFormat {
+        unsafe { std::mem::transmute(self.0.Format) }
+    }
+
     pub fn set_color(mut self, color: [f32; 4usize]) -> Self {
         self.0.__bindgen_anon_1.Color = color;
         self
+    }
+
+    pub unsafe fn color(&self) -> [f32; 4usize] {
+        self.0.__bindgen_anon_1.Color
     }
 
     pub fn set_depth_stencil(
@@ -3337,6 +3618,10 @@ impl ClearValue {
     ) -> Self {
         self.0.__bindgen_anon_1.DepthStencil = depth_stencil.0;
         self
+    }
+
+    pub unsafe fn depth_stencil(&self) -> DepthStencilValue {
+        DepthStencilValue(self.0.__bindgen_anon_1.DepthStencil)
     }
 }
 
@@ -3350,9 +3635,17 @@ impl DepthStencilValue {
         self
     }
 
+    pub fn depth(&self) -> f32 {
+        self.0.Depth
+    }
+
     pub fn set_stencil(mut self, stencil: u8) -> Self {
         self.0.Stencil = stencil;
         self
+    }
+
+    pub fn stencil(&self) -> u8 {
+        self.0.Stencil
     }
 }
 
@@ -3360,10 +3653,15 @@ impl DepthStencilValue {
 #[repr(transparent)]
 pub struct DepthStencilViewDesc(pub D3D12_DEPTH_STENCIL_VIEW_DESC);
 
+// ToDo: encode the union variant in wrapper's type?
 impl DepthStencilViewDesc {
     pub fn set_format(mut self, format: DxgiFormat) -> Self {
         self.0.Format = format as i32;
         self
+    }
+
+    pub fn format(&self) -> DxgiFormat {
+        unsafe { std::mem::transmute(self.0.Format) }
     }
 
     pub fn set_view_dimension(mut self, view_dimension: DsvDimension) -> Self {
@@ -3371,48 +3669,128 @@ impl DepthStencilViewDesc {
         self
     }
 
+    pub fn view_dimension(&self) -> DsvDimension {
+        unsafe { std::mem::transmute(self.0.ViewDimension) }
+    }
+
     pub fn set_flags(mut self, flags: DsvFlags) -> Self {
         self.0.Flags = flags.bits();
         self
     }
 
-    pub fn set_texture_1d(mut self, texture_1d: Tex1DDsv) -> Self {
+    pub fn flags(&self) -> DsvFlags {
+        unsafe { DsvFlags::from_bits_unchecked(self.0.Flags) }
+    }
+
+    pub fn new_texture_1d(mut self, texture_1d: Tex1DDsv) -> Self {
+        self.0.ViewDimension = DsvDimension::Texture1D as i32;
         self.0.__bindgen_anon_1.Texture1D = texture_1d.0;
         self
     }
 
-    pub fn set_texture_1d_array(
+    pub fn texture_1d(&self) -> Option<Tex1DDsv> {
+        unsafe {
+            match self.view_dimension() {
+                DsvDimension::Texture1D => {
+                    Some(Tex1DDsv(self.0.__bindgen_anon_1.Texture1D))
+                }
+                _ => None,
+            }
+        }
+    }
+
+    pub fn new_texture_1d_array(
         mut self,
         texture_1d_array: Tex1DArrayDsv,
     ) -> Self {
+        self.0.ViewDimension = DsvDimension::Texture1DArray as i32;
         self.0.__bindgen_anon_1.Texture1DArray = texture_1d_array.0;
         self
     }
 
-    pub fn set_texture_2d(mut self, texture_2d: Tex2DDsv) -> Self {
+    pub fn texture_1d_array(&self) -> Option<Tex1DArrayDsv> {
+        unsafe {
+            match self.view_dimension() {
+                DsvDimension::Texture1DArray => {
+                    Some(Tex1DArrayDsv(self.0.__bindgen_anon_1.Texture1DArray))
+                }
+                _ => None,
+            }
+        }
+    }
+
+    pub fn new_texture_2d(mut self, texture_2d: Tex2DDsv) -> Self {
+        self.0.ViewDimension = DsvDimension::Texture2D as i32;
         self.0.__bindgen_anon_1.Texture2D = texture_2d.0;
         self
     }
 
-    pub fn set_texture_2d_array(
+    pub fn texture_2d(&self) -> Option<Tex2DDsv> {
+        unsafe {
+            match self.view_dimension() {
+                DsvDimension::Texture2D => {
+                    Some(Tex2DDsv(self.0.__bindgen_anon_1.Texture2D))
+                }
+                _ => None,
+            }
+        }
+    }
+
+    pub fn new_texture_2d_array(
         mut self,
         texture_2d_array: Tex2DArrayDsv,
     ) -> Self {
+        self.0.ViewDimension = DsvDimension::Texture2DArray as i32;
         self.0.__bindgen_anon_1.Texture2DArray = texture_2d_array.0;
         self
     }
 
-    pub fn set_texture_2d_ms(mut self, texture_2d_ms: Tex2DmsDsv) -> Self {
+    pub fn texture_2d_array(&self) -> Option<Tex2DArrayDsv> {
+        unsafe {
+            match self.view_dimension() {
+                DsvDimension::Texture2DArray => {
+                    Some(Tex2DArrayDsv(self.0.__bindgen_anon_1.Texture2DArray))
+                }
+                _ => None,
+            }
+        }
+    }
+
+    pub fn new_texture_2d_ms(mut self, texture_2d_ms: Tex2DmsDsv) -> Self {
+        self.0.ViewDimension = DsvDimension::Texture2DMs as i32;
         self.0.__bindgen_anon_1.Texture2DMS = texture_2d_ms.0;
         self
     }
 
-    pub fn set_texture_2d_ms_array(
+    pub fn texture_2d_ms(&self) -> Option<Tex2DmsDsv> {
+        unsafe {
+            match self.view_dimension() {
+                DsvDimension::Texture2DMs => {
+                    Some(Tex2DmsDsv(self.0.__bindgen_anon_1.Texture2DMS))
+                }
+                _ => None,
+            }
+        }
+    }
+
+    pub fn new_texture_2d_ms_array(
         mut self,
-        texture_2d_ms_array: D3D12_TEX2DMS_ARRAY_DSV,
+        texture_2d_ms_array: Tex2DmsArrayDsv,
     ) -> Self {
-        self.0.__bindgen_anon_1.Texture2DMSArray = texture_2d_ms_array;
+        self.0.ViewDimension = DsvDimension::Texture2DMsArray as i32;
+        self.0.__bindgen_anon_1.Texture2DMSArray = texture_2d_ms_array.0;
         self
+    }
+
+    pub fn texture_2d_ms_array(&self) -> Option<Tex2DmsArrayDsv> {
+        unsafe {
+            match self.view_dimension() {
+                DsvDimension::Texture2DMsArray => Some(Tex2DmsArrayDsv(
+                    self.0.__bindgen_anon_1.Texture2DMSArray,
+                )),
+                _ => None,
+            }
+        }
     }
 }
 
@@ -3421,9 +3799,13 @@ impl DepthStencilViewDesc {
 pub struct Tex1DDsv(pub D3D12_TEX1D_DSV);
 
 impl Tex1DDsv {
-    pub fn set_mip_slice(mut self, mip_slice: Elements) -> Self {
-        self.0.MipSlice = mip_slice.0 as u32;
+    pub fn set_mip_slice(mut self, mip_slice: u32) -> Self {
+        self.0.MipSlice = mip_slice;
         self
+    }
+
+    pub fn mip_slice(&self) -> u32 {
+        self.0.MipSlice
     }
 }
 
@@ -3432,22 +3814,31 @@ impl Tex1DDsv {
 pub struct Tex1DArrayDsv(pub D3D12_TEX1D_ARRAY_DSV);
 
 impl Tex1DArrayDsv {
-    pub fn set_mip_slice(mut self, mip_slice: Elements) -> Self {
-        self.0.MipSlice = mip_slice.0 as u32;
+    pub fn set_mip_slice(mut self, mip_slice: u32) -> Self {
+        self.0.MipSlice = mip_slice;
         self
     }
 
-    pub fn set_first_array_slice(
-        mut self,
-        first_array_slice: Elements,
-    ) -> Self {
-        self.0.FirstArraySlice = first_array_slice.0 as u32;
+    pub fn mip_slice(&self) -> u32 {
+        self.0.MipSlice
+    }
+
+    pub fn set_first_array_slice(mut self, first_array_slice: u32) -> Self {
+        self.0.FirstArraySlice = first_array_slice;
         self
     }
 
-    pub fn set_array_size(mut self, array_size: Elements) -> Self {
-        self.0.ArraySize = array_size.0 as u32;
+    pub fn first_array_slice(&self) -> u32 {
+        self.0.FirstArraySlice
+    }
+
+    pub fn set_array_size(mut self, array_size: u32) -> Self {
+        self.0.ArraySize = array_size;
         self
+    }
+
+    pub fn array_size(&self) -> u32 {
+        self.0.ArraySize
     }
 }
 
@@ -3456,9 +3847,13 @@ impl Tex1DArrayDsv {
 pub struct Tex2DDsv(pub D3D12_TEX2D_DSV);
 
 impl Tex2DDsv {
-    pub fn set_mip_slice(mut self, mip_slice: Elements) -> Self {
-        self.0.MipSlice = mip_slice.0 as u32;
+    pub fn set_mip_slice(mut self, mip_slice: u32) -> Self {
+        self.0.MipSlice = mip_slice;
         self
+    }
+
+    pub fn mip_slice(&self) -> u32 {
+        self.0.MipSlice
     }
 }
 
@@ -3467,22 +3862,31 @@ impl Tex2DDsv {
 pub struct Tex2DArrayDsv(pub D3D12_TEX2D_ARRAY_DSV);
 
 impl Tex2DArrayDsv {
-    pub fn set_mip_slice(mut self, mip_slice: Elements) -> Self {
-        self.0.MipSlice = mip_slice.0 as u32;
+    pub fn set_mip_slice(mut self, mip_slice: u32) -> Self {
+        self.0.MipSlice = mip_slice;
         self
     }
 
-    pub fn set_first_array_slice(
-        mut self,
-        first_array_slice: Elements,
-    ) -> Self {
-        self.0.FirstArraySlice = first_array_slice.0 as u32;
+    pub fn mip_slice(&self) -> u32 {
+        self.0.MipSlice
+    }
+
+    pub fn set_first_array_slice(mut self, first_array_slice: u32) -> Self {
+        self.0.FirstArraySlice = first_array_slice;
         self
     }
 
-    pub fn set_array_size(mut self, array_size: Elements) -> Self {
-        self.0.ArraySize = array_size.0 as u32;
+    pub fn first_array_slice(&self) -> u32 {
+        self.0.FirstArraySlice
+    }
+
+    pub fn set_array_size(mut self, array_size: u32) -> Self {
+        self.0.ArraySize = array_size;
         self
+    }
+
+    pub fn array_size(&self) -> u32 {
+        self.0.ArraySize
     }
 }
 
@@ -3495,17 +3899,22 @@ pub struct Tex2DmsDsv(pub D3D12_TEX2DMS_DSV);
 pub struct Tex2DmsArrayDsv(pub D3D12_TEX2DMS_ARRAY_DSV);
 
 impl Tex2DmsArrayDsv {
-    pub fn set_first_array_slice(
-        mut self,
-        first_array_slice: Elements,
-    ) -> Self {
-        self.0.FirstArraySlice = first_array_slice.0 as u32;
+    pub fn set_first_array_slice(mut self, first_array_slice: u32) -> Self {
+        self.0.FirstArraySlice = first_array_slice;
         self
     }
 
-    pub fn set_array_size(mut self, array_size: Elements) -> Self {
-        self.0.ArraySize = array_size.0 as u32;
+    pub fn first_array_slice(&self) -> u32 {
+        self.0.FirstArraySlice
+    }
+
+    pub fn set_array_size(mut self, array_size: u32) -> Self {
+        self.0.ArraySize = array_size;
         self
+    }
+
+    pub fn array_size(&self) -> u32 {
+        self.0.ArraySize
     }
 }
 
@@ -3528,6 +3937,10 @@ impl FeatureDataShaderModel {
         self.0.HighestShaderModel = highest_shader_model as i32;
         self
     }
+
+    pub fn highest_shader_model(&self) -> D3D_SHADER_MODEL {
+        self.0.HighestShaderModel
+    }
 }
 
 // ToDo: Default derives in the structs where they don't make sense
@@ -3540,6 +3953,10 @@ pub struct PipelineStateStreamDesc<'a>(
 );
 
 impl<'a> PipelineStateStreamDesc<'a> {
+    pub fn size_in_bytes(&self) -> Bytes {
+        Bytes::from(self.0.SizeInBytes)
+    }
+
     pub fn set_pipeline_state_subobject_stream(
         mut self,
         subobject_stream: &'a [u8],
@@ -3550,6 +3967,15 @@ impl<'a> PipelineStateStreamDesc<'a> {
         self.1 = PhantomData;
 
         self
+    }
+
+    pub fn pipeline_state_subobject_stream(&self) -> &'a [u8] {
+        unsafe {
+            slice::from_raw_parts(
+                self.0.pPipelineStateSubobjectStream as *const u8,
+                self.0.SizeInBytes as usize,
+            )
+        }
     }
 }
 
@@ -3573,8 +3999,9 @@ impl<T> PipelineStateSubobject<T> {
 // Note it's not a struct from core API
 // ToDo: a similar adapter for GraphicsPipelineState? In d3dx12.h
 // they have one, and also one more for compute PSO's
+// ToDo: do we realistically need getters here?
 #[repr(C)]
-pub struct MeshShaderPipelineStateDesc<'rs, 'ams, 'ms, 'ps, 'cp> {
+pub struct MeshShaderPipelineStateDesc<'rs, 'sh> {
     // We don't use wrapper types here since i) these members are private
     // and don't leak into the public API, and ii) if we want to implement
     // Default trait, we need to either wrap our objects like ShaderBytecode
@@ -3598,15 +4025,10 @@ pub struct MeshShaderPipelineStateDesc<'rs, 'ams, 'ms, 'ps, 'cp> {
     flags: PipelineStateSubobject<i32>,
     // ToDo: probably we need lifetimes on *mut IDXGI... wrappers, too?..
     rs_phantom_data: PhantomData<&'rs RootSignature>,
-    ams_phantom_data: PhantomData<ShaderBytecode<'ams>>,
-    ms_phantom_data: PhantomData<ShaderBytecode<'ms>>,
-    ps_phantom_data: PhantomData<ShaderBytecode<'ps>>,
-    cached_pso_phantom_data: PhantomData<CachedPipelineState<'cp>>,
+    sh_phantom_data: PhantomData<ShaderBytecode<'sh>>,
 }
 
-impl<'rs, 'ams, 'ms, 'ps, 'cp> Default
-    for MeshShaderPipelineStateDesc<'rs, 'ams, 'ms, 'ps, 'cp>
-{
+impl<'rs, 'sh> Default for MeshShaderPipelineStateDesc<'rs, 'sh> {
     fn default() -> Self {
         let mut pso_desc: MeshShaderPipelineStateDesc =
             unsafe { std::mem::zeroed() };
@@ -3657,9 +4079,6 @@ impl<'rs, 'ams, 'ms, 'ps, 'cp> Default
         pso_desc.sample_desc = PipelineStateSubobject::new(
             PipelineStateSubobjectType::SampleDesc,
             SampleDesc::default().0,
-            // unsafe {
-            //     std::mem::transmute([42u8; size_of::<DXGI_SAMPLE_DESC>()])
-            // },
         );
         pso_desc.node_mask = PipelineStateSubobject::new(
             PipelineStateSubobjectType::NodeMask,
@@ -3674,17 +4093,12 @@ impl<'rs, 'ams, 'ms, 'ps, 'cp> Default
             PipelineStateFlags::None.bits(),
         );
         pso_desc.rs_phantom_data = PhantomData;
-        pso_desc.ams_phantom_data = PhantomData;
-        pso_desc.ms_phantom_data = PhantomData;
-        pso_desc.ps_phantom_data = PhantomData;
-        pso_desc.cached_pso_phantom_data = PhantomData;
+        pso_desc.sh_phantom_data = PhantomData;
         pso_desc
     }
 }
 
-impl<'rs, 'ams, 'ms, 'ps, 'cp>
-    MeshShaderPipelineStateDesc<'rs, 'ams, 'ms, 'ps, 'cp>
-{
+impl<'rs, 'sh> MeshShaderPipelineStateDesc<'rs, 'sh> {
     pub fn set_root_signature(
         mut self,
         root_signature: &'rs RootSignature,
@@ -3699,41 +4113,38 @@ impl<'rs, 'ams, 'ms, 'ps, 'cp>
 
     pub fn set_amplification_shader_bytecode(
         mut self,
-        bytecode: &'ams ShaderBytecode,
+        bytecode: &'sh ShaderBytecode,
     ) -> Self {
         self.amplification_shader = PipelineStateSubobject::new(
             PipelineStateSubobjectType::AS,
             bytecode.0,
         );
-        self.ams_phantom_data = PhantomData;
+        self.sh_phantom_data = PhantomData;
         self
     }
 
     pub fn set_mesh_shader_bytecode(
         mut self,
-        bytecode: &'ms ShaderBytecode,
+        bytecode: &'sh ShaderBytecode,
     ) -> Self {
         self.mesh_shader = PipelineStateSubobject::new(
             PipelineStateSubobjectType::MS,
             bytecode.0,
         );
-        self.ms_phantom_data = PhantomData;
+        self.sh_phantom_data = PhantomData;
         self
     }
 
     pub fn set_pixel_shader_bytecode(
         mut self,
-        bytecode: &'ps ShaderBytecode,
+        bytecode: &'sh ShaderBytecode,
     ) -> Self {
         self.pixel_shader = PipelineStateSubobject::new(
             PipelineStateSubobjectType::PS,
             bytecode.0,
-            // unsafe {
-            //     std::mem::transmute([0x45u8; size_of::<ShaderBytecode>()])
-            // },
         );
 
-        self.ps_phantom_data = PhantomData;
+        self.sh_phantom_data = PhantomData;
         self
     }
 
@@ -3823,14 +4234,20 @@ pub struct RtFormatArray(pub D3D12_RT_FORMAT_ARRAY);
 
 impl RtFormatArray {
     pub fn set_rt_formats(mut self, rt_formats: &[DxgiFormat]) -> Self {
-        let mut hw_formats = [DxgiFormat::Unknown as i32; 8usize];
         for format_index in 0..rt_formats.len() {
-            hw_formats[format_index] = rt_formats[format_index] as i32;
+            self.0.RTFormats[format_index] = rt_formats[format_index] as i32;
         }
-
-        self.0.RTFormats = hw_formats;
         self.0.NumRenderTargets = rt_formats.len() as u32;
         self
+    }
+
+    pub fn rt_formats(&self) -> &[DxgiFormat] {
+        unsafe {
+            slice::from_raw_parts(
+                self.0.RTFormats.as_ptr() as *const DxgiFormat,
+                self.0.NumRenderTargets as usize,
+            )
+        }
     }
 }
 
@@ -3848,19 +4265,31 @@ impl Default for QueryHeapDesc {
 }
 
 impl QueryHeapDesc {
-    pub fn set_type(mut self, ty: QueryHeapType) -> Self {
+    pub fn set_heap_type(mut self, ty: QueryHeapType) -> Self {
         self.0.Type = ty as i32;
         self
     }
 
-    pub fn set_count(mut self, count: Elements) -> Self {
-        self.0.Count = count.0 as u32;
+    pub fn heap_type(&self) -> QueryHeapType {
+        unsafe { std::mem::transmute(self.0.Type) }
+    }
+
+    pub fn set_count(mut self, count: u32) -> Self {
+        self.0.Count = count;
         self
+    }
+
+    pub fn count(&self) -> u32 {
+        self.0.Count
     }
 
     pub fn set_node_mask(mut self, node_mask: u32) -> Self {
         self.0.NodeMask = node_mask;
         self
+    }
+
+    pub fn node_mask(&self) -> u32 {
+        self.0.NodeMask
     }
 }
 
@@ -3878,12 +4307,20 @@ impl FeatureDataD3DOptions {
         self
     }
 
+    pub fn double_precision_float_shader_ops(&self) -> bool {
+        self.0.DoublePrecisionFloatShaderOps != 0
+    }
+
     pub fn set_output_merger_logic_op(
         mut self,
         output_merger_logic_op: bool,
     ) -> Self {
         self.0.OutputMergerLogicOp = output_merger_logic_op as i32;
         self
+    }
+
+    pub fn output_merger_logic_op(&self) -> bool {
+        self.0.OutputMergerLogicOp != 0
     }
 
     pub fn set_min_precision_support(
@@ -3894,20 +4331,32 @@ impl FeatureDataD3DOptions {
         self
     }
 
+    pub fn min_precision_support(&self) -> ShaderMinPrecisionSupport {
+        unsafe { std::mem::transmute(self.0.MinPrecisionSupport) }
+    }
+
     pub fn set_tiled_resources_tier(
         mut self,
-        tiled_resources_tier: D3D12_TILED_RESOURCES_TIER,
+        tiled_resources_tier: TiledResourcesTier,
     ) -> Self {
-        self.0.TiledResourcesTier = tiled_resources_tier;
+        self.0.TiledResourcesTier = tiled_resources_tier as i32;
         self
+    }
+
+    pub fn tiled_resources_tier(&self) -> TiledResourcesTier {
+        unsafe { std::mem::transmute(self.0.TiledResourcesTier) }
     }
 
     pub fn set_resource_binding_tier(
         mut self,
-        resource_binding_tier: TiledResourcesTier,
+        resource_binding_tier: ResourceBindingTier,
     ) -> Self {
         self.0.ResourceBindingTier = resource_binding_tier as i32;
         self
+    }
+
+    pub fn resource_binding_tier(&self) -> ResourceBindingTier {
+        unsafe { std::mem::transmute(self.0.ResourceBindingTier) }
     }
 
     pub fn set_ps_specified_stencil_ref_supported(
@@ -3919,6 +4368,10 @@ impl FeatureDataD3DOptions {
         self
     }
 
+    pub fn p_s_specified_stencil_ref_supported(&self) -> bool {
+        self.0.PSSpecifiedStencilRefSupported != 0
+    }
+
     pub fn set_typed_uav_load_additional_formats(
         mut self,
         typed_uav_load_additional_formats: bool,
@@ -3928,9 +4381,17 @@ impl FeatureDataD3DOptions {
         self
     }
 
+    pub fn typed_u_a_v_load_additional_formats(&self) -> bool {
+        self.0.TypedUAVLoadAdditionalFormats != 0
+    }
+
     pub fn set_rovs_supported(mut self, rovs_supported: bool) -> Self {
         self.0.ROVsSupported = rovs_supported as i32;
         self
+    }
+
+    pub fn r_o_vs_supported(&self) -> bool {
+        self.0.ROVsSupported != 0
     }
 
     pub fn set_conservative_rasterization_tier(
@@ -3942,6 +4403,12 @@ impl FeatureDataD3DOptions {
         self
     }
 
+    pub fn conservative_rasterization_tier(
+        &self,
+    ) -> ConservativeRasterizationTier {
+        unsafe { std::mem::transmute(self.0.ConservativeRasterizationTier) }
+    }
+
     pub fn set_max_gpu_virtual_address_bits_per_resource(
         mut self,
         max_gpu_virtual_address_bits_per_resource: u32,
@@ -3951,6 +4418,10 @@ impl FeatureDataD3DOptions {
         self
     }
 
+    pub fn max_g_p_u_virtual_address_bits_per_resource(&self) -> u32 {
+        self.0.MaxGPUVirtualAddressBitsPerResource
+    }
+
     pub fn set_standard_swizzle_64_kb_supported(
         mut self,
         standard_swizzle_64_kb_supported: bool,
@@ -3958,6 +4429,10 @@ impl FeatureDataD3DOptions {
         self.0.StandardSwizzle64KBSupported =
             standard_swizzle_64_kb_supported as i32;
         self
+    }
+
+    pub fn standard_swizzle64_k_b_supported(&self) -> bool {
+        self.0.StandardSwizzle64KBSupported != 0
     }
 
     pub fn set_cross_node_sharing_tier(
@@ -3977,6 +4452,10 @@ impl FeatureDataD3DOptions {
         self
     }
 
+    pub fn cross_adapter_row_major_texture_supported(&self) -> bool {
+        self.0.VPAndRTArrayIndexFromAnyShaderFeedingRasterizerSupportedWithoutGSEmulation != 0
+    }
+
     pub fn set_vp_and_rt_array_index_from_any_shader_feeding_rasterizer_supported_without_gs_emulation(
         mut self,
         vp_and_rt_array_index_from_any_shader_feeding_rasterizer_supported_without_gs_emulation: bool,
@@ -3985,12 +4464,22 @@ impl FeatureDataD3DOptions {
         self
     }
 
+    pub fn vp_and_rt_array_index_from_any_shader_feeding_rasterizer_supported_without_gs_emulation(
+        &self,
+    ) -> bool {
+        self.0.VPAndRTArrayIndexFromAnyShaderFeedingRasterizerSupportedWithoutGSEmulation != 0
+    }
+
     pub fn set_resource_heap_tier(
         mut self,
         resource_heap_tier: ResourceHeapTier,
     ) -> Self {
         self.0.ResourceHeapTier = resource_heap_tier as i32;
         self
+    }
+
+    pub fn resource_heap_tier(&self) -> ResourceHeapTier {
+        unsafe { std::mem::transmute(self.0.ResourceHeapTier) }
     }
 }
 
@@ -4004,9 +4493,17 @@ impl ResourceAllocationInfo {
         self
     }
 
+    pub fn size_in_bytes(&self) -> Bytes {
+        Bytes::from(self.0.SizeInBytes)
+    }
+
     pub fn set_alignment(mut self, alignment: Bytes) -> Self {
         self.0.Alignment = alignment.0;
         self
+    }
+
+    pub fn alignment(&self) -> Bytes {
+        Bytes::from(self.0.Alignment)
     }
 }
 
@@ -4020,9 +4517,17 @@ impl HeapDesc {
         self
     }
 
+    pub fn size_in_bytes(&self) -> Bytes {
+        Bytes::from(self.0.SizeInBytes)
+    }
+
     pub fn set_properties(mut self, properties: &HeapProperties) -> Self {
         self.0.Properties = properties.0;
         self
+    }
+
+    pub fn properties(&self) -> HeapProperties {
+        HeapProperties(self.0.Properties)
     }
 
     pub fn set_alignment(mut self, alignment: Bytes) -> Self {
@@ -4030,8 +4535,16 @@ impl HeapDesc {
         self
     }
 
+    pub fn alignment(&self) -> Bytes {
+        Bytes::from(self.0.Alignment)
+    }
+
     pub fn set_flags(mut self, flags: HeapFlags) -> Self {
         self.0.Flags = flags.bits();
         self
+    }
+
+    pub fn flags(&self) -> HeapFlags {
+        unsafe { HeapFlags::from_bits_unchecked(self.0.Flags) }
     }
 }
