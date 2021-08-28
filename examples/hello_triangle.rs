@@ -12,7 +12,7 @@ pub static D3D12SDKVersion: u32 = 4;
 #[no_mangle]
 pub static D3D12SDKPath: &[u8; 9] = b".\\D3D12\\\0";
 
-use std::{ffi::CString, rc::Rc};
+use std::rc::Rc;
 use widestring::WideCStr;
 use winit::{
     event::{Event, WindowEvent},
@@ -50,16 +50,18 @@ struct Vertex {
 }
 
 impl Vertex {
-    fn make_desc() -> InputLayout {
+    fn make_desc() -> Vec<InputElementDesc<'static>> {
         vec![
             InputElementDesc::default()
-                .set_name(CString::new("Position").unwrap())
-                .set_format(DxgiFormat::R32G32B32_Float)
+                .set_name("Position")
+                .unwrap()
+                .set_format(Format::R32G32B32_Float)
                 .set_input_slot(0)
                 .set_offset(Bytes(offset_of!(Self, position) as u64)),
             InputElementDesc::default()
-                .set_name(CString::new("Color").unwrap())
-                .set_format(DxgiFormat::R32G32B32A32_Float)
+                .set_name("Color")
+                .unwrap()
+                .set_format(Format::R32G32B32A32_Float)
                 .set_input_slot(0)
                 .set_offset(Bytes(offset_of!(Self, color) as u64)),
         ]
@@ -70,7 +72,7 @@ trait TypedBuffer {
     type ElementType;
     fn from_resource(
         resource: Resource,
-        element_count: Elements,
+        element_count: u32,
         element_size: Bytes,
     ) -> Self;
 }
@@ -87,7 +89,7 @@ impl TypedBuffer for VertexBuffer {
     // note it consumes the resource; should it be revisited?
     fn from_resource(
         buffer: Resource,
-        element_count: Elements,
+        element_count: u32,
         element_size: Bytes,
     ) -> Self {
         let size = element_size * element_count;
@@ -114,7 +116,7 @@ impl TypedBuffer for IndexBuffer {
 
     fn from_resource(
         buffer: Resource,
-        element_count: Elements,
+        element_count: u32,
         element_size: Bytes,
     ) -> Self {
         let size = element_size * element_count;
@@ -152,6 +154,8 @@ impl HelloTriangleSample {
     pub fn new(hwnd: *mut std::ffi::c_void) -> Result<Self, HRESULT> {
         let debug_layer = Debug::new().expect("Cannot create debug layer");
         debug_layer.enable_debug_layer();
+        debug_layer.enable_gpu_based_validation();
+        debug_layer.enable_object_auto_name();
 
         let mut factory = DxgiFactory::new(DxgiCreateFactoryFlags::Debug)
             .expect("Cannot create factory");
@@ -191,10 +195,10 @@ impl HelloTriangleSample {
             .expect("Cannot create command list");
         command_list.close().expect("Cannot close command list");
 
-        let swapchain_desc = DxgiSwapchainDesc::default()
+        let swapchain_desc = SwapchainDesc::default()
             .set_width(WINDOW_WIDTH)
             .set_height(WINDOW_HEIGHT)
-            .set_buffer_count(Elements::from(FRAMES_IN_FLIGHT));
+            .set_buffer_count(FRAMES_IN_FLIGHT);
 
         let swapchain = factory
             .create_swapchain(
@@ -207,8 +211,8 @@ impl HelloTriangleSample {
         let rtv_heap = device
             .create_descriptor_heap(
                 &DescriptorHeapDesc::default()
-                    .set_type(DescriptorHeapType::RTV)
-                    .set_num_descriptors(Elements::from(FRAMES_IN_FLIGHT)),
+                    .set_heap_type(DescriptorHeapType::RTV)
+                    .set_num_descriptors(FRAMES_IN_FLIGHT),
             )
             .expect("Cannot create RTV heap");
 
@@ -327,21 +331,20 @@ float4 PS(VertexOut input) : SV_Target
 
         let vertex_desc = Vertex::make_desc();
         let input_layout =
-            InputLayoutDesc::default().from_input_layout(&vertex_desc);
+            InputLayoutDesc::default().from_input_elements(&vertex_desc);
 
         debug!("Created input layout");
 
         let pso_desc = GraphicsPipelineStateDesc::default()
-            .set_vertex_shader_bytecode(&vertex_bytecode)
-            .set_pixel_shader_bytecode(&pixel_bytecode)
+            .set_vs_bytecode(&vertex_bytecode)
+            .set_ps_bytecode(&pixel_bytecode)
             .set_blend_state(&BlendDesc::default())
             .set_rasterizer_state(&RasterizerDesc::default())
             .set_depth_stencil_state(&DepthStencilDesc::default())
             .set_input_layout(&input_layout)
             .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
-            .set_num_render_targets(Elements(1))
-            .set_rtv_formats(&[DxgiFormat::R8G8B8A8_UNorm])
-            .set_dsv_format(DxgiFormat::D24_UNorm_S8_UInt);
+            .set_rtv_formats(&[Format::R8G8B8A8_UNorm])
+            .set_dsv_format(Format::D24_UNorm_S8_UInt);
 
         let pso = renderer
             .device
@@ -370,13 +373,13 @@ float4 PS(VertexOut input) : SV_Target
             self.swapchain.get_current_back_buffer_index();
         let current_buffer = self
             .swapchain
-            .get_buffer(Elements::from(current_buffer_index))
+            .get_buffer(u32::from(current_buffer_index))
             .expect("Cannot get current swapchain buffer");
 
         let rtv_handle = self
             .rtv_heap
             .get_cpu_descriptor_handle_for_heap_start()
-            .advance(Elements(current_buffer_index.0 as u64));
+            .advance(current_buffer_index);
 
         HelloTriangleSample::add_transition(
             &self.command_list,
@@ -414,19 +417,13 @@ float4 PS(VertexOut input) : SV_Target
             .set_render_targets(&mut [rtv_handle], false, None);
 
         self.command_list
-            .set_vertex_buffers(Elements(0), &[self.vertex_buffers[0].view]);
+            .set_vertex_buffers(0, &[self.vertex_buffers[0].view]);
 
         self.command_list
             .set_index_buffer(&self.index_buffers[0].view);
         self.command_list
             .set_primitive_topology(PrimitiveTopology::TriangleList);
-        self.command_list.draw_indexed_instanced(
-            Elements(3),
-            Elements(1),
-            Elements(0),
-            0,
-            Elements(0),
-        );
+        self.command_list.draw_indexed_instanced(3, 1, 0, 0, 0);
 
         HelloTriangleSample::add_transition(
             &self.command_list,
@@ -474,10 +471,10 @@ impl HelloTriangleSample {
             let rtv_handle = self
                 .rtv_heap
                 .get_cpu_descriptor_handle_for_heap_start()
-                .advance(Elements(buffer_index as u64));
-            let mut buffer = self
+                .advance(buffer_index);
+            let buffer = self
                 .swapchain
-                .get_buffer(Elements::from(buffer_index))
+                .get_buffer(buffer_index)
                 .expect("Cannot obtain swapchain buffer");
             self.device.create_render_target_view(&buffer, rtv_handle);
         }
@@ -490,10 +487,10 @@ impl HelloTriangleSample {
         heap_type: HeapType,
         initial_state: ResourceStates,
     ) -> DxResult<Resource> {
-        let heap_props = HeapProperties::default().set_type(heap_type);
+        let heap_props = HeapProperties::default().set_heap_type(heap_type);
         let resource_desc = ResourceDesc::default()
             .set_dimension(ResourceDimension::Buffer)
-            .set_width(Elements::from(size.0))
+            .set_width(size.0)
             .set_layout(TextureLayout::RowMajor);
 
         device.create_committed_resource(
@@ -511,7 +508,7 @@ impl HelloTriangleSample {
         from: ResourceStates,
         to: ResourceStates,
     ) {
-        command_list.resource_barrier(&[ResourceBarrier::transition(
+        command_list.resource_barrier(&[ResourceBarrier::new_transition(
             &ResourceTransitionBarrier::default()
                 .set_resource(resource)
                 .set_state_before(from)
@@ -550,7 +547,7 @@ impl HelloTriangleSample {
         }
 
         let data = staging_buffer
-            .map(Elements(0), None)
+            .map(0, None)
             .expect("Cannot map staging buffer");
 
         unsafe {
@@ -609,7 +606,7 @@ impl HelloTriangleSample {
 
         Ok(T::from_resource(
             default_buffer,
-            Elements::from(init_data.len()),
+            init_data.len() as u32,
             Bytes::from(std::mem::size_of::<T::ElementType>()),
         ))
     }
@@ -643,7 +640,7 @@ impl HelloTriangleSample {
             source,
             entry_point,
             shader_model,
-            &[],
+            &["/Zi", "/Od"],
             &[],
         );
         match result {

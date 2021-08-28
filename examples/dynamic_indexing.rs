@@ -64,22 +64,22 @@ mod sample_assets {
             vec![
                 InputElementDesc::default()
                     .set_name(CString::new("POSITION").unwrap())
-                    .set_format(DxgiFormat::R32G32B32_Float)
+                    .set_format(Format::R32G32B32_Float)
                     .set_input_slot(0)
                     .set_offset(Bytes::from(offset_of!(Self, position))),
                 InputElementDesc::default()
                     .set_name(CString::new("NORMAL").unwrap())
-                    .set_format(DxgiFormat::R32G32B32_Float)
+                    .set_format(Format::R32G32B32_Float)
                     .set_input_slot(0)
                     .set_offset(Bytes::from(offset_of!(Self, normal))),
                 InputElementDesc::default()
                     .set_name(CString::new("TEXCOORD").unwrap())
-                    .set_format(DxgiFormat::R32G32_Float)
+                    .set_format(Format::R32G32_Float)
                     .set_input_slot(0)
                     .set_offset(Bytes::from(offset_of!(Self, uv))),
                 InputElementDesc::default()
                     .set_name(CString::new("TANGENT").unwrap())
-                    .set_format(DxgiFormat::R32G32B32_Float)
+                    .set_format(Format::R32G32B32_Float)
                     .set_input_slot(0)
                     .set_offset(Bytes::from(offset_of!(Self, tangent))),
             ]
@@ -109,7 +109,7 @@ mod sample_assets {
         pub width: u32,
         pub height: u32,
         pub mip_levels: u16,
-        pub format: DxgiFormat,
+        pub format: Format,
         pub data: [DataProperties; D3D12_REQ_MIP_LEVELS as usize],
     }
 
@@ -118,7 +118,7 @@ mod sample_assets {
             width: 1024,
             height: 1024,
             mip_levels: 1,
-            format: DxgiFormat::BC1_UNorm,
+            format: Format::BC1_UNorm,
             data: [
                 DataProperties {
                     offset: 0,
@@ -474,7 +474,7 @@ impl DynamicIndexingSample {
         let _debug_printer = make_debug_printer!(&self.info_queue);
 
         let depth_stencil_desc = DepthStencilViewDesc::default()
-            .set_format(DxgiFormat::D32_Float)
+            .set_format(Format::D32_Float)
             .set_view_dimension(DsvDimension::Texture2D)
             .set_flags(DsvFlags::None);
 
@@ -487,7 +487,7 @@ impl DynamicIndexingSample {
                     .set_dimension(ResourceDimension::Texture2D)
                     .set_width(WINDOW_WIDTH.into())
                     .set_height(WINDOW_HEIGHT.into())
-                    .set_format(DxgiFormat::D32_Float)
+                    .set_format(Format::D32_Float)
                     .set_flags(
                         ResourceFlags::AllowDepthStencil
                             | ResourceFlags::DenyShaderResource,
@@ -495,7 +495,7 @@ impl DynamicIndexingSample {
                 ResourceStates::DepthWrite,
                 Some(
                     &ClearValue::default()
-                        .set_format(DxgiFormat::D32_Float)
+                        .set_format(Format::D32_Float)
                         .set_depth_stencil(
                             &DepthStencilValue::default()
                                 .set_depth(1.)
@@ -692,7 +692,7 @@ impl DynamicIndexingSample {
 
     fn setup_textures(&mut self) {
         let texture_desc = ResourceDesc::default()
-            .set_format(DxgiFormat::R8G8B8A8_UNorm)
+            .set_format(Format::R8G8B8A8_UNorm)
             .set_width(CITY_MATERIAL_TEXTURE_WIDTH)
             .set_height(CITY_MATERIAL_TEXTURE_HEIGHT)
             .set_dimension(ResourceDimension::Texture2D);
@@ -745,7 +745,7 @@ impl DynamicIndexingSample {
                     .set_shader4_component_mapping(
                         ShaderComponentMapping::default(),
                     )
-                    .set_format(DxgiFormat::R8G8B8A8_UNorm)
+                    .set_format(Format::R8G8B8A8_UNorm)
                     .set_view_dimension(SrvDimension::Texture2D)
                     .set_texture_2d(
                         &Tex2DSrv::default().set_mip_levels(Elements(1)),
@@ -1206,8 +1206,8 @@ fn create_pipeline_state(
         .set_depth_stencil_state(&DepthStencilDesc::default())
         .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
         .set_num_render_targets(Elements(1))
-        .set_rtv_formats(&[DxgiFormat::R8G8B8A8_UNorm])
-        .set_dsv_format(DxgiFormat::D32_Float);
+        .set_rtv_formats(&[Format::R8G8B8A8_UNorm])
+        .set_dsv_format(Format::D32_Float);
 
     let pso = device
         .create_graphics_pipeline_state(&pso_desc)
@@ -1478,7 +1478,7 @@ fn create_swapchain(
     command_queue: &CommandQueue,
     hwnd: *mut std::ffi::c_void,
 ) -> DxgiSwapchain {
-    let swapchain_desc = DxgiSwapchainDesc::default()
+    let swapchain_desc = SwapchainDesc::default()
         .set_width(WINDOW_WIDTH)
         .set_height(WINDOW_HEIGHT)
         .set_buffer_count(Elements::from(FRAMES_IN_FLIGHT));

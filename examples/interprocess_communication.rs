@@ -122,12 +122,12 @@ impl Vertex {
         vec![
             InputElementDesc::default()
                 .set_name(CString::new("POSITION").unwrap())
-                .set_format(DxgiFormat::R32G32B32A32_Float)
+                .set_format(Format::R32G32B32A32_Float)
                 .set_input_slot(0)
                 .set_offset(Bytes::from(offset_of!(Self, position))),
             InputElementDesc::default()
                 .set_name(CString::new("COLOR").unwrap())
-                .set_format(DxgiFormat::R32G32B32A32_Float)
+                .set_format(Format::R32G32B32A32_Float)
                 .set_input_slot(0)
                 .set_offset(Bytes::from(offset_of!(Self, color))),
         ]
@@ -964,8 +964,8 @@ fn create_pso(
         .set_depth_stencil_state(&DepthStencilDesc::default())
         .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
         .set_num_render_targets(Elements(1))
-        .set_rtv_formats(&[DxgiFormat::R8G8B8A8_UNorm])
-        .set_dsv_format(DxgiFormat::D32_Float);
+        .set_rtv_formats(&[Format::R8G8B8A8_UNorm])
+        .set_dsv_format(Format::D32_Float);
 
     let pso = device
         .create_graphics_pipeline_state(&pso_desc)
@@ -1019,7 +1019,7 @@ fn create_shared_resource_desc(device: &Device) -> (Bytes, ResourceDesc) {
     let cross_adapter_desc = ResourceDesc::default()
         .set_dimension(ResourceDimension::Texture2D)
         .set_layout(TextureLayout::RowMajor)
-        .set_format(DxgiFormat::R8G8B8A8_UNorm)
+        .set_format(Format::R8G8B8A8_UNorm)
         .set_width(WINDOW_WIDTH.into())
         .set_height(WINDOW_HEIGHT.into())
         .set_flags(ResourceFlags::AllowCrossAdapter);
@@ -1046,12 +1046,12 @@ fn create_frame_resources(
     swapchain: &DxgiSwapchain,
 ) -> (Vec<Resource>, Vec<CommandAllocator>) {
     let clear_value = ClearValue::default()
-        .set_format(DxgiFormat::R8G8B8A8_UNorm)
+        .set_format(Format::R8G8B8A8_UNorm)
         .set_color(CLEAR_COLOR);
 
     let render_target_desc = ResourceDesc::default()
         .set_dimension(ResourceDimension::Texture2D)
-        .set_format(DxgiFormat::R8G8B8A8_UNorm)
+        .set_format(Format::R8G8B8A8_UNorm)
         .set_width(WINDOW_WIDTH.into())
         .set_height(WINDOW_HEIGHT.into())
         .set_flags(ResourceFlags::AllowRenderTarget);
@@ -1122,7 +1122,7 @@ fn create_swapchain(
     command_queue: &CommandQueue,
     hwnd: *mut std::ffi::c_void,
 ) -> DxgiSwapchain {
-    let swapchain_desc = DxgiSwapchainDesc::default()
+    let swapchain_desc = SwapchainDesc::default()
         .set_width(WINDOW_WIDTH)
         .set_height(WINDOW_HEIGHT)
         .set_buffer_count(FRAMES_IN_FLIGHT.into());

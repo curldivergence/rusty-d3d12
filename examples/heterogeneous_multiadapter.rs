@@ -212,7 +212,7 @@ impl Vertex {
     pub fn make_desc() -> InputLayout {
         vec![InputElementDesc::default()
             .set_name(CString::new("POSITION").unwrap())
-            .set_format(DxgiFormat::R32G32B32_Float)
+            .set_format(Format::R32G32B32_Float)
             .set_input_slot(0)
             .set_offset(Bytes::from(offset_of!(Self, position)))]
     }
@@ -229,12 +229,12 @@ impl BlurVertex {
         vec![
             InputElementDesc::default()
                 .set_name(CString::new("POSITION").unwrap())
-                .set_format(DxgiFormat::R32G32B32_Float)
+                .set_format(Format::R32G32B32_Float)
                 .set_input_slot(0)
                 .set_offset(Bytes::from(offset_of!(Self, position))),
             InputElementDesc::default()
                 .set_name(CString::new("TEXCOORD").unwrap())
-                .set_format(DxgiFormat::R32G32_Float)
+                .set_format(Format::R32G32_Float)
                 .set_input_slot(0)
                 .set_offset(Bytes::from(offset_of!(Self, uv))),
         ]
@@ -602,7 +602,7 @@ impl Pipeline {
                         HeapFlags::None,
                         &ResourceDesc::default()
                             .set_dimension(ResourceDimension::Texture2D)
-                            .set_format(DxgiFormat::R8G8B8A8_UNorm)
+                            .set_format(Format::R8G8B8A8_UNorm)
                             .set_width(WINDOW_WIDTH.into())
                             .set_height(WINDOW_HEIGHT.into())
                             .set_flags(ResourceFlags::AllowRenderTarget),
@@ -1852,10 +1852,10 @@ fn create_depth_stencil(
     dsv_heap: &DescriptorHeap,
 ) -> Resource {
     let depth_stencil_desc = DepthStencilViewDesc::default()
-        .set_format(DxgiFormat::D32_Float)
+        .set_format(Format::D32_Float)
         .set_view_dimension(DsvDimension::Texture2D);
     let clear_value = ClearValue::default()
-        .set_format(DxgiFormat::D32_Float)
+        .set_format(Format::D32_Float)
         .set_depth_stencil(
             &DepthStencilValue::default().set_depth(1.).set_stencil(0),
         );
@@ -1865,7 +1865,7 @@ fn create_depth_stencil(
             HeapFlags::None,
             &ResourceDesc::default()
                 .set_dimension(ResourceDimension::Texture2D)
-                .set_format(DxgiFormat::D32_Float)
+                .set_format(Format::D32_Float)
                 .set_width(WINDOW_WIDTH.into())
                 .set_height(WINDOW_HEIGHT.into())
                 .set_flags(ResourceFlags::AllowDepthStencil),
@@ -2149,8 +2149,8 @@ fn create_psos(
         .set_depth_stencil_state(&DepthStencilDesc::default())
         .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
         .set_num_render_targets(Elements(1))
-        .set_rtv_formats(&[DxgiFormat::R8G8B8A8_UNorm])
-        .set_dsv_format(DxgiFormat::D32_Float);
+        .set_rtv_formats(&[Format::R8G8B8A8_UNorm])
+        .set_dsv_format(Format::D32_Float);
 
     let pso = devices[0]
         .create_graphics_pipeline_state(&pso_desc)
@@ -2207,7 +2207,7 @@ fn create_psos(
         )
         .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
         .set_num_render_targets(Elements(1))
-        .set_rtv_formats(&[DxgiFormat::R8G8B8A8_UNorm]);
+        .set_rtv_formats(&[Format::R8G8B8A8_UNorm]);
     let blur_pso_u = devices[1]
         .create_graphics_pipeline_state(&blur_pso_desc_u)
         .expect("Cannot create PSO");
@@ -2230,7 +2230,7 @@ fn create_psos(
         )
         .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
         .set_num_render_targets(Elements(1))
-        .set_rtv_formats(&[DxgiFormat::R8G8B8A8_UNorm]);
+        .set_rtv_formats(&[Format::R8G8B8A8_UNorm]);
     let blur_pso_v = devices[1]
         .create_graphics_pipeline_state(&blur_pso_desc_v)
         .expect("Cannot create PSO");
@@ -2379,7 +2379,7 @@ fn create_shared_resource_descs(
         info!("Cross adapter textures are supported");
         cross_adapter_desc = ResourceDesc::default()
             .set_dimension(ResourceDimension::Texture2D)
-            .set_format(DxgiFormat::R8G8B8A8_UNorm)
+            .set_format(Format::R8G8B8A8_UNorm)
             .set_width(WINDOW_WIDTH.into())
             .set_height(WINDOW_HEIGHT.into())
             .set_layout(TextureLayout::RowMajor)
@@ -2397,7 +2397,7 @@ fn create_shared_resource_descs(
         let (layout, _, _, _) = devices[0].get_copyable_footprints(
             &ResourceDesc::default()
                 .set_dimension(ResourceDimension::Texture2D)
-                .set_format(DxgiFormat::R8G8B8A8_UNorm)
+                .set_format(Format::R8G8B8A8_UNorm)
                 .set_width(WINDOW_WIDTH.into())
                 .set_height(WINDOW_HEIGHT.into())
                 .set_flags(ResourceFlags::AllowRenderTarget),
@@ -2437,12 +2437,12 @@ fn create_frame_resources(
     [CommandAllocator; FRAMES_IN_FLIGHT],
 ) {
     let clear_value = ClearValue::default()
-        .set_format(DxgiFormat::R8G8B8A8_UNorm)
+        .set_format(Format::R8G8B8A8_UNorm)
         .set_color(CLEAR_COLOR);
 
     let render_target_desc = ResourceDesc::default()
         .set_dimension(ResourceDimension::Texture2D)
-        .set_format(DxgiFormat::R8G8B8A8_UNorm)
+        .set_format(Format::R8G8B8A8_UNorm)
         .set_width(WINDOW_WIDTH.into())
         .set_height(WINDOW_HEIGHT.into())
         .set_flags(ResourceFlags::AllowRenderTarget);
@@ -2636,7 +2636,7 @@ fn create_swapchain(
     command_queue: &CommandQueue,
     hwnd: *mut std::ffi::c_void,
 ) -> DxgiSwapchain {
-    let swapchain_desc = DxgiSwapchainDesc::default()
+    let swapchain_desc = SwapchainDesc::default()
         .set_width(WINDOW_WIDTH)
         .set_height(WINDOW_HEIGHT)
         .set_buffer_count(FRAMES_IN_FLIGHT.into());

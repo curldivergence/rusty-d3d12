@@ -59,12 +59,12 @@ impl Vertex {
         vec![
             InputElementDesc::default()
                 .set_name(CString::new("POSITION").unwrap())
-                .set_format(DxgiFormat::R32G32B32_Float)
+                .set_format(Format::R32G32B32_Float)
                 .set_input_slot(0)
                 .set_offset(Bytes(offset_of!(Self, position) as u64)),
             InputElementDesc::default()
                 .set_name(CString::new("TEXCOORD").unwrap())
-                .set_format(DxgiFormat::R32G32_Float)
+                .set_format(Format::R32G32_Float)
                 .set_input_slot(0)
                 .set_offset(Bytes(offset_of!(Self, uv) as u64)),
         ]
@@ -291,7 +291,7 @@ impl HelloTextureSample {
                     &HeapProperties::default().set_type(HeapType::Default),
                     HeapFlags::None,
                     &ResourceDesc::default()
-                        .set_format(DxgiFormat::R8G8B8A8_UNorm)
+                        .set_format(Format::R8G8B8A8_UNorm)
                         .set_width(Elements::from(texture_width.0))
                         .set_height(Elements::from(texture_height.0))
                         .set_dimension(ResourceDimension::Texture2D),
@@ -331,7 +331,7 @@ impl HelloTextureSample {
 
         let srv_desc = ShaderResourceViewDesc::default()
             .set_shader4_component_mapping(ShaderComponentMapping::default())
-            .set_format(DxgiFormat::R8G8B8A8_UNorm)
+            .set_format(Format::R8G8B8A8_UNorm)
             .set_view_dimension(SrvDimension::Texture2D)
             .set_texture_2d(&Tex2DSrv::default().set_mip_levels(Elements(1)));
         self.device.create_shader_resource_view(
@@ -543,7 +543,7 @@ fn create_pipeline_state(
         .set_depth_stencil_state(&DepthStencilDesc::default())
         .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
         .set_num_render_targets(Elements(1))
-        .set_rtv_formats(&[DxgiFormat::R8G8B8A8_UNorm]);
+        .set_rtv_formats(&[Format::R8G8B8A8_UNorm]);
 
     let pso = device
         .create_graphics_pipeline_state(&pso_desc)
@@ -716,7 +716,7 @@ fn create_swapchain(
     command_queue: &CommandQueue,
     hwnd: *mut std::ffi::c_void,
 ) -> DxgiSwapchain {
-    let swapchain_desc = DxgiSwapchainDesc::default()
+    let swapchain_desc = SwapchainDesc::default()
         .set_width(WINDOW_WIDTH)
         .set_height(WINDOW_HEIGHT)
         .set_buffer_count(Elements::from(FRAMES_IN_FLIGHT));

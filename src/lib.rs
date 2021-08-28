@@ -650,7 +650,7 @@ impl DxgiFactory {
         &self,
         command_queue: &CommandQueue,
         window_handle: HWND,
-        desc: &DxgiSwapchainDesc,
+        desc: &SwapchainDesc,
     ) -> DxResult<DxgiSwapchain> {
         let mut temp_hw_swapchain: *mut IDXGISwapChain1 = std::ptr::null_mut();
         unsafe {
@@ -703,8 +703,8 @@ impl_com_object_refcount_unnamed!(DxgiAdapter);
 impl_com_object_clone_drop!(DxgiAdapter);
 
 impl DxgiAdapter {
-    pub fn get_desc(&self) -> DxResult<DxgiAdapterDesc> {
-        let mut hw_adapter_desc = DxgiAdapterDesc::default();
+    pub fn get_desc(&self) -> DxResult<AdapterDesc> {
+        let mut hw_adapter_desc = AdapterDesc::default();
         unsafe {
             dx_try!(self.this, GetDesc1, &mut hw_adapter_desc.0);
         }

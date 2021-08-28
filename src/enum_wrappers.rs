@@ -91,7 +91,7 @@ pub enum ResourceDimension {
 
 #[derive(Debug, Clone, Copy)]
 #[repr(i32)]
-pub enum DxgiFormat {
+pub enum Format {
     Unknown = DXGI_FORMAT_DXGI_FORMAT_UNKNOWN,
     R32G32B32A32_Typeless = DXGI_FORMAT_DXGI_FORMAT_R32G32B32A32_TYPELESS,
     R32G32B32A32_Float = DXGI_FORMAT_DXGI_FORMAT_R32G32B32A32_FLOAT,
@@ -214,7 +214,7 @@ pub enum DxgiFormat {
     ForceUInt = DXGI_FORMAT_DXGI_FORMAT_FORCE_UINT,
 }
 
-impl DxgiFormat {
+impl Format {
     pub fn get_size(self) -> Bytes {
         match self {
             Self::R16_UInt => Bytes(2),
@@ -2380,7 +2380,7 @@ pub enum ResourceHeapTier {
 }
 
 bitflags! {
-    pub struct DxgiUsage: u32 {
+    pub struct Usage: u32 {
         const ShaderInput = DXGI_USAGE_SHADER_INPUT;
         const RenderTargetOutput =
         DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -2396,7 +2396,7 @@ bitflags! {
 
 #[derive(Copy, Clone)]
 #[repr(i32)]
-pub enum DxgiScaling {
+pub enum Scaling {
     Stretch = DXGI_SCALING_DXGI_SCALING_STRETCH,
     None = DXGI_SCALING_DXGI_SCALING_NONE,
     AspectRatioStretch = DXGI_SCALING_DXGI_SCALING_ASPECT_RATIO_STRETCH,
@@ -2404,7 +2404,7 @@ pub enum DxgiScaling {
 
 #[derive(Copy, Clone)]
 #[repr(i32)]
-pub enum DxgiSwapEffect {
+pub enum SwapEffect {
     Discard = DXGI_SWAP_EFFECT_DXGI_SWAP_EFFECT_DISCARD,
     Sequential = DXGI_SWAP_EFFECT_DXGI_SWAP_EFFECT_SEQUENTIAL,
     FlipSequential = DXGI_SWAP_EFFECT_DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL,
@@ -2413,7 +2413,7 @@ pub enum DxgiSwapEffect {
 
 #[derive(Copy, Clone)]
 #[repr(i32)]
-pub enum DxgiAlphaMode {
+pub enum AlphaMode {
     Unspecified = DXGI_ALPHA_MODE_DXGI_ALPHA_MODE_UNSPECIFIED,
     Premultiplied = DXGI_ALPHA_MODE_DXGI_ALPHA_MODE_PREMULTIPLIED,
     Straight = DXGI_ALPHA_MODE_DXGI_ALPHA_MODE_STRAIGHT,
@@ -2452,7 +2452,7 @@ pub enum QueryType {
 }
 
 bitflags! {
-    pub struct DxgiSwapChainFlags: i32 {
+    pub struct SwapChainFlags: i32 {
         const NonPrerotated = DXGI_SWAP_CHAIN_FLAG_DXGI_SWAP_CHAIN_FLAG_NONPREROTATED;
         const AllowModeSwitch = DXGI_SWAP_CHAIN_FLAG_DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
         const GdiCompatible = DXGI_SWAP_CHAIN_FLAG_DXGI_SWAP_CHAIN_FLAG_GDI_COMPATIBLE;

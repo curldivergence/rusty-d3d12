@@ -73,7 +73,7 @@ impl Vertex {
     fn make_desc() -> InputLayout {
         vec![InputElementDesc::default()
             .set_name(CString::new("POSITION").unwrap())
-            .set_format(DxgiFormat::R32G32B32_Float)
+            .set_format(Format::R32G32B32_Float)
             .set_input_slot(0)
             .set_offset(Bytes(offset_of!(Self, position) as u64))]
     }
@@ -584,7 +584,7 @@ impl HelloMeshShadersSample {
         let _debug_printer = make_debug_printer!(&self.info_queue);
 
         let depth_stencil_desc = DepthStencilViewDesc::default()
-            .set_format(DxgiFormat::D32_Float)
+            .set_format(Format::D32_Float)
             .set_view_dimension(DsvDimension::Texture2D)
             .set_flags(DsvFlags::None);
 
@@ -597,7 +597,7 @@ impl HelloMeshShadersSample {
                     .set_dimension(ResourceDimension::Texture2D)
                     .set_width(WINDOW_WIDTH.into())
                     .set_height(WINDOW_HEIGHT.into())
-                    .set_format(DxgiFormat::D32_Float)
+                    .set_format(Format::D32_Float)
                     .set_flags(
                         ResourceFlags::AllowDepthStencil
                             | ResourceFlags::DenyShaderResource,
@@ -605,7 +605,7 @@ impl HelloMeshShadersSample {
                 ResourceStates::DepthWrite,
                 Some(
                     &ClearValue::default()
-                        .set_format(DxgiFormat::D32_Float)
+                        .set_format(Format::D32_Float)
                         .set_depth_stencil(
                             &DepthStencilValue::default()
                                 .set_depth(1.)
@@ -698,7 +698,7 @@ fn create_pipeline_state(
         .set_blend_state(&BlendDesc::default())
         .set_depth_stencil_state(&DepthStencilDesc::default())
         .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
-        .set_rtv_formats(&[DxgiFormat::R8G8B8A8_UNorm]);
+        .set_rtv_formats(&[Format::R8G8B8A8_UNorm]);
 
     let pso_desc = PipelineStateStreamDesc::default()
         .set_pipeline_state_subobject_stream(
@@ -797,7 +797,7 @@ fn create_swapchain(
     command_queue: &CommandQueue,
     hwnd: *mut std::ffi::c_void,
 ) -> DxgiSwapchain {
-    let swapchain_desc = DxgiSwapchainDesc::default()
+    let swapchain_desc = SwapchainDesc::default()
         .set_width(WINDOW_WIDTH)
         .set_height(WINDOW_HEIGHT)
         .set_buffer_count(Elements::from(FRAMES_IN_FLIGHT));

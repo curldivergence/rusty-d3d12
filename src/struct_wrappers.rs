@@ -2,8 +2,9 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
-use std::ffi::CStr;
+use std::ffi::{CStr, CString, NulError};
 use std::slice;
+use std::str::Utf8Error;
 use std::{convert::TryFrom, marker::PhantomData, mem::size_of};
 
 use widestring::WideCStr;
@@ -25,11 +26,11 @@ pub struct GpuVirtualAddress(pub D3D12_GPU_VIRTUAL_ADDRESS);
 
 // ToDo: such fields should not be public?
 #[repr(transparent)]
-pub struct DxgiSwapchainDesc(pub DXGI_SWAP_CHAIN_DESC1);
+pub struct SwapchainDesc(pub DXGI_SWAP_CHAIN_DESC1);
 
-impl Default for DxgiSwapchainDesc {
+impl Default for SwapchainDesc {
     fn default() -> Self {
-        DxgiSwapchainDesc(DXGI_SWAP_CHAIN_DESC1 {
+        SwapchainDesc(DXGI_SWAP_CHAIN_DESC1 {
             Width: 0,
             Height: 0,
             Format: DXGI_FORMAT_DXGI_FORMAT_R8G8B8A8_UNORM,
@@ -46,7 +47,7 @@ impl Default for DxgiSwapchainDesc {
     }
 }
 
-impl DxgiSwapchainDesc {
+impl SwapchainDesc {
     pub fn set_width(mut self, width: u32) -> Self {
         self.0.Width = width;
         self
@@ -65,12 +66,12 @@ impl DxgiSwapchainDesc {
         self.0.Height
     }
 
-    pub fn set_format(mut self, format: DxgiFormat) -> Self {
+    pub fn set_format(mut self, format: Format) -> Self {
         self.0.Format = format as i32;
         self
     }
 
-    pub fn format(&self) -> DxgiFormat {
+    pub fn format(&self) -> Format {
         unsafe { std::mem::transmute(self.0.Format) }
     }
 
@@ -92,13 +93,13 @@ impl DxgiSwapchainDesc {
         SampleDesc(self.0.SampleDesc)
     }
 
-    pub fn set_buffer_usage(mut self, buffer_usage: DxgiUsage) -> Self {
+    pub fn set_buffer_usage(mut self, buffer_usage: Usage) -> Self {
         self.0.BufferUsage = buffer_usage.bits();
         self
     }
 
-    pub fn buffer_usage(&self) -> DxgiUsage {
-        unsafe { DxgiUsage::from_bits_unchecked(self.0.BufferUsage) }
+    pub fn buffer_usage(&self) -> Usage {
+        unsafe { Usage::from_bits_unchecked(self.0.BufferUsage) }
     }
 
     pub fn set_buffer_count(mut self, buffer_count: u32) -> Self {
@@ -110,55 +111,55 @@ impl DxgiSwapchainDesc {
         self.0.BufferCount
     }
 
-    pub fn set_scaling(mut self, scaling: DxgiScaling) -> Self {
+    pub fn set_scaling(mut self, scaling: Scaling) -> Self {
         self.0.Scaling = scaling as i32;
         self
     }
 
-    pub fn scaling(&self) -> DxgiScaling {
+    pub fn scaling(&self) -> Scaling {
         unsafe { std::mem::transmute(self.0.Scaling) }
     }
 
-    pub fn set_swap_effect(mut self, swap_effect: DxgiSwapEffect) -> Self {
+    pub fn set_swap_effect(mut self, swap_effect: SwapEffect) -> Self {
         self.0.SwapEffect = swap_effect as i32;
         self
     }
 
-    pub fn swap_effect(&self) -> DxgiSwapEffect {
+    pub fn swap_effect(&self) -> SwapEffect {
         unsafe { std::mem::transmute(self.0.SwapEffect) }
     }
 
-    pub fn set_alpha_mode(mut self, alpha_mode: DxgiAlphaMode) -> Self {
+    pub fn set_alpha_mode(mut self, alpha_mode: AlphaMode) -> Self {
         self.0.AlphaMode = alpha_mode as i32;
         self
     }
 
-    pub fn alpha_mode(&self) -> DxgiAlphaMode {
+    pub fn alpha_mode(&self) -> AlphaMode {
         unsafe { std::mem::transmute(self.0.AlphaMode) }
     }
 
-    pub fn set_flags(mut self, flags: DxgiSwapChainFlags) -> Self {
+    pub fn set_flags(mut self, flags: SwapChainFlags) -> Self {
         self.0.Flags = flags.bits() as u32;
         self
     }
 
-    pub fn flags(&self) -> DxgiSwapChainFlags {
+    pub fn flags(&self) -> SwapChainFlags {
         unsafe { std::mem::transmute(self.0.Flags) }
     }
 }
 
 #[repr(transparent)]
-pub struct DxgiAdapterDesc(pub DXGI_ADAPTER_DESC1);
+pub struct AdapterDesc(pub DXGI_ADAPTER_DESC1);
 
-impl DxgiAdapterDesc {
+impl AdapterDesc {
     pub fn is_software(&self) -> bool {
         self.0.Flags & DXGI_ADAPTER_FLAG_DXGI_ADAPTER_FLAG_SOFTWARE as u32 != 0
     }
 }
 
-impl Default for DxgiAdapterDesc {
+impl Default for AdapterDesc {
     fn default() -> Self {
-        DxgiAdapterDesc(DXGI_ADAPTER_DESC1 {
+        AdapterDesc(DXGI_ADAPTER_DESC1 {
             Description: [0; 128],
             VendorId: 0,
             DeviceId: 0,
@@ -176,7 +177,7 @@ impl Default for DxgiAdapterDesc {
     }
 }
 
-impl std::fmt::Display for DxgiAdapterDesc {
+impl std::fmt::Display for AdapterDesc {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -203,15 +204,23 @@ impl std::fmt::Display for DxgiAdapterDesc {
     }
 }
 
-impl std::fmt::Debug for DxgiAdapterDesc {
+impl std::fmt::Debug for AdapterDesc {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self)
     }
 }
 
-#[derive(Default)]
 #[repr(transparent)]
 pub struct SampleDesc(pub DXGI_SAMPLE_DESC);
+
+impl Default for SampleDesc {
+    fn default() -> Self {
+        Self(DXGI_SAMPLE_DESC {
+            Count: 1,
+            Quality: 0,
+        })
+    }
+}
 
 impl SampleDesc {
     pub fn set_count(mut self, count: u32) -> Self {
@@ -233,9 +242,25 @@ impl SampleDesc {
     }
 }
 
-#[derive(Default)]
 #[repr(transparent)]
 pub struct ResourceDesc(pub D3D12_RESOURCE_DESC);
+
+impl Default for ResourceDesc {
+    fn default() -> Self {
+        ResourceDesc(D3D12_RESOURCE_DESC {
+            Dimension: ResourceDimension::Unknown as i32,
+            Alignment: D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT as u64,
+            Width: 0,
+            Height: 1,
+            DepthOrArraySize: 1,
+            MipLevels: 1,
+            Format: Format::Unknown as i32,
+            SampleDesc: SampleDesc::default().0,
+            Layout: TextureLayout::Unknown as i32,
+            Flags: ResourceFlags::None.bits(),
+        })
+    }
+}
 
 impl ResourceDesc {
     pub fn set_dimension(mut self, dimension: ResourceDimension) -> Self {
@@ -292,12 +317,12 @@ impl ResourceDesc {
         self.0.MipLevels
     }
 
-    pub fn set_format(mut self, format: DxgiFormat) -> Self {
+    pub fn set_format(mut self, format: Format) -> Self {
         self.0.Format = format as i32;
         self
     }
 
-    pub fn format(&self) -> DxgiFormat {
+    pub fn format(&self) -> Format {
         unsafe { std::mem::transmute(self.0.Format) }
     }
 
@@ -921,7 +946,7 @@ impl<'a> Default for InputElementDesc<'a> {
         InputElementDesc(D3D12_INPUT_ELEMENT_DESC {
             SemanticName: std::ptr::null(),
             SemanticIndex: 0,
-            Format: DxgiFormat::Unknown as i32,
+            Format: Format::Unknown as i32,
             InputSlot: 0,
             AlignedByteOffset: 0,
             InputSlotClass:
@@ -936,14 +961,18 @@ impl<'a> Default for InputElementDesc<'a> {
 // ToDo: macro for generating input element desc from vertex struct type?
 
 impl<'a> InputElementDesc<'a> {
-    pub fn set_name(mut self, name: &'a CStr) -> InputElementDesc<'a> {
-        self.0.SemanticName = name.as_ptr() as *const i8;
+    pub fn set_name(
+        mut self,
+        name: &'a str,
+    ) -> Result<InputElementDesc<'a>, NulError> {
+        let owned = CString::new(name)?;
+        self.0.SemanticName = owned.into_raw() as *const i8;
         self.1 = PhantomData;
-        self
+        Ok(self)
     }
 
-    pub fn name(&self) -> &'a std::ffi::CStr {
-        unsafe { std::ffi::CStr::from_ptr(self.0.SemanticName) }
+    pub fn name(&self) -> Result<&'a str, Utf8Error> {
+        Ok(unsafe { std::ffi::CStr::from_ptr(self.0.SemanticName).to_str()? })
     }
 
     pub fn set_index(mut self, index: u32) -> Self {
@@ -955,12 +984,12 @@ impl<'a> InputElementDesc<'a> {
         self.0.SemanticIndex
     }
 
-    pub fn set_format(mut self, format: DxgiFormat) -> Self {
+    pub fn set_format(mut self, format: Format) -> Self {
         self.0.Format = format as i32;
         self
     }
 
-    pub fn format(&self) -> DxgiFormat {
+    pub fn format(&self) -> Format {
         unsafe { std::mem::transmute(self.0.Format) }
     }
 
@@ -1001,6 +1030,20 @@ impl<'a> InputElementDesc<'a> {
     }
 }
 
+// We need this because we transfer ownership of the CString "name" into
+// the raw C string (const char*) "SemanticName". Since this memory has to be
+// valid until the destruction of this struct, we need to regain that memory
+// back so it can be destroyed correctly
+impl<'a> Drop for InputElementDesc<'a> {
+    fn drop(&mut self) {
+        unsafe {
+            let _regained_name = CString::from_raw(
+                self.0.SemanticName as *mut std::os::raw::c_char,
+            );
+        }
+    }
+}
+
 #[derive(Copy, Clone, Default)]
 #[repr(transparent)]
 pub struct IndexBufferView(pub D3D12_INDEX_BUFFER_VIEW);
@@ -1011,9 +1054,9 @@ impl IndexBufferView {
         element_count: u32,
         element_size: Bytes,
     ) -> Self {
-        let format: DxgiFormat = match element_size {
-            Bytes(2) => DxgiFormat::R16_UInt,
-            Bytes(4) => DxgiFormat::R32_UInt,
+        let format: Format = match element_size {
+            Bytes(2) => Format::R16_UInt,
+            Bytes(4) => Format::R32_UInt,
             _ => panic!("Wrong format for index buffer"), // ToDo: DONT PANIC
         };
         IndexBufferView(D3D12_INDEX_BUFFER_VIEW {
@@ -1044,12 +1087,12 @@ impl IndexBufferView {
         Bytes::from(self.0.SizeInBytes)
     }
 
-    pub fn set_format(mut self, format: DxgiFormat) -> Self {
+    pub fn set_format(mut self, format: Format) -> Self {
         self.0.Format = format as i32;
         self
     }
 
-    pub fn format(&self) -> DxgiFormat {
+    pub fn format(&self) -> Format {
         unsafe { std::mem::transmute(self.0.Format) }
     }
 }
@@ -1083,7 +1126,7 @@ impl<'a> ShaderBytecode<'a> {
 
 pub struct SoDeclarationEntry<'a>(
     pub D3D12_SO_DECLARATION_ENTRY,
-    PhantomData<&'a CStr>,
+    PhantomData<&'a str>,
 );
 
 impl<'a> SoDeclarationEntry<'a> {
@@ -1096,13 +1139,18 @@ impl<'a> SoDeclarationEntry<'a> {
         self.0.Stream
     }
 
-    pub fn set_semantic_name(mut self, name: &'a CStr) -> Self {
-        self.0.SemanticName = name.as_ptr();
-        self
+    pub fn set_semantic_name(
+        mut self,
+        name: &'a str,
+    ) -> Result<SoDeclarationEntry<'a>, NulError> {
+        let owned = CString::new(name)?;
+        self.0.SemanticName = owned.into_raw() as *const i8;
+        self.1 = PhantomData;
+        Ok(self)
     }
 
-    pub fn semantic_name(&self) -> &std::ffi::CStr {
-        unsafe { std::ffi::CStr::from_ptr(self.0.SemanticName) }
+    pub fn semantic_name(&self) -> Result<&'a str, Utf8Error> {
+        Ok(unsafe { std::ffi::CStr::from_ptr(self.0.SemanticName).to_str()? })
     }
 
     pub fn set_semantic_index(mut self, semantic_index: u32) -> Self {
@@ -1139,6 +1187,20 @@ impl<'a> SoDeclarationEntry<'a> {
 
     pub fn output_slot(&self) -> u8 {
         self.0.OutputSlot
+    }
+}
+
+// We need this because we transfer ownership of the CString "name" into
+// the raw C string (const char*) "SemanticName". Since this memory has to be
+// valid until the destruction of this struct, we need to regain that memory
+// back so it can be destroyed correctly
+impl<'a> Drop for SoDeclarationEntry<'a> {
+    fn drop(&mut self) {
+        unsafe {
+            let _regained_name = CString::from_raw(
+                self.0.SemanticName as *mut std::os::raw::c_char,
+            );
+        }
     }
 }
 
@@ -1208,9 +1270,26 @@ impl<'a> StreamOutputDesc<'a> {
     }
 }
 
-#[derive(Default)]
 #[repr(transparent)]
 pub struct RenderTargetBlendDesc(pub D3D12_RENDER_TARGET_BLEND_DESC);
+
+impl Default for RenderTargetBlendDesc {
+    fn default() -> Self {
+        Self(D3D12_RENDER_TARGET_BLEND_DESC {
+            BlendEnable: 0,
+            LogicOpEnable: 0,
+            SrcBlend: Blend::One as i32,
+            DestBlend: Blend::Zero as i32,
+            BlendOp: BlendOp::Add as i32,
+            SrcBlendAlpha: Blend::One as i32,
+            DestBlendAlpha: Blend::Zero as i32,
+            BlendOpAlpha: BlendOp::Add as i32,
+            LogicOp: LogicOp::NoOp as i32,
+            RenderTargetWriteMask:
+                D3D12_COLOR_WRITE_ENABLE_D3D12_COLOR_WRITE_ENABLE_ALL as u8,
+        })
+    }
+}
 
 impl RenderTargetBlendDesc {
     pub fn set_blend_enable(mut self, blend_enable: bool) -> Self {
@@ -1307,9 +1386,17 @@ impl RenderTargetBlendDesc {
     }
 }
 
-#[derive(Default)]
 #[repr(transparent)]
 pub struct BlendDesc(pub D3D12_BLEND_DESC);
+impl Default for BlendDesc {
+    fn default() -> Self {
+        Self(D3D12_BLEND_DESC {
+            AlphaToCoverageEnable: 0,
+            IndependentBlendEnable: 0,
+            RenderTarget: [RenderTargetBlendDesc::default().0; 8usize],
+        })
+    }
+}
 
 impl BlendDesc {
     pub fn set_alpha_to_coverage_enable(
@@ -1353,9 +1440,27 @@ impl BlendDesc {
         unsafe { std::mem::transmute(self.0.RenderTarget) }
     }
 }
-#[derive(Default)]
+
 #[repr(transparent)]
 pub struct RasterizerDesc(pub D3D12_RASTERIZER_DESC);
+
+impl Default for RasterizerDesc {
+    fn default() -> Self {
+        Self(D3D12_RASTERIZER_DESC {
+            FillMode: FillMode::Solid as i32,
+            CullMode: CullMode::None as i32,
+            FrontCounterClockwise: 0,
+            DepthBias: 0,
+            DepthBiasClamp: 0.,
+            SlopeScaledDepthBias: 0.,
+            DepthClipEnable: 0,
+            MultisampleEnable: 0,
+            AntialiasedLineEnable: 0,
+            ForcedSampleCount: 0,
+            ConservativeRaster: ConservativeRasterizationMode::Off as i32,
+        })
+    }
+}
 
 impl RasterizerDesc {
     pub fn set_fill_mode(mut self, fill_mode: FillMode) -> Self {
@@ -1718,9 +1823,9 @@ impl<'rs, 'sh, 'so, 'il> Default
                 IBStripCutValue: IndexBufferStripCut::Disabled as i32,
                 PrimitiveTopologyType: PrimitiveTopologyType::Undefined as i32,
                 NumRenderTargets: SIMULTANEOUS_RENDER_TARGET_COUNT as u32,
-                RTVFormats: [DxgiFormat::Unknown as i32;
+                RTVFormats: [Format::Unknown as i32;
                     SIMULTANEOUS_RENDER_TARGET_COUNT],
-                DSVFormat: DxgiFormat::Unknown as i32,
+                DSVFormat: Format::Unknown as i32,
                 SampleDesc: SampleDesc::default().0,
                 NodeMask: 0,
                 CachedPSO: CachedPipelineState::default().0,
@@ -1929,7 +2034,7 @@ impl<'rs, 'sh, 'so, 'il> GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il> {
         unsafe { std::mem::transmute(self.0.PrimitiveTopologyType) }
     }
 
-    pub fn set_rtv_formats(mut self, rtv_formats: &[DxgiFormat]) -> Self {
+    pub fn set_rtv_formats(mut self, rtv_formats: &[Format]) -> Self {
         for format_index in 0..rtv_formats.len() {
             self.0.RTVFormats[format_index] = rtv_formats[format_index] as i32;
         }
@@ -1937,21 +2042,21 @@ impl<'rs, 'sh, 'so, 'il> GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il> {
         self
     }
 
-    pub fn rtv_formats(&self) -> &[DxgiFormat] {
+    pub fn rtv_formats(&self) -> &[Format] {
         unsafe {
             slice::from_raw_parts(
-                self.0.RTVFormats.as_ptr() as *const DxgiFormat,
+                self.0.RTVFormats.as_ptr() as *const Format,
                 self.0.NumRenderTargets as usize,
             )
         }
     }
 
-    pub fn set_dsv_format(mut self, dsv_format: DxgiFormat) -> Self {
+    pub fn set_dsv_format(mut self, dsv_format: Format) -> Self {
         self.0.DSVFormat = dsv_format as i32;
         self
     }
 
-    pub fn dsv_format(&self) -> DxgiFormat {
+    pub fn dsv_format(&self) -> Format {
         unsafe { std::mem::transmute(self.0.DSVFormat) }
     }
 
@@ -2010,7 +2115,7 @@ pub struct SubresourceFootprint(pub D3D12_SUBRESOURCE_FOOTPRINT);
 impl Default for SubresourceFootprint {
     fn default() -> Self {
         Self(D3D12_SUBRESOURCE_FOOTPRINT {
-            Format: DxgiFormat::R8G8B8A8_UNorm as i32,
+            Format: Format::R8G8B8A8_UNorm as i32,
             Width: 0,
             Height: 1,
             Depth: 1,
@@ -2020,12 +2125,12 @@ impl Default for SubresourceFootprint {
 }
 
 impl SubresourceFootprint {
-    pub fn set_format(mut self, format: DxgiFormat) -> Self {
+    pub fn set_format(mut self, format: Format) -> Self {
         self.0.Format = format as i32;
         self
     }
 
-    pub fn format(&self) -> DxgiFormat {
+    pub fn format(&self) -> Format {
         unsafe { std::mem::transmute(self.0.Format) }
     }
 
@@ -2935,12 +3040,12 @@ impl<'a> SubresourceData<'a> {
 pub struct ShaderResourceViewDesc(pub D3D12_SHADER_RESOURCE_VIEW_DESC);
 
 impl ShaderResourceViewDesc {
-    pub fn set_format(mut self, format: DxgiFormat) -> Self {
+    pub fn set_format(mut self, format: Format) -> Self {
         self.0.Format = format as i32;
         self
     }
 
-    pub fn format(&self) -> DxgiFormat {
+    pub fn format(&self) -> Format {
         unsafe { std::mem::transmute(self.0.Format) }
     }
 
@@ -3594,12 +3699,12 @@ impl RaytracingAccelerationStructureSrv {
 pub struct ClearValue(pub D3D12_CLEAR_VALUE);
 
 impl ClearValue {
-    pub fn set_format(mut self, format: DxgiFormat) -> Self {
+    pub fn set_format(mut self, format: Format) -> Self {
         self.0.Format = format as i32;
         self
     }
 
-    pub fn format(&self) -> DxgiFormat {
+    pub fn format(&self) -> Format {
         unsafe { std::mem::transmute(self.0.Format) }
     }
 
@@ -3655,12 +3760,12 @@ pub struct DepthStencilViewDesc(pub D3D12_DEPTH_STENCIL_VIEW_DESC);
 
 // ToDo: encode the union variant in wrapper's type?
 impl DepthStencilViewDesc {
-    pub fn set_format(mut self, format: DxgiFormat) -> Self {
+    pub fn set_format(mut self, format: Format) -> Self {
         self.0.Format = format as i32;
         self
     }
 
-    pub fn format(&self) -> DxgiFormat {
+    pub fn format(&self) -> Format {
         unsafe { std::mem::transmute(self.0.Format) }
     }
 
@@ -4074,7 +4179,7 @@ impl<'rs, 'sh> Default for MeshShaderPipelineStateDesc<'rs, 'sh> {
         );
         pso_desc.dsv_format = PipelineStateSubobject::new(
             PipelineStateSubobjectType::DepthStencilFormat,
-            DxgiFormat::Unknown as i32,
+            Format::Unknown as i32,
         );
         pso_desc.sample_desc = PipelineStateSubobject::new(
             PipelineStateSubobjectType::SampleDesc,
@@ -4189,7 +4294,7 @@ impl<'rs, 'sh> MeshShaderPipelineStateDesc<'rs, 'sh> {
         self
     }
 
-    pub fn set_rtv_formats(mut self, rtv_formats: &[DxgiFormat]) -> Self {
+    pub fn set_rtv_formats(mut self, rtv_formats: &[Format]) -> Self {
         let rt_format_struct =
             RtFormatArray::default().set_rt_formats(rtv_formats);
         self.rtv_formats = PipelineStateSubobject::new(
@@ -4199,7 +4304,7 @@ impl<'rs, 'sh> MeshShaderPipelineStateDesc<'rs, 'sh> {
         self
     }
 
-    pub fn set_dsv_format(mut self, dsv_format: DxgiFormat) -> Self {
+    pub fn set_dsv_format(mut self, dsv_format: Format) -> Self {
         self.dsv_format = PipelineStateSubobject::new(
             PipelineStateSubobjectType::DepthStencilFormat,
             dsv_format as i32,
@@ -4233,7 +4338,7 @@ impl<'rs, 'sh> MeshShaderPipelineStateDesc<'rs, 'sh> {
 pub struct RtFormatArray(pub D3D12_RT_FORMAT_ARRAY);
 
 impl RtFormatArray {
-    pub fn set_rt_formats(mut self, rt_formats: &[DxgiFormat]) -> Self {
+    pub fn set_rt_formats(mut self, rt_formats: &[Format]) -> Self {
         for format_index in 0..rt_formats.len() {
             self.0.RTFormats[format_index] = rt_formats[format_index] as i32;
         }
@@ -4241,10 +4346,10 @@ impl RtFormatArray {
         self
     }
 
-    pub fn rt_formats(&self) -> &[DxgiFormat] {
+    pub fn rt_formats(&self) -> &[Format] {
         unsafe {
             slice::from_raw_parts(
-                self.0.RTFormats.as_ptr() as *const DxgiFormat,
+                self.0.RTFormats.as_ptr() as *const Format,
                 self.0.NumRenderTargets as usize,
             )
         }
