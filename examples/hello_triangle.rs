@@ -138,15 +138,15 @@ struct HelloTriangleSample {
     current_fence_value: u64,
     rtv_descriptor_size: u32,
     rtv_heap: DescriptorHeap,
-    swapchain: DxgiSwapchain,
+    swapchain: Swapchain,
     command_list: CommandList,
     command_allocator: CommandAllocator,
     command_queue: CommandQueue,
     fence: Fence,
     info_queue: Rc<InfoQueue>,
     device: Device,
-    adapter: DxgiAdapter,
-    factory: DxgiFactory,
+    adapter: Adapter,
+    factory: Factory,
     debug_layer: Debug,
 }
 
@@ -157,7 +157,7 @@ impl HelloTriangleSample {
         debug_layer.enable_gpu_based_validation();
         debug_layer.enable_object_auto_name();
 
-        let mut factory = DxgiFactory::new(DxgiCreateFactoryFlags::Debug)
+        let mut factory = Factory::new(CreateFactoryFlags::Debug)
             .expect("Cannot create factory");
         let adapter = Self::choose_adapter(&mut factory);
 
@@ -449,7 +449,7 @@ float4 PS(VertexOut input) : SV_Target
 // Private methods
 
 impl HelloTriangleSample {
-    fn choose_adapter(factory: &mut DxgiFactory) -> DxgiAdapter {
+    fn choose_adapter(factory: &mut Factory) -> Adapter {
         let mut adapters =
             factory.enum_adapters().expect("Cannot enumerate adapters");
         debug!("Found adapters:");
@@ -624,7 +624,7 @@ impl HelloTriangleSample {
                     &event_handle,
                 )
                 .expect("Cannot set fence completion event");
-            event_handle.wait();
+            event_handle.wait(None);
             event_handle.close();
         }
     }

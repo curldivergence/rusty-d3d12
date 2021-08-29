@@ -21,6 +21,8 @@ use crate::Resource;
 // it should be placed directly in lib.rs
 
 // ToDo: make internal members private since we have type-safe getters?
+// ToDo: make namespaces for DXGI types and D3D12 since currently they're
+// mixed up
 
 pub struct GpuVirtualAddress(pub D3D12_GPU_VIRTUAL_ADDRESS);
 
@@ -1271,6 +1273,7 @@ impl<'a> StreamOutputDesc<'a> {
     }
 }
 
+#[derive(Copy, Clone)]
 #[repr(transparent)]
 pub struct RenderTargetBlendDesc(pub D3D12_RENDER_TARGET_BLEND_DESC);
 
@@ -1426,11 +1429,13 @@ impl BlendDesc {
 
     pub fn set_render_targets(
         mut self,
-        render_targets: [RenderTargetBlendDesc;
-            SIMULTANEOUS_RENDER_TARGET_COUNT],
+        rt_blend_descs: &[RenderTargetBlendDesc],
     ) -> Self {
-        // transmute is okay due to repr::transparent
-        self.0.RenderTarget = unsafe { std::mem::transmute(render_targets) };
+        for rt_index in 0..rt_blend_descs.len() {
+            // transmute is okay due to repr::transparent
+            self.0.RenderTarget[rt_index] =
+                unsafe { std::mem::transmute(rt_blend_descs[rt_index]) };
+        }
         self
     }
 
@@ -2090,6 +2095,88 @@ impl<'rs, 'sh, 'so, 'il> GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il> {
 
     // ToDo: probably it'd be simpler to just have one lifetime
     // parameter on GraphicsPipelineStateDesc?
+    pub fn cached_pso(&self) -> &'sh CachedPipelineState {
+        unsafe {
+            &*(&self.0.CachedPSO as *const D3D12_CACHED_PIPELINE_STATE
+                as *const CachedPipelineState)
+        }
+    }
+
+    pub fn set_flags(
+        mut self,
+        pipeline_state_flags: PipelineStateFlags,
+    ) -> Self {
+        self.0.Flags = pipeline_state_flags.bits();
+        self
+    }
+
+    pub fn flags(&self) -> PipelineStateFlags {
+        unsafe { std::mem::transmute(self.0.Flags) }
+    }
+}
+
+#[derive(Default)]
+#[repr(transparent)]
+pub struct ComputePipelineStateDesc<'rs, 'sh>(
+    pub D3D12_COMPUTE_PIPELINE_STATE_DESC,
+    PhantomData<&'rs RootSignature>,
+    PhantomData<&'sh ShaderBytecode<'sh>>,
+);
+
+impl<'rs, 'sh> ComputePipelineStateDesc<'rs, 'sh> {
+    pub fn set_root_signature(
+        mut self,
+        root_signature: &'rs RootSignature,
+    ) -> ComputePipelineStateDesc<'rs, 'sh> {
+        self.0.pRootSignature = root_signature.this;
+        self.1 = PhantomData;
+        self
+    }
+
+    pub fn root_signature(&self) -> RootSignature {
+        let root_signature = RootSignature {
+            this: self.0.pRootSignature,
+        };
+        root_signature.add_ref();
+        root_signature
+    }
+
+    pub fn set_cs_bytecode(
+        mut self,
+        bytecode: &'sh ShaderBytecode,
+    ) -> ComputePipelineStateDesc<'rs, 'sh> {
+        self.0.CS = bytecode.0;
+        self.2 = PhantomData;
+        self
+    }
+
+    pub fn cs_bytecode(&self) -> &'sh ShaderBytecode {
+        unsafe {
+            &*(&self.0.CS as *const D3D12_SHADER_BYTECODE
+                as *const ShaderBytecode)
+        }
+    }
+
+    pub fn set_node_mask(mut self, node_mask: u32) -> Self {
+        self.0.NodeMask = node_mask;
+        self
+    }
+
+    pub fn node_mask(&self) -> u32 {
+        self.0.NodeMask
+    }
+
+    pub fn set_cached_pso(
+        mut self,
+        cached_pso: &'sh CachedPipelineState,
+    ) -> ComputePipelineStateDesc<'rs, 'sh> {
+        self.0.CachedPSO = cached_pso.0;
+        self.2 = PhantomData;
+        self
+    }
+
+    // ToDo: probably it'd be simpler to just have one lifetime
+    // parameter on ComputePipelineStateDesc?
     pub fn cached_pso(&self) -> &'sh CachedPipelineState {
         unsafe {
             &*(&self.0.CachedPSO as *const D3D12_CACHED_PIPELINE_STATE
@@ -3007,11 +3094,11 @@ impl<'a, 'b> RootSignatureDesc<'a, 'b> {
 #[repr(transparent)]
 pub struct SubresourceData<'a>(
     pub D3D12_SUBRESOURCE_DATA,
-    PhantomData<&'a [u8]>,
+    PhantomData<&'a [()]>,
 );
 
 impl<'a> SubresourceData<'a> {
-    pub fn set_data(mut self, data: &'a [u8]) -> Self {
+    pub fn set_data<T>(mut self, data: &'a [T]) -> Self {
         self.0.pData = data.as_ptr() as *const std::ffi::c_void;
         self.1 = PhantomData;
         self
@@ -3050,11 +3137,6 @@ impl ShaderResourceViewDesc {
         unsafe { std::mem::transmute(self.0.Format) }
     }
 
-    pub fn set_view_dimension(mut self, view_dimension: SrvDimension) -> Self {
-        self.0.ViewDimension = view_dimension as i32;
-        self
-    }
-
     pub fn view_dimension(&self) -> SrvDimension {
         unsafe { std::mem::transmute(self.0.ViewDimension) }
     }
@@ -3071,7 +3153,7 @@ impl ShaderResourceViewDesc {
         self.0.Shader4ComponentMapping.into()
     }
 
-    // ToDo: rename these new* since at the call site they look 
+    // ToDo: rename these new* since at the call site they look
     // like a regular setter. Another option is to remove Default derive
     pub fn new_buffer(mut self, buffer: &BufferSrv) -> Self {
         self.0.ViewDimension = SrvDimension::Buffer as i32;
@@ -3313,8 +3395,8 @@ impl BufferSrv {
         self
     }
 
-    pub fn structure_byte_stride(&self) -> u32 {
-        self.0.StructureByteStride
+    pub fn structure_byte_stride(&self) -> Bytes {
+        Bytes::from(self.0.StructureByteStride)
     }
 
     pub fn set_flags(mut self, flags: BufferSrvFlags) -> Self {
@@ -3697,6 +3779,339 @@ impl RaytracingAccelerationStructureSrv {
     }
 }
 
+#[derive(Default)]
+#[repr(transparent)]
+pub struct UnorderedAccessViewDesc(pub D3D12_UNORDERED_ACCESS_VIEW_DESC);
+
+impl UnorderedAccessViewDesc {
+    pub fn set_format(mut self, format: Format) -> Self {
+        self.0.Format = format as i32;
+        self
+    }
+
+    pub fn format(&self) -> Format {
+        unsafe { std::mem::transmute(self.0.Format) }
+    }
+
+    pub fn view_dimension(&self) -> UavDimension {
+        unsafe { std::mem::transmute(self.0.ViewDimension) }
+    }
+
+    // ToDo: rename these new* since at the call site they look
+    // like a regular setter. Another option is to remove Default derive
+    pub fn new_buffer(mut self, buffer: &BufferUav) -> Self {
+        self.0.ViewDimension = UavDimension::Buffer as i32;
+        self.0.__bindgen_anon_1.Buffer = buffer.0;
+        self
+    }
+
+    pub fn buffer(&self) -> Option<BufferUav> {
+        unsafe {
+            match self.view_dimension() {
+                UavDimension::Buffer => {
+                    Some(BufferUav(self.0.__bindgen_anon_1.Buffer))
+                }
+                _ => None,
+            }
+        }
+    }
+
+    pub fn new_texture_1d(mut self, texture_1d: &Tex1DUav) -> Self {
+        self.0.ViewDimension = UavDimension::Texture1D as i32;
+        self.0.__bindgen_anon_1.Texture1D = texture_1d.0;
+        self
+    }
+
+    pub fn texture_1d(&self) -> Option<Tex1DUav> {
+        unsafe {
+            match self.view_dimension() {
+                UavDimension::Texture1D => {
+                    Some(Tex1DUav(self.0.__bindgen_anon_1.Texture1D))
+                }
+                _ => None,
+            }
+        }
+    }
+
+    pub fn new_texture_1d_array(
+        mut self,
+        texture_1d_array: &Tex1DArrayUav,
+    ) -> Self {
+        self.0.ViewDimension = UavDimension::Texture1DArray as i32;
+        self.0.__bindgen_anon_1.Texture1DArray = texture_1d_array.0;
+        self
+    }
+
+    pub fn texture_1d_array(&self) -> Option<Tex1DArrayUav> {
+        unsafe {
+            match self.view_dimension() {
+                UavDimension::Texture1DArray => {
+                    Some(Tex1DArrayUav(self.0.__bindgen_anon_1.Texture1DArray))
+                }
+                _ => None,
+            }
+        }
+    }
+
+    pub fn new_texture_2d(mut self, texture_2d: &Tex2DUav) -> Self {
+        self.0.ViewDimension = UavDimension::Texture2D as i32;
+        self.0.__bindgen_anon_1.Texture2D = texture_2d.0;
+        self
+    }
+
+    pub fn texture_2d(&self) -> Option<Tex2DUav> {
+        unsafe {
+            match self.view_dimension() {
+                UavDimension::Texture2D => {
+                    Some(Tex2DUav(self.0.__bindgen_anon_1.Texture2D))
+                }
+                _ => None,
+            }
+        }
+    }
+
+    pub fn new_texture_2d_array(
+        mut self,
+        texture_2d_array: &Tex2DArrayUav,
+    ) -> Self {
+        self.0.ViewDimension = UavDimension::Texture2DArray as i32;
+        self.0.__bindgen_anon_1.Texture2DArray = texture_2d_array.0;
+        self
+    }
+
+    pub fn texture_2d_array(&self) -> Option<Tex2DArrayUav> {
+        unsafe {
+            match self.view_dimension() {
+                UavDimension::Texture2DArray => {
+                    Some(Tex2DArrayUav(self.0.__bindgen_anon_1.Texture2DArray))
+                }
+                _ => None,
+            }
+        }
+    }
+
+    pub fn new_texture_3d(mut self, texture_3d: &Tex3DUav) -> Self {
+        self.0.ViewDimension = UavDimension::Texture3D as i32;
+        self.0.__bindgen_anon_1.Texture3D = texture_3d.0;
+        self
+    }
+
+    pub fn texture_3d(&self) -> Option<Tex3DUav> {
+        unsafe {
+            match self.view_dimension() {
+                UavDimension::Texture3D => {
+                    Some(Tex3DUav(self.0.__bindgen_anon_1.Texture3D))
+                }
+                _ => None,
+            }
+        }
+    }
+}
+
+#[derive(Default)]
+#[repr(transparent)]
+pub struct BufferUav(pub D3D12_BUFFER_UAV);
+
+impl BufferUav {
+    pub fn set_first_element(mut self, first_element: u64) -> Self {
+        self.0.FirstElement = first_element;
+        self
+    }
+
+    pub fn first_element(&self) -> u64 {
+        self.0.FirstElement
+    }
+
+    pub fn set_num_elements(mut self, num_elements: u32) -> Self {
+        self.0.NumElements = num_elements;
+        self
+    }
+
+    pub fn num_elements(&self) -> u32 {
+        self.0.NumElements
+    }
+
+    pub fn set_structure_byte_stride(
+        mut self,
+        structure_byte_stride: Bytes,
+    ) -> Self {
+        self.0.StructureByteStride = structure_byte_stride.0 as u32;
+        self
+    }
+
+    pub fn structure_byte_stride(&self) -> Bytes {
+        Bytes::from(self.0.StructureByteStride)
+    }
+
+    pub fn set_counter_offset_in_bytes(
+        mut self,
+        counter_offset_in_bytes: Bytes,
+    ) -> Self {
+        self.0.CounterOffsetInBytes = counter_offset_in_bytes.0;
+        self
+    }
+
+    pub fn counter_offset_in_bytes(&self) -> Bytes {
+        Bytes(self.0.CounterOffsetInBytes)
+    }
+
+    pub fn set_flags(mut self, flags: BufferUavFlags) -> Self {
+        self.0.Flags = flags as i32;
+        self
+    }
+
+    pub fn flags(&self) -> BufferUavFlags {
+        unsafe { std::mem::transmute(self.0.Flags) }
+    }
+}
+
+#[derive(Default)]
+#[repr(transparent)]
+pub struct Tex1DUav(pub D3D12_TEX1D_UAV);
+
+impl Tex1DUav {
+    pub fn set_mip_slice(mut self, mip_slice: u32) -> Self {
+        self.0.MipSlice = mip_slice;
+        self
+    }
+
+    pub fn mip_slice(&self) -> u32 {
+        self.0.MipSlice
+    }
+}
+
+#[derive(Default)]
+#[repr(transparent)]
+pub struct Tex1DArrayUav(pub D3D12_TEX1D_ARRAY_UAV);
+
+impl Tex1DArrayUav {
+    pub fn set_mip_slice(mut self, mip_slice: u32) -> Self {
+        self.0.MipSlice = mip_slice;
+        self
+    }
+
+    pub fn mip_slice(&self) -> u32 {
+        self.0.MipSlice
+    }
+
+    pub fn set_first_array_slice(mut self, first_array_slice: u32) -> Self {
+        self.0.FirstArraySlice = first_array_slice;
+        self
+    }
+
+    pub fn first_array_slice(&self) -> u32 {
+        self.0.FirstArraySlice
+    }
+
+    pub fn set_array_size(mut self, array_size: u32) -> Self {
+        self.0.ArraySize = array_size;
+        self
+    }
+
+    pub fn array_size(&self) -> u32 {
+        self.0.ArraySize
+    }
+}
+
+#[derive(Default)]
+#[repr(transparent)]
+pub struct Tex2DUav(pub D3D12_TEX2D_UAV);
+
+impl Tex2DUav {
+    pub fn set_mip_slice(mut self, mip_slice: u32) -> Self {
+        self.0.MipSlice = mip_slice;
+        self
+    }
+
+    pub fn mip_slice(&self) -> u32 {
+        self.0.MipSlice
+    }
+
+    pub fn set_plane_slice(mut self, plane_slice: u32) -> Self {
+        self.0.PlaneSlice = plane_slice;
+        self
+    }
+
+    pub fn plane_slice(&self) -> u32 {
+        self.0.PlaneSlice
+    }
+}
+
+#[derive(Default)]
+#[repr(transparent)]
+pub struct Tex2DArrayUav(pub D3D12_TEX2D_ARRAY_UAV);
+
+impl Tex2DArrayUav {
+    pub fn set_mip_slice(mut self, mip_slice: u32) -> Self {
+        self.0.MipSlice = mip_slice;
+        self
+    }
+
+    pub fn mip_slice(&self) -> u32 {
+        self.0.MipSlice
+    }
+
+    pub fn set_first_array_slice(mut self, first_array_slice: u32) -> Self {
+        self.0.FirstArraySlice = first_array_slice;
+        self
+    }
+
+    pub fn first_array_slice(&self) -> u32 {
+        self.0.FirstArraySlice
+    }
+
+    pub fn set_array_size(mut self, array_size: u32) -> Self {
+        self.0.ArraySize = array_size;
+        self
+    }
+
+    pub fn array_size(&self) -> u32 {
+        self.0.ArraySize
+    }
+
+    pub fn set_plane_slice(mut self, plane_slice: u32) -> Self {
+        self.0.PlaneSlice = plane_slice;
+        self
+    }
+
+    pub fn plane_slice(&self) -> u32 {
+        self.0.PlaneSlice
+    }
+}
+
+#[derive(Default)]
+#[repr(transparent)]
+pub struct Tex3DUav(pub D3D12_TEX3D_UAV);
+
+impl Tex3DUav {
+    pub fn set_mip_slice(mut self, mip_slice: u32) -> Self {
+        self.0.MipSlice = mip_slice;
+        self
+    }
+
+    pub fn mip_slice(&self) -> u32 {
+        self.0.MipSlice
+    }
+
+    pub fn set_first_w_slice(mut self, first_w_slice: u32) -> Self {
+        self.0.FirstWSlice = first_w_slice;
+        self
+    }
+
+    pub fn first_w_slice(&self) -> u32 {
+        self.0.FirstWSlice
+    }
+
+    pub fn set_w_size(mut self, w_size: u32) -> Self {
+        self.0.WSize = w_size;
+        self
+    }
+
+    pub fn w_size(&self) -> u32 {
+        self.0.WSize
+    }
+}
+
 #[derive(Default, Debug)]
 #[repr(transparent)]
 pub struct ClearValue(pub D3D12_CLEAR_VALUE);
@@ -3716,6 +4131,9 @@ impl ClearValue {
         self
     }
 
+    /// # Safety
+    ///
+    /// This function doesn't verify the current union variant
     pub unsafe fn color(&self) -> [f32; 4usize] {
         self.0.__bindgen_anon_1.Color
     }
@@ -3728,6 +4146,9 @@ impl ClearValue {
         self
     }
 
+    /// # Safety
+    ///
+    /// This function doesn't verify the current union variant
     pub unsafe fn depth_stencil(&self) -> DepthStencilValue {
         DepthStencilValue(self.0.__bindgen_anon_1.DepthStencil)
     }

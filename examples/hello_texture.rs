@@ -81,7 +81,7 @@ struct HelloTextureSample {
     command_queue: CommandQueue,
     fence: Fence,
     fence_event: Win32Event,
-    swapchain: DxgiSwapchain,
+    swapchain: Swapchain,
     frame_index: u32,
     viewport_desc: Viewport,
     scissor_desc: Rect,
@@ -103,16 +103,16 @@ impl HelloTextureSample {
         #[cfg(feature = "pix")]
         PIXSupport::init();
 
-        let mut factory_flags = DxgiCreateFactoryFlags::None;
+        let mut factory_flags = CreateFactoryFlags::None;
         if USE_DEBUG {
             let debug_controller =
                 Debug::new().expect("Cannot create debug controller");
             debug_controller.enable_debug_layer();
-            factory_flags = DxgiCreateFactoryFlags::Debug;
+            factory_flags = CreateFactoryFlags::Debug;
         }
 
         let factory =
-            DxgiFactory::new(factory_flags).expect("Cannot create factory");
+            Factory::new(factory_flags).expect("Cannot create factory");
 
         let device = create_device(&factory);
 
@@ -500,7 +500,7 @@ impl HelloTextureSample {
             self.fence
                 .set_event_on_completion(fence_value, &self.fence_event)
                 .expect("Cannot set event on fence");
-            self.fence_event.wait();
+            self.fence_event.wait(None);
         }
     }
 }
@@ -662,7 +662,7 @@ d3dx12.h as a dependency to have X12SerializeVersionedRootSignature"
 
 fn setup_heaps(
     device: &Device,
-    swapchain: &DxgiSwapchain,
+    swapchain: &Swapchain,
 ) -> (Vec<Resource>, DescriptorHeap, DescriptorHeap) {
     let rtv_heap = device
         .create_descriptor_heap(
@@ -704,10 +704,10 @@ fn setup_heaps(
 }
 
 fn create_swapchain(
-    factory: DxgiFactory,
+    factory: Factory,
     command_queue: &CommandQueue,
     hwnd: *mut std::ffi::c_void,
-) -> DxgiSwapchain {
+) -> Swapchain {
     let swapchain_desc = SwapchainDesc::default()
         .set_width(WINDOW_WIDTH)
         .set_height(WINDOW_HEIGHT)
@@ -716,15 +716,12 @@ fn create_swapchain(
         .create_swapchain(&command_queue, hwnd as *mut HWND__, &swapchain_desc)
         .expect("Cannot create swapchain");
     factory
-        .make_window_association(
-            hwnd,
-            DxgiMakeWindowAssociationFlags::NoAltEnter,
-        )
+        .make_window_association(hwnd, MakeWindowAssociationFlags::NoAltEnter)
         .expect("Cannot make window association");
     swapchain
 }
 
-fn create_device(factory: &DxgiFactory) -> Device {
+fn create_device(factory: &Factory) -> Device {
     let device;
     if USE_WARP_ADAPTER {
         let warp_adapter = factory

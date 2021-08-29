@@ -488,7 +488,7 @@ bitflags! {
 }
 
 bitflags! {
-    pub struct DxgiCreateFactoryFlags: u32 {
+    pub struct CreateFactoryFlags: u32 {
         const None = 0; // Is there any constant for it?
         const Debug = DXGI_CREATE_FACTORY_DEBUG;
     }
@@ -521,7 +521,7 @@ pub enum CommandQueuePriority {
 }
 
 bitflags! {
-    pub struct DxgiMakeWindowAssociationFlags: u32 {
+    pub struct MakeWindowAssociationFlags: u32 {
         const NoWindowChanges = DXGI_MWA_NO_WINDOW_CHANGES;
         const NoAltEnter = DXGI_MWA_NO_ALT_ENTER;
         const NoPrintScreen = DXGI_MWA_NO_PRINT_SCREEN;
@@ -603,9 +603,9 @@ pub enum RootParameterType {
 
 bitflags! {
     pub struct RootDescriptorFlags: i32 {
-        const Volatile = D3D12_ROOT_DESCRIPTOR_FLAGS_D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE;
-        const StaticWhileSetAtExecute = D3D12_ROOT_DESCRIPTOR_FLAGS_D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC_WHILE_SET_AT_EXECUTE;
-        const Static = D3D12_ROOT_DESCRIPTOR_FLAGS_D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC;
+        const DataVolatile = D3D12_ROOT_DESCRIPTOR_FLAGS_D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE;
+        const DataStaticWhileSetAtExecute = D3D12_ROOT_DESCRIPTOR_FLAGS_D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC_WHILE_SET_AT_EXECUTE;
+        const DataStatic = D3D12_ROOT_DESCRIPTOR_FLAGS_D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC;
     }
 }
 
@@ -916,7 +916,7 @@ impl Default for PipelineStateSubobjectType {
 
 #[derive(Copy, Clone)]
 #[repr(i32)]
-pub enum DxgiGpuPreference {
+pub enum GpuPreference {
     Unspecified = DXGI_GPU_PREFERENCE_DXGI_GPU_PREFERENCE_UNSPECIFIED,
     MinimumPower = DXGI_GPU_PREFERENCE_DXGI_GPU_PREFERENCE_MINIMUM_POWER,
     HighPerformance = DXGI_GPU_PREFERENCE_DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
@@ -2423,7 +2423,7 @@ pub enum AlphaMode {
 
 #[derive(Copy, Clone)]
 #[repr(i32)]
-pub enum DxgiAdapterFlag {
+pub enum AdapterFlag {
     None = DXGI_ADAPTER_FLAG_DXGI_ADAPTER_FLAG_NONE,
     Remote = DXGI_ADAPTER_FLAG_DXGI_ADAPTER_FLAG_REMOTE,
     Software = DXGI_ADAPTER_FLAG_DXGI_ADAPTER_FLAG_SOFTWARE,
@@ -2467,4 +2467,23 @@ bitflags! {
         const AllowTearing = DXGI_SWAP_CHAIN_FLAG_DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
         const RestrictedToAllHolographicDisplays = DXGI_SWAP_CHAIN_FLAG_DXGI_SWAP_CHAIN_FLAG_RESTRICTED_TO_ALL_HOLOGRAPHIC_DISPLAYS;
     }
+}
+
+#[derive(Copy, Clone)]
+#[repr(i32)]
+pub enum BufferUavFlags {
+    None = D3D12_BUFFER_UAV_FLAGS_D3D12_BUFFER_UAV_FLAG_NONE,
+    Raw = D3D12_BUFFER_UAV_FLAGS_D3D12_BUFFER_UAV_FLAG_RAW,
+}
+
+#[derive(Copy, Clone)]
+#[repr(i32)]
+pub enum UavDimension {
+    Unknown = D3D12_UAV_DIMENSION_D3D12_UAV_DIMENSION_UNKNOWN,
+    Buffer = D3D12_UAV_DIMENSION_D3D12_UAV_DIMENSION_BUFFER,
+    Texture1D = D3D12_UAV_DIMENSION_D3D12_UAV_DIMENSION_TEXTURE1D,
+    Texture1DArray = D3D12_UAV_DIMENSION_D3D12_UAV_DIMENSION_TEXTURE1DARRAY,
+    Texture2D = D3D12_UAV_DIMENSION_D3D12_UAV_DIMENSION_TEXTURE2D,
+    Texture2DArray = D3D12_UAV_DIMENSION_D3D12_UAV_DIMENSION_TEXTURE2DARRAY,
+    Texture3D = D3D12_UAV_DIMENSION_D3D12_UAV_DIMENSION_TEXTURE3D,
 }

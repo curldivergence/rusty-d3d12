@@ -317,7 +317,7 @@ struct Pipeline {
     direct_command_queues: [CommandQueue; DEVICE_COUNT],
     direct_command_queue_timestamp_frequencies: [u64; DEVICE_COUNT],
     copy_command_queue: CommandQueue,
-    swapchain: DxgiSwapchain,
+    swapchain: Swapchain,
     frame_index: usize,
     frames_since_last_update: u32, // static var in OnUpdate()
     viewport: Viewport,
@@ -391,18 +391,18 @@ struct Pipeline {
 impl Pipeline {
     // aka LoadPipeline() in the original sample
     fn new(hwnd: *mut c_void) -> Self {
-        let mut factory_flags = DxgiCreateFactoryFlags::None;
+        let mut factory_flags = CreateFactoryFlags::None;
         if USE_DEBUG {
             let debug_controller =
                 Debug::new().expect("Cannot create debug controller");
             debug_controller.enable_debug_layer();
             debug_controller.enable_gpu_based_validation();
             debug_controller.enable_object_auto_name();
-            factory_flags = DxgiCreateFactoryFlags::Debug;
+            factory_flags = CreateFactoryFlags::Debug;
         }
 
         let factory =
-            DxgiFactory::new(factory_flags).expect("Cannot create factory");
+            Factory::new(factory_flags).expect("Cannot create factory");
         let (devices, is_software_adapter) = create_devices(&factory);
 
         let debug_devices;
@@ -1352,7 +1352,7 @@ impl Pipeline {
                     )
                     .expect("Cannot set fence event");
 
-                self.fence_events[1].wait();
+                self.fence_events[1].wait(None);
             }
         }
     }
@@ -1641,7 +1641,7 @@ fn create_fences(
             })
             .expect("Cannot set event on fence");
 
-        unsafe { fence_events[device_idx].assume_init_ref() }.wait();
+        unsafe { fence_events[device_idx].assume_init_ref() }.wait(None);
 
         cross_adapter_fence_value += 1;
     }
@@ -2430,7 +2430,7 @@ fn create_shared_resource_descs(
 fn create_frame_resources(
     devices: &[Device; DEVICE_COUNT],
     rtv_heaps: &[DescriptorHeap; DEVICE_COUNT],
-    swapchain: &DxgiSwapchain,
+    swapchain: &Swapchain,
 ) -> (
     [[Resource; FRAMES_IN_FLIGHT]; DEVICE_COUNT],
     [[CommandAllocator; FRAMES_IN_FLIGHT]; DEVICE_COUNT],
@@ -2573,7 +2573,7 @@ fn create_query_heaps(
 
 fn create_descriptor_heaps(
     devices: &[Device; DEVICE_COUNT],
-    swapchain: &DxgiSwapchain,
+    swapchain: &Swapchain,
 ) -> (
     [DescriptorHeap; DEVICE_COUNT],
     DescriptorHeap,
@@ -2632,10 +2632,10 @@ fn create_descriptor_heaps(
 }
 
 fn create_swapchain(
-    factory: DxgiFactory,
+    factory: Factory,
     command_queue: &CommandQueue,
     hwnd: *mut std::ffi::c_void,
-) -> DxgiSwapchain {
+) -> Swapchain {
     let swapchain_desc = SwapchainDesc::default()
         .set_width(WINDOW_WIDTH)
         .set_height(WINDOW_HEIGHT)
@@ -2644,15 +2644,12 @@ fn create_swapchain(
         .create_swapchain(&command_queue, hwnd as *mut HWND__, &swapchain_desc)
         .expect("Cannot create swapchain");
     factory
-        .make_window_association(
-            hwnd,
-            DxgiMakeWindowAssociationFlags::NoAltEnter,
-        )
+        .make_window_association(hwnd, MakeWindowAssociationFlags::NoAltEnter)
         .expect("Cannot make window association");
     swapchain
 }
 
-fn create_device(factory: &DxgiFactory) -> Device {
+fn create_device(factory: &Factory) -> Device {
     let device;
     if USE_WARP_ADAPTER {
         let warp_adapter = factory
@@ -2670,7 +2667,7 @@ fn create_device(factory: &DxgiFactory) -> Device {
     device
 }
 
-fn get_hardware_adapters(factory: &DxgiFactory) -> [DxgiAdapter; DEVICE_COUNT] {
+fn get_hardware_adapters(factory: &Factory) -> [Adapter; DEVICE_COUNT] {
     // Adapter 0 is the adapter that Presents frames to the display. It is assigned as
     // the "secondary" adapter because it is the adapter that performs the second set
     // of operations (the blur effect) in this sample.
@@ -2680,7 +2677,7 @@ fn get_hardware_adapters(factory: &DxgiFactory) -> [DxgiAdapter; DEVICE_COUNT] {
     // in this sample.
 
     let mut adapters = factory
-        .enum_adapters_by_gpu_preference(DxgiGpuPreference::HighPerformance)
+        .enum_adapters_by_gpu_preference(GpuPreference::HighPerformance)
         .expect("Cannot enumerate adapters");
 
     for adapter in &adapters {
@@ -2690,7 +2687,7 @@ fn get_hardware_adapters(factory: &DxgiFactory) -> [DxgiAdapter; DEVICE_COUNT] {
     [adapters.remove(1), adapters.remove(0)]
 }
 
-fn create_devices(factory: &DxgiFactory) -> ([Device; DEVICE_COUNT], bool) {
+fn create_devices(factory: &Factory) -> ([Device; DEVICE_COUNT], bool) {
     let adapters;
     if USE_WARP_ADAPTER {
         adapters = [

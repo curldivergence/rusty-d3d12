@@ -29,7 +29,7 @@ macro_rules! impl_mul {
             type Output = $struct_type;
 
             fn mul(self, rhs: $struct_type) -> Self::Output {
-                $struct_type(self as u64 * rhs.0 )
+                $struct_type(self as u64 * rhs.0)
             }
         }
     };
@@ -171,3 +171,13 @@ pub fn compile_shader(
 pub fn align_to_multiple(location: u64, alignment: u64) -> u64 {
     (location + (alignment - 1)) & (!(alignment - 1))
 }
+
+///
+#[macro_export]
+macro_rules! size_of {
+    ($struct_type:ty) => {
+        Bytes::from(std::mem::size_of::<$struct_type>())
+    };
+}
+
+// pub(crate) use size_of;

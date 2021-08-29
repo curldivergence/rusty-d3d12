@@ -180,7 +180,7 @@ struct Pipeline {
     debug_device: Option<DebugDevice>,
     info_queue: Option<Rc<InfoQueue>>,
     direct_command_queue: CommandQueue,
-    swapchain: DxgiSwapchain,
+    swapchain: Swapchain,
     frame_index: usize,
     viewport: Viewport,
     scissor_rect: Rect,
@@ -214,18 +214,18 @@ struct Pipeline {
 impl Pipeline {
     // aka LoadPipeline() in the original sample
     fn new(hwnd: *mut c_void, is_producer_process: bool) -> Self {
-        let mut factory_flags = DxgiCreateFactoryFlags::None;
+        let mut factory_flags = CreateFactoryFlags::None;
         if USE_DEBUG {
             let debug_controller =
                 Debug::new().expect("Cannot create debug controller");
             debug_controller.enable_debug_layer();
             debug_controller.enable_gpu_based_validation();
             debug_controller.enable_object_auto_name();
-            factory_flags = DxgiCreateFactoryFlags::Debug;
+            factory_flags = CreateFactoryFlags::Debug;
         }
 
         let factory =
-            DxgiFactory::new(factory_flags).expect("Cannot create factory");
+            Factory::new(factory_flags).expect("Cannot create factory");
         let (device, is_software_adapter) =
             create_device(&factory, !is_producer_process);
 
@@ -386,7 +386,7 @@ impl Pipeline {
                 .set_event_on_completion(1, &frame_resource_fence_event)
                 .expect("Cannot set fence event");
 
-            frame_resource_fence_event.wait();
+            frame_resource_fence_event.wait(None);
 
             // Reset fence value
             direct_command_queue
@@ -646,7 +646,7 @@ impl Pipeline {
                 )
                 .expect("Cannot set fence event");
 
-            self.shared_resource_fence_event.wait();
+            self.shared_resource_fence_event.wait(None);
         }
 
         if self.is_producer_process {
@@ -700,7 +700,7 @@ impl Pipeline {
                 )
                 .expect("Cannot set fence event");
 
-            self.frame_resource_fence_event.wait();
+            self.frame_resource_fence_event.wait(None);
         }
     }
 }
@@ -1026,7 +1026,7 @@ fn create_shared_resource_desc(device: &Device) -> (Bytes, ResourceDesc) {
 fn create_frame_resources(
     device: &Device,
     rtv_heap: &DescriptorHeap,
-    swapchain: &DxgiSwapchain,
+    swapchain: &Swapchain,
 ) -> (Vec<Resource>, Vec<CommandAllocator>) {
     let clear_value = ClearValue::default()
         .set_format(Format::R8G8B8A8_UNorm)
@@ -1071,7 +1071,7 @@ fn create_frame_resources(
 
 fn create_descriptor_heaps(
     device: &Device,
-    swapchain: &DxgiSwapchain,
+    swapchain: &Swapchain,
 ) -> (DescriptorHeap, DescriptorHeap) {
     let num_descriptors = FRAMES_IN_FLIGHT as u32;
     let mut rtv_heap = device
@@ -1101,10 +1101,10 @@ fn create_descriptor_heaps(
 }
 
 fn create_swapchain(
-    factory: DxgiFactory,
+    factory: Factory,
     command_queue: &CommandQueue,
     hwnd: *mut std::ffi::c_void,
-) -> DxgiSwapchain {
+) -> Swapchain {
     let swapchain_desc = SwapchainDesc::default()
         .set_width(WINDOW_WIDTH)
         .set_height(WINDOW_HEIGHT)
@@ -1113,17 +1113,14 @@ fn create_swapchain(
         .create_swapchain(&command_queue, hwnd as *mut HWND__, &swapchain_desc)
         .expect("Cannot create swapchain");
     factory
-        .make_window_association(
-            hwnd,
-            DxgiMakeWindowAssociationFlags::NoAltEnter,
-        )
+        .make_window_association(hwnd, MakeWindowAssociationFlags::NoAltEnter)
         .expect("Cannot make window association");
     swapchain
 }
 
-fn get_hardware_adapter(factory: &DxgiFactory) -> DxgiAdapter {
+fn get_hardware_adapter(factory: &Factory) -> Adapter {
     let mut adapters = factory
-        .enum_adapters_by_gpu_preference(DxgiGpuPreference::HighPerformance)
+        .enum_adapters_by_gpu_preference(GpuPreference::HighPerformance)
         .expect("Cannot enumerate adapters");
 
     for adapter in &adapters {
@@ -1133,7 +1130,7 @@ fn get_hardware_adapter(factory: &DxgiFactory) -> DxgiAdapter {
     adapters.remove(0)
 }
 
-fn create_device(factory: &DxgiFactory, use_warp: bool) -> (Device, bool) {
+fn create_device(factory: &Factory, use_warp: bool) -> (Device, bool) {
     let adapter;
     if use_warp {
         adapter = factory

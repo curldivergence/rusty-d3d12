@@ -2,15 +2,12 @@
 // #![allow(unused_variables)]
 // #![allow(dead_code)]
 
-use log::{debug, error, trace, warn};
+use log::warn;
+use std::default::Default;
 use std::ffi::c_void;
-use std::ffi::CString;
 use std::os::raw::c_char;
-use std::{default::Default, mem::zeroed};
 use std::{slice, str};
 use winapi::shared::winerror;
-
-use widestring::WideCStr;
 
 #[macro_use]
 extern crate static_assertions;
@@ -19,6 +16,7 @@ mod raw_bindings;
 // When we replace raw D3D12 types with our newtypes, this will be redundant
 pub use raw_bindings::*;
 
+#[macro_use]
 mod utils;
 pub use utils::*;
 
@@ -407,8 +405,6 @@ impl InfoQueue {
             // device.release();
 
             if let Some(break_flags) = break_flags {
-                // unfortunately there is currently no way to iterate over flags
-
                 for flag in break_flags {
                     dx_try!(info_queue, SetBreakOnSeverity, *flag as i32, 1);
                 }
@@ -540,14 +536,14 @@ impl DebugDevice {
     }
 }
 
-pub struct DxgiFactory {
+pub struct Factory {
     this: *mut IDXGIFactory6,
 }
-impl_com_object_refcount_unnamed!(DxgiFactory);
-impl_com_object_clone_drop!(DxgiFactory);
+impl_com_object_refcount_unnamed!(Factory);
+impl_com_object_clone_drop!(Factory);
 
-impl DxgiFactory {
-    pub fn new(flags: DxgiCreateFactoryFlags) -> DxResult<Self> {
+impl Factory {
+    pub fn new(flags: CreateFactoryFlags) -> DxResult<Self> {
         let mut factory: *mut IDXGIFactory6 = std::ptr::null_mut();
         unsafe {
             dx_try!(CreateDXGIFactory2(
@@ -556,11 +552,11 @@ impl DxgiFactory {
                 cast_to_ppv(&mut factory),
             ));
         }
-        Ok(DxgiFactory { this: factory })
+        Ok(Factory { this: factory })
     }
 
-    pub fn enum_adapters(&self) -> DxResult<Vec<DxgiAdapter>> {
-        let mut result: Vec<DxgiAdapter> = vec![];
+    pub fn enum_adapters(&self) -> DxResult<Vec<Adapter>> {
+        let mut result: Vec<Adapter> = vec![];
 
         unsafe {
             let mut adapter_index = 0;
@@ -590,32 +586,18 @@ impl DxgiFactory {
                 // Apparently QueryInterface increases ref count?
                 dx_call!(temp_adapter, Release,);
 
-                result.push(DxgiAdapter { this: real_adapter });
+                result.push(Adapter { this: real_adapter });
                 adapter_index += 1;
             }
         }
         Ok(result)
     }
 
-    pub fn enum_warp_adapter(&self) -> DxResult<DxgiAdapter> {
-        let mut hw_adapter: *mut IDXGIAdapter3 = std::ptr::null_mut();
-        unsafe {
-            dx_try!(
-                self.this,
-                EnumWarpAdapter,
-                &IID_IDXGIAdapter3,
-                cast_to_ppv(&mut hw_adapter)
-            );
-        }
-
-        Ok(DxgiAdapter { this: hw_adapter })
-    }
-
     pub fn enum_adapters_by_gpu_preference(
         &self,
-        preference: DxgiGpuPreference,
-    ) -> DxResult<Vec<DxgiAdapter>> {
-        let mut result: Vec<DxgiAdapter> = vec![];
+        preference: GpuPreference,
+    ) -> DxResult<Vec<Adapter>> {
+        let mut result: Vec<Adapter> = vec![];
 
         unsafe {
             let mut adapter_index = 0;
@@ -639,11 +621,25 @@ impl DxgiFactory {
                     ));
                 }
 
-                result.push(DxgiAdapter { this: adapter });
+                result.push(Adapter { this: adapter });
                 adapter_index += 1;
             }
         }
         Ok(result)
+    }
+
+    pub fn enum_warp_adapter(&self) -> DxResult<Adapter> {
+        let mut hw_adapter: *mut IDXGIAdapter3 = std::ptr::null_mut();
+        unsafe {
+            dx_try!(
+                self.this,
+                EnumWarpAdapter,
+                &IID_IDXGIAdapter3,
+                cast_to_ppv(&mut hw_adapter)
+            );
+        }
+
+        Ok(Adapter { this: hw_adapter })
     }
 
     pub fn create_swapchain(
@@ -651,7 +647,7 @@ impl DxgiFactory {
         command_queue: &CommandQueue,
         window_handle: HWND,
         desc: &SwapchainDesc,
-    ) -> DxResult<DxgiSwapchain> {
+    ) -> DxResult<Swapchain> {
         let mut temp_hw_swapchain: *mut IDXGISwapChain1 = std::ptr::null_mut();
         unsafe {
             dx_try!(
@@ -675,13 +671,13 @@ impl DxgiFactory {
                 cast_to_ppv(&mut hw_swapchain)
             );
         }
-        Ok(DxgiSwapchain { this: hw_swapchain })
+        Ok(Swapchain { this: hw_swapchain })
     }
 
     pub fn make_window_association(
         &self,
         hwnd: *mut std::ffi::c_void,
-        flags: DxgiMakeWindowAssociationFlags,
+        flags: MakeWindowAssociationFlags,
     ) -> DxResult<()> {
         unsafe {
             dx_try!(
@@ -696,13 +692,13 @@ impl DxgiFactory {
     }
 }
 
-pub struct DxgiAdapter {
+pub struct Adapter {
     this: *mut IDXGIAdapter3,
 }
-impl_com_object_refcount_unnamed!(DxgiAdapter);
-impl_com_object_clone_drop!(DxgiAdapter);
+impl_com_object_refcount_unnamed!(Adapter);
+impl_com_object_clone_drop!(Adapter);
 
-impl DxgiAdapter {
+impl Adapter {
     pub fn get_desc(&self) -> DxResult<AdapterDesc> {
         let mut hw_adapter_desc = AdapterDesc::default();
         unsafe {
@@ -718,142 +714,30 @@ pub struct Device {
 impl_com_object_refcount_unnamed!(Device);
 impl_com_object_clone_drop!(Device);
 
+// ToDo: clean up Send and Sync implementations
+unsafe impl Send for Device {}
+// unsafe impl Sync for Device {}
+
 impl Device {
-    // ToDo: why isn't it a DxgiAdapter's method?
-    pub fn new(adapter: &DxgiAdapter) -> DxResult<Self> {
-        let mut hw_device: *mut ID3D12Device2 = std::ptr::null_mut();
-        unsafe {
-            dx_try!(D3D12CreateDevice(
-                cast_to_iunknown!(adapter.this),
-                D3D_FEATURE_LEVEL_D3D_FEATURE_LEVEL_12_0,
-                &IID_ID3D12Device2,
-                cast_to_ppv(&mut hw_device),
-            ));
-        }
-
-        Ok(Device { this: hw_device })
-    }
-
-    pub fn create_command_queue(
+    pub fn check_feature_support<T>(
         &self,
-        desc: &CommandQueueDesc,
-    ) -> DxResult<CommandQueue> {
-        let mut hw_queue: *mut ID3D12CommandQueue = std::ptr::null_mut();
+        feature: Feature,
+        feature_support_data: &mut T,
+    ) -> DxResult<()> {
         unsafe {
+            let data = feature_support_data as *mut _ as *mut std::ffi::c_void;
+            let data_size = std::mem::size_of::<T>() as u32;
+
             dx_try!(
                 self.this,
-                CreateCommandQueue,
-                &desc.0,
-                &IID_ID3D12CommandQueue,
-                cast_to_ppv(&mut hw_queue)
+                CheckFeatureSupport,
+                feature as i32,
+                data,
+                data_size
             );
         }
 
-        Ok(CommandQueue { this: hw_queue })
-    }
-
-    pub fn create_descriptor_heap(
-        &self,
-        desc: &DescriptorHeapDesc,
-    ) -> DxResult<DescriptorHeap> {
-        let mut hw_descriptor_heap: *mut ID3D12DescriptorHeap =
-            std::ptr::null_mut();
-        unsafe {
-            dx_try!(
-                self.this,
-                CreateDescriptorHeap,
-                &desc.0,
-                &IID_ID3D12DescriptorHeap,
-                cast_to_ppv(&mut hw_descriptor_heap)
-            );
-        }
-        Ok(DescriptorHeap {
-            this: hw_descriptor_heap,
-            handle_size: self.get_descriptor_handle_increment_size(unsafe {
-                std::mem::transmute(desc.0.Type)
-            }),
-        })
-    }
-
-    pub fn get_descriptor_handle_increment_size(
-        &self,
-        heap_type: DescriptorHeapType,
-    ) -> u32 {
-        unsafe {
-            dx_call!(
-                self.this,
-                GetDescriptorHandleIncrementSize,
-                heap_type as i32
-            )
-        }
-    }
-
-    pub fn create_render_target_view(
-        &self,
-        resource: &Resource,
-        dest_descriptor: CpuDescriptorHandle,
-    ) {
-        unsafe {
-            dx_call!(
-                self.this,
-                CreateRenderTargetView,
-                resource.this,
-                std::ptr::null(),
-                dest_descriptor.hw_handle
-            )
-        }
-    }
-
-    pub fn create_constant_buffer_view(
-        &self,
-        desc: &ConstantBufferViewDesc,
-        dest_descriptor: CpuDescriptorHandle,
-    ) {
-        unsafe {
-            dx_call!(
-                self.this,
-                CreateConstantBufferView,
-                &desc.0,
-                dest_descriptor.hw_handle
-            )
-        }
-    }
-
-    pub fn create_shader_resource_view(
-        &self,
-        resource: &Resource,
-        desc: Option<&ShaderResourceViewDesc>,
-        dest_descriptor: CpuDescriptorHandle,
-    ) {
-        unsafe {
-            dx_call!(
-                self.this,
-                CreateShaderResourceView,
-                resource.this,
-                match desc {
-                    Some(d) => &d.0,
-                    None => std::ptr::null(),
-                },
-                dest_descriptor.hw_handle
-            )
-        }
-    }
-
-    pub fn create_depth_stencil_view(
-        &self,
-        resource: &Resource,
-        desc: &DepthStencilViewDesc,
-        dest_descriptor: CpuDescriptorHandle,
-    ) {
-        unsafe {
-            dx_call!(
-                self.this,
-                CreateDepthStencilView,
-                resource.this,
-                &desc.0,
-                dest_descriptor.hw_handle
-            )
-        }
+        Ok(())
     }
 
     pub fn create_command_allocator(
@@ -908,25 +792,22 @@ impl Device {
         })
     }
 
-    pub fn create_fence(
+    pub fn create_command_queue(
         &self,
-        initial_value: u64,
-        flags: FenceFlags,
-    ) -> DxResult<Fence> {
-        let mut hw_fence: *mut ID3D12Fence = std::ptr::null_mut();
-
+        desc: &CommandQueueDesc,
+    ) -> DxResult<CommandQueue> {
+        let mut hw_queue: *mut ID3D12CommandQueue = std::ptr::null_mut();
         unsafe {
             dx_try!(
                 self.this,
-                CreateFence,
-                initial_value,
-                flags.bits(),
-                &IID_ID3D12Fence,
-                cast_to_ppv(&mut hw_fence)
-            )
+                CreateCommandQueue,
+                &desc.0,
+                &IID_ID3D12CommandQueue,
+                cast_to_ppv(&mut hw_queue)
+            );
         }
 
-        Ok(Fence { this: hw_fence })
+        Ok(CommandQueue { this: hw_queue })
     }
 
     pub fn create_committed_resource(
@@ -961,6 +842,158 @@ impl Device {
         Ok(Resource { this: hw_resource })
     }
 
+    pub fn create_compute_pipeline_state(
+        &self,
+        pso_desc: &ComputePipelineStateDesc,
+    ) -> DxResult<PipelineState> {
+        let mut hw_pipeline_state: *mut ID3D12PipelineState =
+            std::ptr::null_mut();
+        unsafe {
+            dx_try!(
+                self.this,
+                CreateComputePipelineState,
+                &pso_desc.0,
+                &IID_ID3D12PipelineState,
+                cast_to_ppv(&mut hw_pipeline_state)
+            );
+        }
+        Ok(PipelineState {
+            this: hw_pipeline_state,
+        })
+    }
+
+    pub fn create_constant_buffer_view(
+        &self,
+        desc: &ConstantBufferViewDesc,
+        dest_descriptor: CpuDescriptorHandle,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                CreateConstantBufferView,
+                &desc.0,
+                dest_descriptor.hw_handle
+            )
+        }
+    }
+
+    pub fn create_depth_stencil_view(
+        &self,
+        resource: &Resource,
+        desc: &DepthStencilViewDesc,
+        dest_descriptor: CpuDescriptorHandle,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                CreateDepthStencilView,
+                resource.this,
+                &desc.0,
+                dest_descriptor.hw_handle
+            )
+        }
+    }
+
+    pub fn create_descriptor_heap(
+        &self,
+        desc: &DescriptorHeapDesc,
+    ) -> DxResult<DescriptorHeap> {
+        let mut hw_descriptor_heap: *mut ID3D12DescriptorHeap =
+            std::ptr::null_mut();
+        unsafe {
+            dx_try!(
+                self.this,
+                CreateDescriptorHeap,
+                &desc.0,
+                &IID_ID3D12DescriptorHeap,
+                cast_to_ppv(&mut hw_descriptor_heap)
+            );
+        }
+        Ok(DescriptorHeap {
+            this: hw_descriptor_heap,
+            handle_size: self.get_descriptor_handle_increment_size(unsafe {
+                std::mem::transmute(desc.0.Type)
+            }),
+        })
+    }
+
+    pub fn create_fence(
+        &self,
+        initial_value: u64,
+        flags: FenceFlags,
+    ) -> DxResult<Fence> {
+        let mut hw_fence: *mut ID3D12Fence = std::ptr::null_mut();
+
+        unsafe {
+            dx_try!(
+                self.this,
+                CreateFence,
+                initial_value,
+                flags.bits(),
+                &IID_ID3D12Fence,
+                cast_to_ppv(&mut hw_fence)
+            )
+        }
+
+        Ok(Fence { this: hw_fence })
+    }
+
+    pub fn create_graphics_pipeline_state(
+        &self,
+        pso_desc: &GraphicsPipelineStateDesc,
+    ) -> DxResult<PipelineState> {
+        let mut hw_pipeline_state: *mut ID3D12PipelineState =
+            std::ptr::null_mut();
+        unsafe {
+            dx_try!(
+                self.this,
+                CreateGraphicsPipelineState,
+                &pso_desc.0,
+                &IID_ID3D12PipelineState,
+                cast_to_ppv(&mut hw_pipeline_state)
+            );
+        }
+        Ok(PipelineState {
+            this: hw_pipeline_state,
+        })
+    }
+
+    pub fn create_heap(&self, heap_desc: &HeapDesc) -> DxResult<Heap> {
+        let mut hw_heap: *mut ID3D12Heap = std::ptr::null_mut();
+
+        unsafe {
+            dx_try!(
+                self.this,
+                CreateHeap,
+                &heap_desc.0,
+                &IID_ID3D12Heap,
+                cast_to_ppv(&mut hw_heap)
+            )
+        }
+
+        Ok(Heap { this: hw_heap })
+    }
+
+    pub fn create_pipeline_state(
+        &self,
+        pso_desc: &PipelineStateStreamDesc,
+    ) -> DxResult<PipelineState> {
+        let mut hw_pipeline_state: *mut ID3D12PipelineState =
+            std::ptr::null_mut();
+        unsafe {
+            dx_try!(
+                self.this,
+                CreatePipelineState,
+                &pso_desc.0,
+                &IID_ID3D12PipelineState,
+                cast_to_ppv(&mut hw_pipeline_state)
+            );
+        }
+        Ok(PipelineState {
+            this: hw_pipeline_state,
+        })
+    }
+
     pub fn create_placed_resource(
         &self,
         heap: &Heap,
@@ -993,6 +1026,43 @@ impl Device {
         Ok(Resource { this: hw_resource })
     }
 
+    pub fn create_query_heap(
+        &self,
+        heap_desc: &QueryHeapDesc,
+    ) -> DxResult<QueryHeap> {
+        let mut hw_query_heap: *mut ID3D12QueryHeap = std::ptr::null_mut();
+
+        unsafe {
+            dx_try!(
+                self.this,
+                CreateQueryHeap,
+                &heap_desc.0 as *const D3D12_QUERY_HEAP_DESC,
+                &IID_ID3D12QueryHeap,
+                cast_to_ppv(&mut hw_query_heap)
+            )
+        }
+
+        Ok(QueryHeap {
+            this: hw_query_heap,
+        })
+    }
+
+    pub fn create_render_target_view(
+        &self,
+        resource: &Resource,
+        dest_descriptor: CpuDescriptorHandle,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                CreateRenderTargetView,
+                resource.this,
+                std::ptr::null(),
+                dest_descriptor.hw_handle
+            )
+        }
+    }
+
     pub fn create_reserved_resource(
         &self,
         resource_desc: &ResourceDesc,
@@ -1021,62 +1091,6 @@ impl Device {
         Ok(Resource { this: hw_resource })
     }
 
-    pub fn create_heap(&self, heap_desc: &HeapDesc) -> DxResult<Heap> {
-        let mut hw_heap: *mut ID3D12Heap = std::ptr::null_mut();
-
-        unsafe {
-            dx_try!(
-                self.this,
-                CreateHeap,
-                &heap_desc.0,
-                &IID_ID3D12Heap,
-                cast_to_ppv(&mut hw_heap)
-            )
-        }
-
-        Ok(Heap { this: hw_heap })
-    }
-
-    pub fn create_graphics_pipeline_state(
-        &self,
-        pso_desc: &GraphicsPipelineStateDesc,
-    ) -> DxResult<PipelineState> {
-        let mut hw_pipeline_state: *mut ID3D12PipelineState =
-            std::ptr::null_mut();
-        unsafe {
-            dx_try!(
-                self.this,
-                CreateGraphicsPipelineState,
-                &pso_desc.0,
-                &IID_ID3D12PipelineState,
-                cast_to_ppv(&mut hw_pipeline_state)
-            );
-        }
-        Ok(PipelineState {
-            this: hw_pipeline_state,
-        })
-    }
-
-    pub fn create_pipeline_state(
-        &self,
-        pso_desc: &PipelineStateStreamDesc,
-    ) -> DxResult<PipelineState> {
-        let mut hw_pipeline_state: *mut ID3D12PipelineState =
-            std::ptr::null_mut();
-        unsafe {
-            dx_try!(
-                self.this,
-                CreatePipelineState,
-                &pso_desc.0,
-                &IID_ID3D12PipelineState,
-                cast_to_ppv(&mut hw_pipeline_state)
-            );
-        }
-        Ok(PipelineState {
-            this: hw_pipeline_state,
-        })
-    }
-
     pub fn create_root_signature(
         &self,
         node_mask: UINT,
@@ -1100,25 +1114,88 @@ impl Device {
         })
     }
 
-    pub fn check_feature_support<T>(
+    pub fn create_sampler(
         &self,
-        feature: Feature,
-        feature_support_data: &mut T,
-    ) -> DxResult<()> {
+        desc: &SamplerDesc,
+        dest_descriptor: CpuDescriptorHandle,
+    ) {
         unsafe {
-            let data = feature_support_data as *mut _ as *mut std::ffi::c_void;
-            let data_size = std::mem::size_of::<T>() as u32;
+            dx_call!(
+                self.this,
+                CreateSampler,
+                &desc.0 as *const D3D12_SAMPLER_DESC,
+                dest_descriptor.hw_handle
+            )
+        }
+    }
 
+    pub fn create_shader_resource_view(
+        &self,
+        resource: &Resource,
+        desc: Option<&ShaderResourceViewDesc>,
+        dest_descriptor: CpuDescriptorHandle,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                CreateShaderResourceView,
+                resource.this,
+                match desc {
+                    Some(d) => &d.0,
+                    None => std::ptr::null(),
+                },
+                dest_descriptor.hw_handle
+            )
+        }
+    }
+
+    pub fn create_shared_handle(
+        &self,
+        object: &DeviceChild,
+        name: &str,
+    ) -> DxResult<Handle> {
+        let mut hw_handle = std::ptr::null_mut();
+        let hw_device_child = object.this;
+        let name = widestring::U16CString::from_str(name)
+            .expect("Cannot convert handle name");
+        unsafe {
             dx_try!(
                 self.this,
-                CheckFeatureSupport,
-                feature as i32,
-                data,
-                data_size
+                CreateSharedHandle,
+                hw_device_child,
+                std::ptr::null_mut(),
+                0x10000000, // GENERIC_ALL from winnt.h
+                name.as_ptr(),
+                &mut hw_handle
             );
         }
 
-        Ok(())
+        Ok(Handle(hw_handle))
+    }
+
+    pub fn create_unordered_access_view(
+        &self,
+        resource: &Resource,
+        counter_resource: Option<&Resource>,
+        desc: Option<&UnorderedAccessViewDesc>,
+        dest_descriptor: CpuDescriptorHandle,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                CreateUnorderedAccessView,
+                resource.this,
+                match counter_resource {
+                    Some(res) => res.this,
+                    None => std::ptr::null_mut(),
+                },
+                match desc {
+                    Some(d) => &d.0,
+                    None => std::ptr::null(),
+                },
+                dest_descriptor.hw_handle
+            )
+        }
     }
 
     pub fn get_copyable_footprints(
@@ -1168,40 +1245,17 @@ impl Device {
         )
     }
 
-    pub fn create_sampler(
+    pub fn get_descriptor_handle_increment_size(
         &self,
-        desc: &SamplerDesc,
-        dest_descriptor: CpuDescriptorHandle,
-    ) {
+        heap_type: DescriptorHeapType,
+    ) -> u32 {
         unsafe {
             dx_call!(
                 self.this,
-                CreateSampler,
-                &desc.0 as *const D3D12_SAMPLER_DESC,
-                dest_descriptor.hw_handle
+                GetDescriptorHandleIncrementSize,
+                heap_type as i32
             )
         }
-    }
-
-    pub fn create_query_heap(
-        &self,
-        heap_desc: &QueryHeapDesc,
-    ) -> DxResult<QueryHeap> {
-        let mut hw_query_heap: *mut ID3D12QueryHeap = std::ptr::null_mut();
-
-        unsafe {
-            dx_try!(
-                self.this,
-                CreateQueryHeap,
-                &heap_desc.0 as *const D3D12_QUERY_HEAP_DESC,
-                &IID_ID3D12QueryHeap,
-                cast_to_ppv(&mut hw_query_heap)
-            )
-        }
-
-        Ok(QueryHeap {
-            this: hw_query_heap,
-        })
     }
 
     pub fn get_resource_allocation_info(
@@ -1224,23 +1278,47 @@ impl Device {
         ResourceAllocationInfo(hw_allocation_info)
     }
 
-    pub fn create_shared_handle(
-        &self,
-        object: &DeviceChild,
-        name: &str,
-    ) -> DxResult<Handle> {
+    pub fn new(adapter: &Adapter) -> DxResult<Self> {
+        let mut hw_device: *mut ID3D12Device2 = std::ptr::null_mut();
+        unsafe {
+            dx_try!(D3D12CreateDevice(
+                cast_to_iunknown!(adapter.this),
+                D3D_FEATURE_LEVEL_D3D_FEATURE_LEVEL_12_0,
+                &IID_ID3D12Device2,
+                cast_to_ppv(&mut hw_device),
+            ));
+        }
+
+        Ok(Device { this: hw_device })
+    }
+
+    pub fn open_shared_fence_handle(&self, handle: Handle) -> DxResult<Fence> {
+        let mut hw_fence = std::ptr::null_mut();
+        unsafe {
+            dx_try!(
+                self.this,
+                OpenSharedHandle,
+                handle.0,
+                &IID_ID3D12Fence,
+                &mut hw_fence
+            );
+        }
+
+        Ok(Fence {
+            this: hw_fence as *mut ID3D12Fence,
+        })
+    }
+
+    pub fn open_shared_handle_by_name(&self, name: &str) -> DxResult<Handle> {
         let mut hw_handle = std::ptr::null_mut();
-        let hw_device_child = object.this;
         let name = widestring::U16CString::from_str(name)
             .expect("Cannot convert handle name");
         unsafe {
             dx_try!(
                 self.this,
-                CreateSharedHandle,
-                hw_device_child,
-                std::ptr::null_mut(),
-                0x10000000, // GENERIC_ALL from winnt.h
+                OpenSharedHandleByName,
                 name.as_ptr(),
+                0x10000000, // GENERIC_ALL from winnt.h
                 &mut hw_handle
             );
         }
@@ -1283,40 +1361,6 @@ impl Device {
         Ok(Resource {
             this: hw_resource as *mut ID3D12Resource,
         })
-    }
-
-    pub fn open_shared_fence_handle(&self, handle: Handle) -> DxResult<Fence> {
-        let mut hw_fence = std::ptr::null_mut();
-        unsafe {
-            dx_try!(
-                self.this,
-                OpenSharedHandle,
-                handle.0,
-                &IID_ID3D12Fence,
-                &mut hw_fence
-            );
-        }
-
-        Ok(Fence {
-            this: hw_fence as *mut ID3D12Fence,
-        })
-    }
-
-    pub fn open_shared_handle_by_name(&self, name: &str) -> DxResult<Handle> {
-        let mut hw_handle = std::ptr::null_mut();
-        let name = widestring::U16CString::from_str(name)
-            .expect("Cannot convert handle name");
-        unsafe {
-            dx_try!(
-                self.this,
-                OpenSharedHandleByName,
-                name.as_ptr(),
-                0x10000000, // GENERIC_ALL from winnt.h
-                &mut hw_handle
-            );
-        }
-
-        Ok(Handle(hw_handle))
     }
 }
 
@@ -1362,17 +1406,9 @@ pub struct CommandQueue {
 impl_com_object_refcount_unnamed!(CommandQueue);
 impl_com_object_clone_drop!(CommandQueue);
 
+unsafe impl Send for CommandQueue {}
+
 impl CommandQueue {
-    pub fn signal(&self, fence: &Fence, value: u64) -> DxResult<()> {
-        unsafe { dx_try!(self.this, Signal, fence.this, value) };
-        Ok(())
-    }
-
-    pub fn wait(&self, fence: &Fence, value: u64) -> DxResult<()> {
-        unsafe { dx_try!(self.this, Wait, fence.this, value) };
-        Ok(())
-    }
-
     pub fn execute_command_lists(&self, command_lists: &[CommandList]) {
         unsafe {
             dx_call!(
@@ -1392,15 +1428,25 @@ impl CommandQueue {
             Ok(frequency)
         }
     }
+
+    pub fn signal(&self, fence: &Fence, value: u64) -> DxResult<()> {
+        unsafe { dx_try!(self.this, Signal, fence.this, value) };
+        Ok(())
+    }
+
+    pub fn wait(&self, fence: &Fence, value: u64) -> DxResult<()> {
+        unsafe { dx_try!(self.this, Wait, fence.this, value) };
+        Ok(())
+    }
 }
 
-pub struct DxgiSwapchain {
+pub struct Swapchain {
     this: *mut IDXGISwapChain4,
 }
-impl_com_object_refcount_unnamed!(DxgiSwapchain);
-impl_com_object_clone_drop!(DxgiSwapchain);
+impl_com_object_refcount_unnamed!(Swapchain);
+impl_com_object_clone_drop!(Swapchain);
 
-impl DxgiSwapchain {
+impl Swapchain {
     pub fn get_buffer(&self, index: u32) -> DxResult<Resource> {
         let mut buffer: *mut ID3D12Resource = std::ptr::null_mut();
         unsafe {
@@ -1416,8 +1462,16 @@ impl DxgiSwapchain {
         Ok(Resource { this: buffer })
     }
 
+    pub fn get_frame_latency_waitable_object(&self) -> Win32Event {
+        Win32Event {
+            handle: unsafe {
+                dx_call!(self.this, GetFrameLatencyWaitableObject,)
+            },
+        }
+    }
+
     pub fn get_current_back_buffer_index(&self) -> u32 {
-        u32::from(unsafe { dx_call!(self.this, GetCurrentBackBufferIndex,) })
+        unsafe { dx_call!(self.this, GetCurrentBackBufferIndex,) }
     }
 
     // ToDo: flags
@@ -1429,11 +1483,15 @@ impl DxgiSwapchain {
 
 pub struct DescriptorHeap {
     this: *mut ID3D12DescriptorHeap,
-    handle_size: u32, // ToDo: Bytes?
+    handle_size: u32, // it could be Bytes, but the latter is 64-bit, and
+                      // since it doesn't leak into public interface, there isn't much sense in it
 }
+
 impl_com_object_set_get_name!(DescriptorHeap, handle_size);
 impl_com_object_refcount_unnamed!(DescriptorHeap, handle_size);
 impl_com_object_clone_drop!(DescriptorHeap, handle_size);
+
+unsafe impl Send for DescriptorHeap {}
 
 impl DescriptorHeap {
     pub fn get_cpu_descriptor_handle_for_heap_start(
@@ -1448,7 +1506,7 @@ impl DescriptorHeap {
             );
         }
         CpuDescriptorHandle {
-            hw_handle: hw_handle,
+            hw_handle,
             handle_size: self.handle_size,
         }
     }
@@ -1465,7 +1523,7 @@ impl DescriptorHeap {
             );
         }
         GpuDescriptorHandle {
-            hw_handle: hw_handle,
+            hw_handle,
             handle_size: self.handle_size,
         }
     }
@@ -1513,7 +1571,54 @@ impl_com_object_clone_drop!(Resource);
 impl_com_object_refcount_named!(Resource);
 impl_com_object_set_get_name!(Resource);
 
+unsafe impl Send for Resource {}
+
 impl Resource {
+    pub fn get_desc(&self) -> ResourceDesc {
+        unsafe {
+            let mut hw_desc: D3D12_RESOURCE_DESC = std::mem::zeroed();
+            dx_call!(self.this, GetDesc, &mut hw_desc);
+            ResourceDesc(hw_desc)
+        }
+    }
+
+    pub fn get_device(&self) -> DxResult<Device> {
+        let mut hw_device: *mut ID3D12Device2 = std::ptr::null_mut();
+        unsafe {
+            dx_try!(
+                self.this,
+                GetDevice,
+                &IID_ID3D12Device2,
+                cast_to_ppv(&mut hw_device)
+            );
+        }
+        Ok(Device { this: hw_device })
+    }
+
+    pub fn get_gpu_virtual_address(&self) -> GpuVirtualAddress {
+        unsafe { GpuVirtualAddress(dx_call!(self.this, GetGPUVirtualAddress,)) }
+    }
+
+    // from d3dx12.h
+    pub fn get_required_intermediate_size(
+        &self,
+        first_subresouce: u32,
+        num_subresources: u32,
+    ) -> DxResult<Bytes> {
+        let resource_desc = self.get_desc();
+
+        let device = self.get_device()?;
+        let (_, _, _, total_size) = device.get_copyable_footprints(
+            &resource_desc,
+            first_subresouce,
+            num_subresources,
+            Bytes(0),
+        );
+        device.release();
+
+        Ok(total_size)
+    }
+
     pub fn map(
         &self,
         subresource: u32,
@@ -1548,51 +1653,6 @@ impl Resource {
             )
         }
     }
-
-    pub fn get_gpu_virtual_address(&self) -> GpuVirtualAddress {
-        unsafe { GpuVirtualAddress(dx_call!(self.this, GetGPUVirtualAddress,)) }
-    }
-
-    pub fn get_desc(&self) -> ResourceDesc {
-        unsafe {
-            let mut hw_desc: D3D12_RESOURCE_DESC = std::mem::zeroed();
-            dx_call!(self.this, GetDesc, &mut hw_desc);
-            ResourceDesc(hw_desc)
-        }
-    }
-
-    pub fn get_device(&self) -> DxResult<Device> {
-        let mut hw_device: *mut ID3D12Device2 = std::ptr::null_mut();
-        unsafe {
-            dx_try!(
-                self.this,
-                GetDevice,
-                &IID_ID3D12Device2,
-                cast_to_ppv(&mut hw_device)
-            );
-        }
-        Ok(Device { this: hw_device })
-    }
-
-    // from d3dx12.h
-    pub fn get_required_intermediate_size(
-        &self,
-        first_subresouce: u32,
-        num_subresources: u32,
-    ) -> DxResult<Bytes> {
-        let resource_desc = self.get_desc();
-
-        let device = self.get_device()?;
-        let (_, _, _, total_size) = device.get_copyable_footprints(
-            &resource_desc,
-            first_subresouce,
-            num_subresources,
-            Bytes(0),
-        );
-        device.release();
-
-        Ok(total_size)
-    }
 }
 
 pub struct CommandAllocator {
@@ -1618,78 +1678,20 @@ impl_com_object_refcount_named!(CommandList);
 impl_com_object_clone_drop!(CommandList);
 
 impl CommandList {
-    pub fn reset(
+    pub fn begin_query(
         &self,
-        command_allocator: &CommandAllocator,
-        pipeline_state: Option<&PipelineState>,
-    ) -> DxResult<()> {
-        unsafe {
-            dx_try!(
-                self.this,
-                Reset,
-                command_allocator.this,
-                match pipeline_state {
-                    Some(pso) => pso.this,
-                    None => std::ptr::null_mut(),
-                }
-            )
-        };
-        Ok(())
-    }
-
-    pub fn close(&self) -> DxResult<()> {
-        unsafe { dx_try!(self.this, Close,) };
-        Ok(())
-    }
-
-    pub fn resource_barrier(&self, barriers: &[ResourceBarrier]) {
-        unsafe {
-            dx_call!(
-                self.this,
-                ResourceBarrier,
-                barriers.len() as std::os::raw::c_uint,
-                barriers.as_ptr() as *const D3D12_RESOURCE_BARRIER
-            );
-        }
-    }
-
-    pub fn set_viewports(&self, viewports: &[Viewport]) {
-        unsafe {
-            dx_call!(
-                self.this,
-                RSSetViewports,
-                viewports.len() as std::os::raw::c_uint,
-                viewports.as_ptr() as *const D3D12_VIEWPORT
-            );
-        }
-    }
-
-    pub fn set_scissor_rects(&self, scissors: &[Rect]) {
-        unsafe {
-            dx_call!(
-                self.this,
-                RSSetScissorRects,
-                scissors.len() as std::os::raw::c_uint,
-                scissors.as_ptr() as *const D3D12_RECT
-            );
-        }
-    }
-
-    pub fn clear_render_target_view(
-        &self,
-        descriptor: CpuDescriptorHandle,
-        color: [f32; 4],
-        rects: &[Rect],
+        query_heap: &QueryHeap,
+        query_type: QueryType,
+        index: u32,
     ) {
         unsafe {
             dx_call!(
                 self.this,
-                ClearRenderTargetView,
-                descriptor.hw_handle,
-                color.as_ptr(),
-                rects.len() as u32,
-                rects.as_ptr() as *const D3D12_RECT
-            )
+                BeginQuery,
+                query_heap.this,
+                query_type as i32,
+                index
+            );
         }
     }
 
@@ -1715,8 +1717,27 @@ impl CommandList {
         }
     }
 
-    pub fn copy_resource(&self, source: &Resource, dest: &Resource) {
-        unsafe { dx_call!(self.this, CopyResource, dest.this, source.this) }
+    pub fn clear_render_target_view(
+        &self,
+        descriptor: CpuDescriptorHandle,
+        color: [f32; 4],
+        rects: &[Rect],
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                ClearRenderTargetView,
+                descriptor.hw_handle,
+                color.as_ptr(),
+                rects.len() as u32,
+                rects.as_ptr() as *const D3D12_RECT
+            )
+        }
+    }
+
+    pub fn close(&self) -> DxResult<()> {
+        unsafe { dx_try!(self.this, Close,) };
+        Ok(())
     }
 
     pub fn copy_buffer_region(
@@ -1738,6 +1759,434 @@ impl CommandList {
                 span.0 as u64
             );
         }
+    }
+
+    pub fn copy_resource(&self, source: &Resource, dest: &Resource) {
+        unsafe { dx_call!(self.this, CopyResource, dest.this, source.this) }
+    }
+
+    pub fn copy_texture_region(
+        &self,
+        dest_location: &TextureCopyLocation,
+        dest_x: u32, // ToDo: is it really u32?
+        dest_y: u32,
+        dest_z: u32,
+        source_location: &TextureCopyLocation,
+        source_box: Option<&Box>,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                CopyTextureRegion,
+                &dest_location.0,
+                dest_x,
+                dest_y,
+                dest_z,
+                &source_location.0,
+                match source_box {
+                    Some(&b) => &b.0,
+                    None => std::ptr::null_mut(),
+                }
+            )
+        }
+    }
+
+    pub fn dispatch(
+        &self,
+        thread_group_count_x: u32,
+        thread_group_count_y: u32,
+        thread_group_count_z: u32,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                Dispatch,
+                thread_group_count_x,
+                thread_group_count_y,
+                thread_group_count_z
+            )
+        }
+    }
+
+    pub fn dispatch_mesh(
+        &self,
+        thread_group_count_x: u32,
+        thread_group_count_y: u32,
+        thread_group_count_z: u32,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                DispatchMesh,
+                thread_group_count_x,
+                thread_group_count_y,
+                thread_group_count_z
+            )
+        }
+    }
+
+    pub fn draw_indexed_instanced(
+        &self,
+        index_count_per_instance: u32,
+        instance_count: u32,
+        start_index_location: u32,
+        base_vertex_location: i32,
+        start_instance_location: u32,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                DrawIndexedInstanced,
+                index_count_per_instance,
+                instance_count,
+                start_index_location,
+                base_vertex_location,
+                start_instance_location
+            )
+        }
+    }
+
+    pub fn draw_instanced(
+        &self,
+        vertex_count_per_instance: u32,
+        instance_count: u32,
+        start_vertex_location: u32,
+        start_instance_location: u32,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                DrawInstanced,
+                vertex_count_per_instance,
+                instance_count,
+                start_vertex_location,
+                start_instance_location
+            )
+        }
+    }
+
+    pub fn end_query(
+        &self,
+        query_heap: &QueryHeap,
+        query_type: QueryType,
+        index: u32,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                EndQuery,
+                query_heap.this,
+                query_type as i32,
+                index
+            );
+        }
+    }
+
+    pub fn execute_bundle(&self, command_list: &CommandList) {
+        unsafe {
+            dx_call!(
+                self.this,
+                ExecuteBundle,
+                // ToDo: is it 100% safe?
+                command_list.this as *mut ID3D12GraphicsCommandList
+            );
+        }
+    }
+
+    pub fn reset(
+        &self,
+        command_allocator: &CommandAllocator,
+        pipeline_state: Option<&PipelineState>,
+    ) -> DxResult<()> {
+        unsafe {
+            dx_try!(
+                self.this,
+                Reset,
+                command_allocator.this,
+                match pipeline_state {
+                    Some(pso) => pso.this,
+                    None => std::ptr::null_mut(),
+                }
+            )
+        };
+        Ok(())
+    }
+
+    pub fn resolve_query_data(
+        &self,
+        query_heap: &QueryHeap,
+        query_type: QueryType,
+        start_index: u32,
+        num_queries: u32,
+        destination_buffer: &Resource,
+        aligned_destination_buffer_offset: Bytes,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                ResolveQueryData,
+                query_heap.this,
+                query_type as i32,
+                start_index,
+                num_queries,
+                destination_buffer.this,
+                aligned_destination_buffer_offset.0
+            );
+        }
+    }
+
+    pub fn resource_barrier(&self, barriers: &[ResourceBarrier]) {
+        unsafe {
+            dx_call!(
+                self.this,
+                ResourceBarrier,
+                barriers.len() as std::os::raw::c_uint,
+                barriers.as_ptr() as *const D3D12_RESOURCE_BARRIER
+            );
+        }
+    }
+
+    pub fn set_compute_root_32bit_constant(
+        &self,
+        root_parameter_index: u32,
+        src_data: u32,
+        dest_offset: u32,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                SetComputeRoot32BitConstant,
+                root_parameter_index,
+                src_data,
+                dest_offset
+            )
+        }
+    }
+
+    pub fn set_compute_root_32bit_constants(
+        &self,
+        root_parameter_index: u32,
+        src_data: &[u32],
+        dest_offset: u32,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                SetComputeRoot32BitConstants,
+                root_parameter_index,
+                src_data.len() as u32,
+                src_data.as_ptr() as *const std::ffi::c_void,
+                dest_offset
+            )
+        }
+    }
+
+    pub fn set_compute_root_constant_buffer_view(
+        &self,
+        root_parameter_index: u32,
+        buffer_location: GpuVirtualAddress,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                SetComputeRootConstantBufferView,
+                root_parameter_index,
+                buffer_location.0
+            )
+        }
+    }
+
+    pub fn set_compute_root_descriptor_table(
+        &self,
+        parameter_index: u32,
+        base_descriptor: GpuDescriptorHandle,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                SetComputeRootDescriptorTable,
+                parameter_index,
+                base_descriptor.hw_handle
+            )
+        }
+    }
+
+    pub fn set_compute_root_shader_resource_view(
+        &self,
+        root_parameter_index: u32,
+        buffer_location: GpuVirtualAddress,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                SetComputeRootShaderResourceView,
+                root_parameter_index,
+                buffer_location.0
+            )
+        }
+    }
+
+    pub fn set_compute_root_signature(&self, root_signature: &RootSignature) {
+        unsafe {
+            dx_call!(self.this, SetComputeRootSignature, root_signature.this)
+        }
+    }
+
+    pub fn set_compute_root_unordered_access_view(
+        &self,
+        root_parameter_index: u32,
+        buffer_location: GpuVirtualAddress,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                SetComputeRootUnorderedAccessView,
+                root_parameter_index,
+                buffer_location.0
+            )
+        }
+    }
+
+    pub fn set_descriptor_heaps(&self, heaps: &[DescriptorHeap]) {
+        // since DescriptorHeap object is not just a wrapper around
+        // the correspondent COM pointer but also contains another member,
+        // we cannot just pass an array of DescriptorHeap's where
+        // an array of ID3D12DescriptorHeap's is required
+        // one could argue this smells, but it is really convenient
+        // to store descriptor size inside descriptor heap object
+
+        const MAX_HEAP_COUNT: usize = 2;
+        assert!(
+            heaps.len() <= MAX_HEAP_COUNT,
+            "Cannot set more than 2 descriptor heaps"
+        );
+
+        let mut hw_heaps = [std::ptr::null_mut(); MAX_HEAP_COUNT];
+        for i in 0..heaps.len() {
+            hw_heaps[i] = heaps[i].this;
+        }
+
+        unsafe {
+            dx_call!(
+                self.this,
+                SetDescriptorHeaps,
+                heaps.len() as std::os::raw::c_uint,
+                hw_heaps.as_mut_ptr() as *const *mut ID3D12DescriptorHeap
+            )
+        }
+    }
+
+    pub fn set_graphics_root_32bit_constant(
+        &self,
+        root_parameter_index: u32,
+        src_data: u32,
+        dest_offset: u32,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                SetGraphicsRoot32BitConstant,
+                root_parameter_index,
+                src_data,
+                dest_offset
+            )
+        }
+    }
+
+    pub fn set_graphics_root_32bit_constants(
+        &self,
+        root_parameter_index: u32,
+        src_data: &[u32],
+        dest_offset: u32,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                SetGraphicsRoot32BitConstants,
+                root_parameter_index,
+                src_data.len() as u32,
+                src_data.as_ptr() as *const std::ffi::c_void,
+                dest_offset
+            )
+        }
+    }
+
+    pub fn set_graphics_root_constant_buffer_view(
+        &self,
+        root_parameter_index: u32,
+        buffer_location: GpuVirtualAddress,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                SetGraphicsRootConstantBufferView,
+                root_parameter_index,
+                buffer_location.0
+            )
+        }
+    }
+
+    pub fn set_graphics_root_descriptor_table(
+        &self,
+        parameter_index: u32,
+        base_descriptor: GpuDescriptorHandle,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                SetGraphicsRootDescriptorTable,
+                parameter_index,
+                base_descriptor.hw_handle
+            )
+        }
+    }
+
+    pub fn set_graphics_root_shader_resource_view(
+        &self,
+        root_parameter_index: u32,
+        buffer_location: GpuVirtualAddress,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                SetGraphicsRootShaderResourceView,
+                root_parameter_index,
+                buffer_location.0
+            )
+        }
+    }
+
+    pub fn set_graphics_root_signature(&self, root_signature: &RootSignature) {
+        unsafe {
+            dx_call!(self.this, SetGraphicsRootSignature, root_signature.this)
+        }
+    }
+
+    pub fn set_graphics_root_unordered_access_view(
+        &self,
+        root_parameter_index: u32,
+        buffer_location: GpuVirtualAddress,
+    ) {
+        unsafe {
+            dx_call!(
+                self.this,
+                SetGraphicsRootUnorderedAccessView,
+                root_parameter_index,
+                buffer_location.0
+            )
+        }
+    }
+
+    pub fn set_index_buffer(&self, view: &IndexBufferView) {
+        unsafe { dx_call!(self.this, IASetIndexBuffer, &view.0) }
+    }
+
+    pub fn set_pipeline_state(&self, pipeline_state: &PipelineState) {
+        unsafe { dx_call!(self.this, SetPipelineState, pipeline_state.this) }
+    }
+
+    pub fn set_primitive_topology(&self, topology: PrimitiveTopology) {
+        unsafe { dx_call!(self.this, IASetPrimitiveTopology, topology as i32) }
     }
 
     pub fn set_render_targets(
@@ -1784,58 +2233,14 @@ impl CommandList {
         }
     }
 
-    pub fn set_descriptor_heaps(&self, heaps: &[DescriptorHeap]) {
-        // since DescriptorHeap object is not just a wrapper around
-        // the correspondent COM pointer but also contains another member,
-        // we cannot just pass an array of DescriptorHeap's where
-        // an array of ID3D12DescriptorHeap's is required
-        // one could argue this smells, but it is really convenient
-        // to store descriptor size inside descriptor heap object
-
-        const MAX_HEAP_COUNT: usize = 2;
-        assert!(
-            heaps.len() <= MAX_HEAP_COUNT,
-            "Cannot set more than 2 descriptor heaps"
-        );
-
-        let mut hw_heaps = [std::ptr::null_mut(); MAX_HEAP_COUNT];
-        for i in 0..heaps.len() {
-            hw_heaps[i] = heaps[i].this;
-        }
-
+    pub fn set_scissor_rects(&self, scissors: &[Rect]) {
         unsafe {
             dx_call!(
                 self.this,
-                SetDescriptorHeaps,
-                heaps.len() as std::os::raw::c_uint,
-                hw_heaps.as_mut_ptr() as *const *mut ID3D12DescriptorHeap
-            )
-        }
-    }
-
-    pub fn copy_texture_region(
-        &self,
-        dest_location: &TextureCopyLocation,
-        dest_x: u32, // ToDo: is it really u32?
-        dest_y: u32,
-        dest_z: u32,
-        source_location: &TextureCopyLocation,
-        source_box: Option<&Box>,
-    ) {
-        unsafe {
-            dx_call!(
-                self.this,
-                CopyTextureRegion,
-                &dest_location.0,
-                dest_x,
-                dest_y,
-                dest_z,
-                &source_location.0,
-                match source_box {
-                    Some(&b) => &b.0,
-                    None => std::ptr::null_mut(),
-                }
-            )
+                RSSetScissorRects,
+                scissors.len() as std::os::raw::c_uint,
+                scissors.as_ptr() as *const D3D12_RECT
+            );
         }
     }
 
@@ -1855,245 +2260,18 @@ impl CommandList {
         }
     }
 
-    pub fn set_index_buffer(&self, view: &IndexBufferView) {
-        unsafe { dx_call!(self.this, IASetIndexBuffer, &view.0) }
-    }
-
-    pub fn set_primitive_topology(&self, topology: PrimitiveTopology) {
-        unsafe { dx_call!(self.this, IASetPrimitiveTopology, topology as i32) }
-    }
-
-    pub fn set_pipeline_state(&self, pipeline_state: &PipelineState) {
-        unsafe { dx_call!(self.this, SetPipelineState, pipeline_state.this) }
-    }
-
-    pub fn set_graphics_root_signature(&self, root_signature: &RootSignature) {
-        unsafe {
-            dx_call!(self.this, SetGraphicsRootSignature, root_signature.this)
-        }
-    }
-
-    pub fn set_graphics_root_descriptor_table(
-        &self,
-        parameter_index: u32,
-        base_descriptor: GpuDescriptorHandle,
-    ) {
+    pub fn set_viewports(&self, viewports: &[Viewport]) {
         unsafe {
             dx_call!(
                 self.this,
-                SetGraphicsRootDescriptorTable,
-                parameter_index,
-                base_descriptor.hw_handle
-            )
-        }
-    }
-
-    pub fn set_graphics_root_32bit_constant(
-        &self,
-        root_parameter_index: u32,
-        src_data: u32,
-        dest_offset: u32,
-    ) {
-        unsafe {
-            dx_call!(
-                self.this,
-                SetGraphicsRoot32BitConstant,
-                root_parameter_index,
-                src_data,
-                dest_offset
-            )
-        }
-    }
-
-    pub fn set_graphics_root_32bit_constants(
-        &self,
-        root_parameter_index: u32,
-        src_data: &[u32],
-        dest_offset: u32,
-    ) {
-        unsafe {
-            dx_call!(
-                self.this,
-                SetGraphicsRoot32BitConstants,
-                root_parameter_index,
-                src_data.len() as u32,
-                src_data.as_ptr() as *const std::ffi::c_void,
-                dest_offset
-            )
-        }
-    }
-
-    pub fn set_graphics_root_shader_resource_view(
-        &self,
-        root_parameter_index: u32,
-        buffer_location: GpuVirtualAddress,
-    ) {
-        unsafe {
-            dx_call!(
-                self.this,
-                SetGraphicsRootShaderResourceView,
-                root_parameter_index,
-                buffer_location.0
-            )
-        }
-    }
-
-    pub fn set_graphics_root_constant_buffer_view(
-        &self,
-        root_parameter_index: u32,
-        buffer_location: GpuVirtualAddress,
-    ) {
-        unsafe {
-            dx_call!(
-                self.this,
-                SetGraphicsRootConstantBufferView,
-                root_parameter_index,
-                buffer_location.0
-            )
-        }
-    }
-
-    pub fn set_graphics_root_unordered_access_view(
-        &self,
-        root_parameter_index: u32,
-        buffer_location: GpuVirtualAddress,
-    ) {
-        unsafe {
-            dx_call!(
-                self.this,
-                SetComputeRootUnorderedAccessView,
-                root_parameter_index,
-                buffer_location.0
-            )
-        }
-    }
-
-    pub fn draw_indexed_instanced(
-        &self,
-        index_count_per_instance: u32,
-        instance_count: u32,
-        start_index_location: u32,
-        base_vertex_location: i32,
-        start_instance_location: u32,
-    ) {
-        unsafe {
-            dx_call!(
-                self.this,
-                DrawIndexedInstanced,
-                index_count_per_instance,
-                instance_count,
-                start_index_location,
-                base_vertex_location,
-                start_instance_location
-            )
-        }
-    }
-
-    pub fn draw_instanced(
-        &self,
-        vertex_count_per_instance: u32,
-        instance_count: u32,
-        start_vertex_location: u32,
-        start_instance_location: u32,
-    ) {
-        unsafe {
-            dx_call!(
-                self.this,
-                DrawInstanced,
-                vertex_count_per_instance,
-                instance_count,
-                start_vertex_location,
-                start_instance_location
-            )
-        }
-    }
-
-    pub fn dispatch_mesh(
-        &self,
-        thread_group_count_x: u32,
-        thread_group_count_y: u32,
-        thread_group_count_z: u32,
-    ) {
-        unsafe {
-            dx_call!(
-                self.this,
-                DispatchMesh,
-                thread_group_count_x,
-                thread_group_count_y,
-                thread_group_count_z
-            )
-        }
-    }
-
-    pub fn execute_bundle(&self, command_list: &CommandList) {
-        unsafe {
-            dx_call!(
-                self.this,
-                ExecuteBundle,
-                // ToDo: is it 100% safe?
-                command_list.this as *mut ID3D12GraphicsCommandList
+                RSSetViewports,
+                viewports.len() as std::os::raw::c_uint,
+                viewports.as_ptr() as *const D3D12_VIEWPORT
             );
         }
     }
 
-    pub fn begin_query(
-        &self,
-        query_heap: &QueryHeap,
-        query_type: QueryType,
-        index: u32,
-    ) {
-        unsafe {
-            dx_call!(
-                self.this,
-                BeginQuery,
-                query_heap.this,
-                query_type as i32,
-                index
-            );
-        }
-    }
-
-    pub fn end_query(
-        &self,
-        query_heap: &QueryHeap,
-        query_type: QueryType,
-        index: u32,
-    ) {
-        unsafe {
-            dx_call!(
-                self.this,
-                EndQuery,
-                query_heap.this,
-                query_type as i32,
-                index
-            );
-        }
-    }
-
-    pub fn resolve_query_data(
-        &self,
-        query_heap: &QueryHeap,
-        query_type: QueryType,
-        start_index: u32,
-        num_queries: u32,
-        destination_buffer: &Resource,
-        aligned_destination_buffer_offset: Bytes,
-    ) {
-        unsafe {
-            dx_call!(
-                self.this,
-                ResolveQueryData,
-                query_heap.this,
-                query_type as i32,
-                start_index,
-                num_queries,
-                destination_buffer.this,
-                aligned_destination_buffer_offset.0
-            );
-        }
-    }
-
-    // d3dx12.h helpers
+    // d3dx12.h helper
     pub fn update_subresources(
         &self,
         destination_resource: &Resource,
@@ -2241,8 +2419,12 @@ unsafe fn memcpy_subresource(
 pub struct Fence {
     this: *mut ID3D12Fence,
 }
+
 impl_com_object_refcount_unnamed!(Fence);
 impl_com_object_clone_drop!(Fence);
+
+// ToDo: make sure ID3D12Fence is thread-safe
+unsafe impl Send for Fence {}
 
 impl Fence {
     pub fn get_completed_value(&self) -> u64 {
@@ -2281,9 +2463,12 @@ impl Default for Win32Event {
 }
 
 impl Win32Event {
-    pub fn wait(&self) {
+    pub fn wait(&self, milliseconds: Option<u32>) {
         unsafe {
-            WaitForSingleObject(self.handle, 0xFFFFFFFF);
+            WaitForSingleObject(
+                self.handle,
+                milliseconds.unwrap_or(0xFFFFFFFF),
+            );
         }
     }
 
@@ -2312,6 +2497,8 @@ pub struct RootSignature {
 }
 impl_com_object_refcount_unnamed!(RootSignature);
 impl_com_object_clone_drop!(RootSignature);
+
+unsafe impl Send for RootSignature {}
 
 impl RootSignature {
     // ToDo: rename this function or move it elsewhere?
@@ -2348,6 +2535,8 @@ pub struct PipelineState {
 impl_com_object_set_get_name!(PipelineState);
 impl_com_object_refcount_named!(PipelineState);
 impl_com_object_clone_drop!(PipelineState);
+
+unsafe impl Send for PipelineState {}
 
 pub struct Blob {
     this: *mut ID3DBlob,
