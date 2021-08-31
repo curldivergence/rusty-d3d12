@@ -4,16 +4,13 @@ version = "0.2.0"
 authors = ["Andrey Pushkar <andrey.s.pushkar@gmail.com>"]
 edition = "2018"
 description = """Low-level D3D12 bindings for Rust."""
-license = "GPL-3.0"
+license = "MIT"
 keywords = ["d3d", "d3d12", "directx12", "directx", "dxgi"]
 categories = ["rendering::graphics-api", "graphics", "game-development", "multimedia", "api-bindings"]
 repository = "https://github.com/curldivergence/rusty-d3d12"
-include = ["assets/**/*", "D3D12AgilitySDK/**/*"]
 
 [features]
 default = []
-# PIX on Windows support via pixwrapper crate (requires WinPixEventRuntime headers and dll)
-# (please see pixwrapper's docs for details)
 pix = []
 log_ref_counting = []
 

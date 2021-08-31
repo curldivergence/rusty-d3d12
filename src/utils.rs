@@ -179,5 +179,3 @@ macro_rules! size_of {
         Bytes::from(std::mem::size_of::<$struct_type>())
     };
 }
-
-// pub(crate) use size_of;

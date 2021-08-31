@@ -2272,6 +2272,7 @@ impl CommandList {
     }
 
     // d3dx12.h helper
+    #[allow(clippy::too_many_arguments)]
     pub fn update_subresources(
         &self,
         destination_resource: &Resource,
@@ -2312,9 +2313,9 @@ impl CommandList {
         let destination_desc = destination_resource.get_desc();
         if destination_desc.0.Dimension == ResourceDimension::Buffer as i32 {
             self.copy_buffer_region(
-                &destination_resource,
+                destination_resource,
                 Bytes(0),
-                &intermediate_resource,
+                intermediate_resource,
                 Bytes(layouts[0].0.Offset),
                 Bytes(layouts[0].0.Footprint.Width as u64),
             );
@@ -2441,11 +2442,18 @@ impl Fence {
         }
         Ok(())
     }
+
+    pub fn signal(&self, value: u64) -> DxResult<()> {
+        unsafe { dx_try!(self.this, Signal, value) }
+        Ok(())
+    }
 }
 
 pub struct Win32Event {
     handle: HANDLE,
 }
+
+unsafe impl Send for Win32Event {}
 
 impl Default for Win32Event {
     fn default() -> Self {
