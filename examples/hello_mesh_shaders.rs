@@ -975,7 +975,6 @@ fn load_mesh() -> (Vec<Vertex>, Vec<Meshlet>, Vec<u32>, Vec<u32>) {
     (vertices, meshlets, triangle_indices, vertex_indices)
 }
 
-
 #[derive(Debug, Copy, Clone)]
 pub struct Camera {
     pub near: f32,

@@ -14,6 +14,8 @@ use std::sync::atomic::AtomicU64;
 use std::sync::atomic::AtomicU8;
 use std::sync::atomic::Ordering;
 use std::sync::mpsc;
+use std::sync::mpsc::Receiver;
+use std::sync::mpsc::Sender;
 use std::sync::mpsc::TryRecvError;
 use std::sync::Arc;
 use std::thread;
@@ -284,11 +286,22 @@ impl NBodyGravitySample {
 impl Drop for NBodyGravitySample {
     fn drop(&mut self) {
         self.pipeline
+            .graphics_tx
+            .send(None)
+            .expect("Cannot shutdown graphics thread");
+
+        self.pipeline
             .graphics_thread
             .take()
             .expect("Graphics thread was already joined")
             .join()
             .expect("Cannot join graphics thread");
+
+        self.pipeline
+            .compute_tx
+            .send(None)
+            .expect("Cannot shutdown compute thread");
+
         self.pipeline
             .compute_thread
             .take()
@@ -323,9 +336,10 @@ struct GraphicsContext {
 
 impl GraphicsContext {
     fn create_thread(
+        rx: Receiver<Option<usize>>,
         device: Device,
         direct_command_queue: CommandQueue,
-        frame_index: usize,
+        initial_frame_index: usize,
         rtv_heap: DescriptorHeap,
         render_targets: Vec<Resource>,
     ) -> JoinHandle<()> {
@@ -349,7 +363,7 @@ impl GraphicsContext {
 
             let direct_command_list = create_command_list(
                 &device,
-                frame_index,
+                initial_frame_index,
                 &direct_command_allocators,
                 &graphics_pso,
             );
@@ -362,7 +376,7 @@ impl GraphicsContext {
             let (constant_buffer_gs, constant_buffer_gs_mapped_data) =
                 create_gs_constant_buffer(&device, &direct_command_list);
 
-            Self {
+            let context = Self {
                 direct_command_queue,
                 render_targets,
                 direct_command_allocators,
@@ -375,6 +389,29 @@ impl GraphicsContext {
                 constant_buffer_gs,
                 constant_buffer_gs_mapped_data,
             };
+
+            loop {
+                let frame_idx = match rx.recv() {
+                    Ok(idx) => idx,
+                    Err(_) => panic!("main thread destroyed its channel why async thread was alive")
+                };
+
+                if let Some(frame_idx) = frame_idx {
+                    trace!(
+                        "Graphics thread received message, frame #{}",
+                        frame_idx
+                    );
+
+                    context.direct_command_allocators[frame_idx]
+                        .reset()
+                        .expect("Cannot reset graphics command allocator");
+
+                    
+                } else {
+                    trace!("Shutting down graphics thread");
+                    break;
+                }
+            }
         })
     }
 
@@ -396,7 +433,7 @@ impl GraphicsContext {
             copy_nonoverlapping(
                 &cb_data,
                 (self.constant_buffer_gs_mapped_data as *mut ConstantBufferGs)
-                    .offset(frame_index as isize),
+                    .add(frame_index),
                 1,
             );
         }
@@ -412,7 +449,14 @@ struct ComputeContext {
 }
 
 impl ComputeContext {
-    fn create_thread(device: Device, frame_index: usize) -> JoinHandle<()> {
+    fn create_thread(
+        rx: Receiver<Option<usize>>,
+        device: Device,
+        initial_frame_index: usize,
+        uavs: [Resource; 2],
+        srv_uav_heap: DescriptorHeap,
+        cs_cbuffer: Resource,
+    ) -> JoinHandle<()> {
         thread::spawn(move || {
             let compute_command_queue = device
                 .create_command_queue(
@@ -432,7 +476,7 @@ impl ComputeContext {
             let compute_command_list = device
                 .create_command_list(
                     CommandListType::Compute,
-                    &compute_command_allocators[frame_index],
+                    &compute_command_allocators[initial_frame_index],
                     None,
                 )
                 .expect("Cannot create compute command list");
@@ -441,13 +485,63 @@ impl ComputeContext {
             let compute_pso =
                 create_compute_pso(&device, &compute_root_signature);
 
-            // Self {
-            //     compute_command_queue,
-            //     compute_command_allocators,
-            //     compute_command_list,
-            //     compute_root_signature,
-            //     compute_pso,
-            // };
+            let context = Self {
+                compute_command_queue,
+                compute_command_allocators,
+                compute_command_list,
+                compute_root_signature,
+                compute_pso,
+            };
+
+            loop {
+                let frame_idx = match rx.recv() {
+                    Ok(idx) => idx,
+                    Err(_) => panic!("main thread destroyed its channel why async thread was alive")
+                };
+
+                if let Some(frame_idx) = frame_idx {
+                    trace!(
+                        "Compute thread received message, frame #{}",
+                        frame_idx
+                    );
+
+                    simulate(
+                        frame_idx as u8,
+                        &uavs,
+                        &context.compute_command_list,
+                        &context.compute_pso,
+                        &context.compute_root_signature,
+                        &srv_uav_heap,
+                        &cs_cbuffer,
+                    );
+
+                    context
+                        .compute_command_list
+                        .close()
+                        .expect("Cannot close compute command list");
+
+                    // ToDo: pix marker
+
+                    context.compute_command_queue.execute_command_lists(
+                        slice::from_ref(&context.compute_command_list),
+                    );
+
+                    context.compute_command_allocators[initial_frame_index]
+                        .reset()
+                        .expect("Cannot reset command allocator");
+
+                    context
+                        .compute_command_list
+                        .reset(
+                            &context.compute_command_allocators[frame_idx],
+                            Some(&context.compute_pso),
+                        )
+                        .expect("Cannot reset compute command list");
+                } else {
+                    trace!("Shutting down compute thread");
+                    break;
+                }
+            }
         })
     }
 }
@@ -520,7 +614,10 @@ struct Pipeline {
     srv_uav_heap: DescriptorHeap,
 
     graphics_thread: Option<JoinHandle<()>>,
+    graphics_tx: Sender<Option<usize>>,
+
     compute_thread: Option<JoinHandle<()>>,
+    compute_tx: Sender<Option<usize>>,
 
     particle_buffer_0: Resource,
     particle_buffer_0_upload: Resource,
@@ -628,7 +725,9 @@ impl Pipeline {
         let render_targets =
             create_render_targets(&device, &rtv_heap, &swapchain);
 
+        let (graphics_tx, graphics_rx) = mpsc::channel();
         let graphics_thread = GraphicsContext::create_thread(
+            graphics_rx,
             device.clone(),
             direct_command_queue.clone(),
             frame_index,
@@ -637,10 +736,6 @@ impl Pipeline {
         );
 
         info!("Created graphics context");
-
-        let compute_thread =
-            ComputeContext::create_thread(device.clone(), frame_index);
-        info!("Created compute context");
 
         let temp_command_allocator = device
             .create_command_allocator(CommandListType::Direct)
@@ -674,6 +769,18 @@ impl Pipeline {
             frame_fence,
             frame_fence_event,
         ) = create_fences(&device);
+
+        let (compute_tx, compute_rx) = mpsc::channel();
+        let compute_thread = ComputeContext::create_thread(
+            compute_rx,
+            device.clone(),
+            frame_index,
+            [particle_buffer_0.clone(), particle_buffer_1.clone()],
+            srv_uav_heap.clone(),
+            constant_buffer_cs.clone(),
+        );
+
+        info!("Created compute context");
 
         let mut frame_fence_value = 1;
         {
@@ -710,7 +817,10 @@ impl Pipeline {
             srv_uav_heap,
 
             graphics_thread: Some(graphics_thread),
+            graphics_tx,
+
             compute_thread: Some(compute_thread),
+            compute_tx,
 
             particle_buffer_0,
             particle_buffer_0_upload,
@@ -936,6 +1046,15 @@ impl Pipeline {
     fn render(&mut self) {
         trace!("Rendering frame, idx {}", self.frame_index);
 
+        self.graphics_tx
+            .send(Some(self.frame_index))
+            .expect("Cannot send message to graphics thread");
+        self.compute_tx
+            .send(Some(self.frame_index))
+            .expect("Cannot send message to compute thread");
+
+        self.frame_index = (self.frame_index + 1) % FRAMES_IN_FLIGHT;
+
         // self.thread_render_context_fence_value
         //     .swap(self.render_context_fence_value, Ordering::SeqCst);
 
@@ -969,7 +1088,7 @@ impl Pipeline {
 }
 
 fn simulate(
-    resource_selector: Arc<AtomicU8>,
+    resource_selector: u8,
     uavs: &[Resource; 2],
     compute_command_list: &CommandList,
     pso: &PipelineState,
@@ -980,7 +1099,7 @@ fn simulate(
     let curr_srv_index;
     let curr_uav_index;
     let curr_uav;
-    if resource_selector.load(Ordering::SeqCst) == 0 {
+    if resource_selector == 0 {
         curr_srv_index = SRV_PARTICLE_POS_VEL_0;
         curr_uav_index = UAV_PARTICLE_POS_VEL_1;
         curr_uav = &uavs[0];
