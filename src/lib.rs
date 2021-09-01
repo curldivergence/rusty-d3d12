@@ -1657,7 +1657,8 @@ impl Resource {
 pub struct CommandAllocator {
     this: *mut ID3D12CommandAllocator,
 }
-impl_com_object_refcount_unnamed!(CommandAllocator);
+impl_com_object_set_get_name!(CommandAllocator);
+impl_com_object_refcount_named!(CommandAllocator);
 impl_com_object_clone_drop!(CommandAllocator);
 
 impl CommandAllocator {
@@ -2420,7 +2421,8 @@ pub struct Fence {
     this: *mut ID3D12Fence,
 }
 
-impl_com_object_refcount_unnamed!(Fence);
+impl_com_object_set_get_name!(Fence);
+impl_com_object_refcount_named!(Fence);
 impl_com_object_clone_drop!(Fence);
 
 // ToDo: make sure ID3D12Fence is thread-safe

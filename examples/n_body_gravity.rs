@@ -116,7 +116,7 @@ const THREAD_COUNT: u32 = 1;
 const PARTICLE_COUNT: u32 = 10000;
 const PARTICLE_SPREAD: f32 = 400.;
 
-const USE_DEBUG: bool = true;
+const USE_DEBUG: bool = false;
 const USE_WARP_ADAPTER: bool = false;
 
 const CLEAR_COLOR: [f32; 4] = [0.0, 0.2, 0.3, 1.0];
@@ -385,15 +385,18 @@ impl GraphicsContext {
             let graphics_pso =
                 create_graphics_pso(&device, &graphics_root_signature);
 
-            let mut direct_command_allocators = vec![];
-
-            for frame_idx in 0..FRAMES_IN_FLIGHT {
-                direct_command_allocators.push(
-                    device
+            let direct_command_allocators = (0..FRAMES_IN_FLIGHT)
+                .map(|idx| {
+                    let alloc = device
                         .create_command_allocator(CommandListType::Direct)
-                        .expect("Cannot create command allocator"),
-                );
-            }
+                        .expect("Cannot create graphics command allocator");
+                    alloc.set_name(&format!(
+                        "graphics command allocator {}",
+                        idx
+                    ));
+                    alloc
+                })
+                .collect::<Vec<_>>();
 
             let direct_command_list = device
                 .create_command_list(
@@ -408,7 +411,7 @@ impl GraphicsContext {
                 .expect("Cannot close command list");
             trace!("Created direct command list");
 
-            let context = Self {
+            let mut context = Self {
                 direct_command_queue,
                 render_targets,
                 direct_command_allocators,
@@ -422,7 +425,7 @@ impl GraphicsContext {
                 constant_buffer_gs_mapped_data,
             };
 
-            let mut producer_fence_value = 1;
+            let mut producer_fence_value = 0;
             let mut consumer_fence_value = 1;
 
             loop {
@@ -436,6 +439,8 @@ impl GraphicsContext {
                         "Graphics thread received message, frame #{}",
                         frame_idx
                     );
+
+                    context.update(frame_idx);
 
                     context.direct_command_allocators[frame_idx]
                         .reset()
@@ -517,12 +522,7 @@ impl GraphicsContext {
 
                     context.direct_command_list.clear_render_target_view(
                         rtv_handle,
-                        [
-                            rand::thread_rng().gen_range(0. ..1.),
-                            rand::thread_rng().gen_range(0. ..1.),
-                            rand::thread_rng().gen_range(0. ..1.),
-                            1.,
-                        ],
+                        CLEAR_COLOR,
                         &[],
                     );
 
@@ -625,7 +625,6 @@ impl GraphicsContext {
         let camera = Camera::default();
 
         let world = Mat4::identity();
-        let world = Mat4::identity();
         let view = make_view_matrix(camera.position, camera.look_at);
         let proj = make_projection_matrix(&camera);
 
@@ -677,10 +676,15 @@ impl ComputeContext {
                 .expect("Cannot create compute command queue");
 
             let compute_command_allocators = (0..FRAMES_IN_FLIGHT)
-                .map(|_| {
-                    device
+                .map(|idx| {
+                    let alloc = device
                         .create_command_allocator(CommandListType::Compute)
-                        .expect("Cannot create compute command allocator")
+                        .expect("Cannot create compute command allocator");
+                    alloc.set_name(&format!(
+                        "compute command allocator {}",
+                        idx
+                    ));
+                    alloc
                 })
                 .collect::<Vec<_>>();
 
@@ -748,22 +752,21 @@ impl ComputeContext {
                         .compute_command_list
                         .close()
                         .expect("Cannot close compute command list");
-                    trace!("Created compute command list");
 
                     // ToDo: pix marker
 
                     // gpu wait for graphics to finish rendering previous srv
 
-                    if consumer_fence_value > 1 {
-                        trace!(
-                            "Compute queue: waiting on consumer fence value {}",
-                            consumer_fence_value
-                        );
-                        context
-                            .compute_command_queue
-                            .wait(&consumer_fence, consumer_fence_value)
-                            .expect("Cannot wait on queue");
-                    }
+                    // if consumer_fence_value > 1 {
+                    trace!(
+                        "Compute queue: waiting on consumer fence value {}",
+                        consumer_fence_value
+                    );
+                    context
+                        .compute_command_queue
+                        .wait(&consumer_fence, consumer_fence_value)
+                        .expect("Cannot wait on queue");
+                    // }
                     consumer_fence_value += 1;
 
                     context.compute_command_queue.execute_command_lists(
@@ -1039,7 +1042,7 @@ impl Pipeline {
 
         trace!("Executed command lists");
 
-        let frame_fence_value = Arc::new(AtomicU64::new(1));
+        let frame_fence_value = Arc::new(AtomicU64::new(0));
         let (graphics_render_start_tx, graphics_render_start_rx) =
             mpsc::channel();
         let (render_finish_tx, render_finish_rx) =
@@ -1119,7 +1122,7 @@ impl Pipeline {
 
             frame_fence,
             frame_fence_value,
-            last_frame_fence_value: 1,
+            last_frame_fence_value: 0,
             frame_fence_event,
         }
     }
@@ -1153,9 +1156,9 @@ impl Pipeline {
 
         // let temp_ff_value = self.frame_fence_value.load(Ordering::SeqCst);
         // if temp_ff_value > 0 {
-        if self.last_frame_fence_value > 3 {
+        if self.last_frame_fence_value > 1 {
             trace!(
-                "waiting for frame fence value {}",
+                "render(): waiting for frame fence value {}",
                 self.last_frame_fence_value
             );
             let completed_frame_fence_value =
@@ -1176,9 +1179,8 @@ impl Pipeline {
 
                 self.frame_fence_event.wait(None);
             }
-
-            self.last_frame_fence_value += 2;
         }
+        self.last_frame_fence_value += 2;
 
         self.frame_index = (self.frame_index + 1) % FRAMES_IN_FLIGHT;
     }
@@ -1259,17 +1261,27 @@ fn create_fences(
 ) -> (Fence, Win32Event, Fence, Win32Event, Fence, Win32Event) {
     let producer_fence = device
         .create_fence(0, FenceFlags::None)
-        .expect("Cannot create render_context_fence");
+        .expect("Cannot create producer_fence");
+    producer_fence
+        .set_name("producer fence")
+        .expect("Cannot set name on fence");
     let producer_fence_event = Win32Event::default();
 
     let consumer_fence = device
         .create_fence(0, FenceFlags::None)
-        .expect("Cannot create render_context_fence");
+        .expect("Cannot create consumer_fence");
+    consumer_fence
+        .set_name("consumer fence")
+        .expect("Cannot set name on fence");
     let consumer_fence_event = Win32Event::default();
 
     let frame_fence = device
         .create_fence(0, FenceFlags::None)
-        .expect("Cannot create render_context_fence");
+        .expect("Cannot create frame_fence");
+    frame_fence
+        .set_name("frame fence")
+        .expect("Cannot set name on fence");
+
     let frame_fence_event = Win32Event::default();
 
     (
