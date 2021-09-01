@@ -679,7 +679,9 @@ impl Pipeline {
         // The other process will increase fence value, so we'll wait on it
         self.current_shared_fence_value += 1;
 
-        self.swapchain.present(1, 0).expect("Cannot present");
+        self.swapchain
+            .present(1, PresentFlags::None)
+            .expect("Cannot present");
 
         self.move_to_next_frame();
     }
