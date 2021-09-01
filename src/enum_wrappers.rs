@@ -2487,3 +2487,18 @@ pub enum UavDimension {
     Texture2DArray = D3D12_UAV_DIMENSION_D3D12_UAV_DIMENSION_TEXTURE2DARRAY,
     Texture3D = D3D12_UAV_DIMENSION_D3D12_UAV_DIMENSION_TEXTURE3D,
 }
+
+bitflags! {
+    pub struct PresentFlags: u32 {
+        const None = 0;
+        const Test = DXGI_PRESENT_TEST;
+        const DoNotSequence = DXGI_PRESENT_DO_NOT_SEQUENCE;
+        const Restart = DXGI_PRESENT_RESTART;
+        const DoNotWait = DXGI_PRESENT_DO_NOT_WAIT;
+        const StereoPreferRight = DXGI_PRESENT_STEREO_PREFER_RIGHT;
+        const StereoTemporaryMono = DXGI_PRESENT_STEREO_TEMPORARY_MONO;
+        const RestrictToOutput = DXGI_PRESENT_RESTRICT_TO_OUTPUT;
+        const UseDuration = DXGI_PRESENT_USE_DURATION;
+        const AllowTearing = DXGI_PRESENT_ALLOW_TEARING;
+    }
+}

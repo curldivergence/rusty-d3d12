@@ -320,6 +320,12 @@ impl Drop for NBodyGravitySample {
     }
 }
 
+#[derive(Debug)]
+enum ContextType {
+    Graphics,
+    Compute,
+}
+
 struct GraphicsContext {
     direct_command_queue: CommandQueue,
     render_targets: Vec<Resource>,
@@ -336,14 +342,42 @@ struct GraphicsContext {
 
 impl GraphicsContext {
     fn create_thread(
-        rx: Receiver<Option<usize>>,
+        render_start_rx: Receiver<Option<usize>>,
+        render_finish_tx: Sender<ContextType>,
         device: Device,
         direct_command_queue: CommandQueue,
         initial_frame_index: usize,
-        rtv_heap: DescriptorHeap,
+        heaps: [DescriptorHeap; 2],
         render_targets: Vec<Resource>,
+
+        vertex_buffer: Resource,
+        vertex_buffer_upload: Resource,
+        vertex_buffer_view: VertexBufferView,
+
+        constant_buffer_gs: Resource,
+        constant_buffer_gs_mapped_data: usize, //*mut u8,
+
+        producer_fence: Fence,
+        consumer_fence: Fence,
+        frame_fence: Fence,
+        frame_fence_value: Arc<AtomicU64>,
     ) -> JoinHandle<()> {
         thread::spawn(move || {
+            let constant_buffer_gs_mapped_data =
+                constant_buffer_gs_mapped_data as *mut u8;
+
+            let viewport = Viewport::default()
+                .set_top_left_x(0.)
+                .set_top_left_y(0.)
+                .set_width(WINDOW_WIDTH as f32)
+                .set_height(WINDOW_HEIGHT as f32);
+
+            let scissor_rect = Rect::default()
+                .set_left(0)
+                .set_top(0)
+                .set_right(WINDOW_WIDTH as i32)
+                .set_bottom(WINDOW_HEIGHT as i32);
+
             let graphics_root_signature =
                 create_graphics_root_signature(&device);
             trace!("Created graphics root signature");
@@ -361,20 +395,18 @@ impl GraphicsContext {
                 );
             }
 
-            let direct_command_list = create_command_list(
-                &device,
-                initial_frame_index,
-                &direct_command_allocators,
-                &graphics_pso,
-            );
+            let direct_command_list = device
+                .create_command_list(
+                    CommandListType::Direct,
+                    &direct_command_allocators[initial_frame_index],
+                    Some(&graphics_pso),
+                )
+                .expect("Cannot create direct command list");
 
-            trace!("Created command list");
-
-            let (vertex_buffer, vertex_buffer_upload, vertex_buffer_view) =
-                create_vertex_buffer(&device, &direct_command_list);
-
-            let (constant_buffer_gs, constant_buffer_gs_mapped_data) =
-                create_gs_constant_buffer(&device, &direct_command_list);
+            direct_command_list
+                .close()
+                .expect("Cannot close command list");
+            trace!("Created direct command list");
 
             let context = Self {
                 direct_command_queue,
@@ -390,8 +422,11 @@ impl GraphicsContext {
                 constant_buffer_gs_mapped_data,
             };
 
+            let mut producer_fence_value = 1;
+            let mut consumer_fence_value = 1;
+
             loop {
-                let frame_idx = match rx.recv() {
+                let frame_idx = match render_start_rx.recv() {
                     Ok(idx) => idx,
                     Err(_) => panic!("main thread destroyed its channel why async thread was alive")
                 };
@@ -406,7 +441,178 @@ impl GraphicsContext {
                         .reset()
                         .expect("Cannot reset graphics command allocator");
 
-                    
+                    context
+                        .direct_command_list
+                        .reset(
+                            &context.direct_command_allocators[frame_idx],
+                            Some(&context.graphics_pso),
+                        )
+                        .expect("Cannot reset direct command list");
+
+                    context
+                        .direct_command_list
+                        .set_pipeline_state(&context.graphics_pso);
+
+                    context.direct_command_list.set_graphics_root_signature(
+                        &context.graphics_root_signature,
+                    );
+
+                    context
+                        .direct_command_list
+                        .set_graphics_root_constant_buffer_view(
+                            GRAPHICS_ROOT_CBV,
+                            GpuVirtualAddress(
+                                context
+                                    .constant_buffer_gs
+                                    .get_gpu_virtual_address()
+                                    .0
+                                    + (size_of!(ConstantBufferGs) * frame_idx)
+                                        .0,
+                            ),
+                        );
+
+                    // srv_uav heap
+                    context
+                        .direct_command_list
+                        .set_descriptor_heaps(slice::from_ref(&heaps[1]));
+
+                    context.direct_command_list.set_vertex_buffers(
+                        0,
+                        std::slice::from_ref(&vertex_buffer_view),
+                    );
+
+                    context
+                        .direct_command_list
+                        .set_primitive_topology(PrimitiveTopology::PointList);
+
+                    context
+                        .direct_command_list
+                        .set_viewports(slice::from_ref(&viewport));
+
+                    context
+                        .direct_command_list
+                        .set_scissor_rects(slice::from_ref(&scissor_rect));
+
+                    context.direct_command_list.resource_barrier(
+                        slice::from_ref(&ResourceBarrier::new_transition(
+                            &ResourceTransitionBarrier::default()
+                                .set_resource(
+                                    &context.render_targets[frame_idx],
+                                )
+                                .set_state_before(
+                                    ResourceStates::CommonOrPresent,
+                                )
+                                .set_state_after(ResourceStates::RenderTarget),
+                        )),
+                    );
+
+                    let rtv_handle = heaps[0]
+                        .get_cpu_descriptor_handle_for_heap_start()
+                        .advance(frame_idx as u32);
+                    context.direct_command_list.set_render_targets(
+                        slice::from_ref(&rtv_handle),
+                        false,
+                        None,
+                    );
+
+                    context.direct_command_list.clear_render_target_view(
+                        rtv_handle,
+                        [
+                            rand::thread_rng().gen_range(0. ..1.),
+                            rand::thread_rng().gen_range(0. ..1.),
+                            rand::thread_rng().gen_range(0. ..1.),
+                            1.,
+                        ],
+                        &[],
+                    );
+
+                    let srv_index = if frame_idx == 0 {
+                        SRV_PARTICLE_POS_VEL_0
+                    } else {
+                        SRV_PARTICLE_POS_VEL_1
+                    };
+
+                    let srv_handle = heaps[1]
+                        .get_gpu_descriptor_handle_for_heap_start()
+                        .advance(srv_index);
+
+                    context
+                        .direct_command_list
+                        .set_graphics_root_descriptor_table(
+                            GRAPHICS_ROOT_SRV_TABLE,
+                            srv_handle,
+                        );
+
+                    context.direct_command_list.draw_instanced(
+                        PARTICLE_COUNT,
+                        1,
+                        0,
+                        0,
+                    );
+
+                    context.direct_command_list.resource_barrier(
+                        slice::from_ref(&ResourceBarrier::new_transition(
+                            &ResourceTransitionBarrier::default()
+                                .set_resource(
+                                    &context.render_targets[frame_idx],
+                                )
+                                .set_state_before(ResourceStates::RenderTarget)
+                                .set_state_after(
+                                    ResourceStates::CommonOrPresent,
+                                ),
+                        )),
+                    );
+
+                    context
+                        .direct_command_list
+                        .close()
+                        .expect("Cannot close graphics command list");
+
+                    // gpu wait for compute to simulate particles
+
+                    trace!(
+                        "Graphics queue: waiting on producer fence value {}",
+                        producer_fence_value
+                    );
+
+                    context
+                        .direct_command_queue
+                        .wait(&producer_fence, producer_fence_value)
+                        .expect("Cannot wait on queue");
+                    producer_fence_value += 1;
+
+                    context.direct_command_queue.execute_command_lists(
+                        slice::from_ref(&context.direct_command_list),
+                    );
+
+                    trace!(
+                        "Graphics queue: signaling consumer fence value {}",
+                        consumer_fence_value
+                    );
+
+                    context
+                        .direct_command_queue
+                        .signal(&consumer_fence, consumer_fence_value)
+                        .expect("Cannot signal queue");
+                    consumer_fence_value += 1;
+
+                    context
+                        .direct_command_queue
+                        .signal(
+                            &frame_fence,
+                            frame_fence_value.fetch_add(1, Ordering::SeqCst),
+                        )
+                        .expect("Cannot signal queue");
+
+                    trace!(
+                            "Graphics thread finished rendering frame #{} (signaled frame fence with value {})",
+                            frame_idx,
+                            frame_fence_value.load(Ordering::SeqCst) // race condition
+                        );
+
+                    render_finish_tx.send(ContextType::Graphics).expect(
+                        "Cannot send rendering finish from graphics thread",
+                    );
                 } else {
                     trace!("Shutting down graphics thread");
                     break;
@@ -450,12 +656,17 @@ struct ComputeContext {
 
 impl ComputeContext {
     fn create_thread(
-        rx: Receiver<Option<usize>>,
+        render_start_rx: Receiver<Option<usize>>,
+        render_finish_tx: Sender<ContextType>,
         device: Device,
         initial_frame_index: usize,
         uavs: [Resource; 2],
         srv_uav_heap: DescriptorHeap,
         cs_cbuffer: Resource,
+        producer_fence: Fence,
+        consumer_fence: Fence,
+        frame_fence: Fence,
+        frame_fence_value: Arc<AtomicU64>,
     ) -> JoinHandle<()> {
         thread::spawn(move || {
             let compute_command_queue = device
@@ -481,6 +692,9 @@ impl ComputeContext {
                 )
                 .expect("Cannot create compute command list");
 
+            compute_command_list
+                .close()
+                .expect("Cannot close command list");
             let compute_root_signature = create_compute_root_signature(&device);
             let compute_pso =
                 create_compute_pso(&device, &compute_root_signature);
@@ -493,8 +707,11 @@ impl ComputeContext {
                 compute_pso,
             };
 
+            let mut producer_fence_value = 1;
+            let mut consumer_fence_value = 0;
+
             loop {
-                let frame_idx = match rx.recv() {
+                let frame_idx = match render_start_rx.recv() {
                     Ok(idx) => idx,
                     Err(_) => panic!("main thread destroyed its channel why async thread was alive")
                 };
@@ -504,6 +721,18 @@ impl ComputeContext {
                         "Compute thread received message, frame #{}",
                         frame_idx
                     );
+
+                    context.compute_command_allocators[initial_frame_index]
+                        .reset()
+                        .expect("Cannot reset command allocator");
+
+                    context
+                        .compute_command_list
+                        .reset(
+                            &context.compute_command_allocators[frame_idx],
+                            Some(&context.compute_pso),
+                        )
+                        .expect("Cannot reset compute command list");
 
                     simulate(
                         frame_idx as u8,
@@ -519,24 +748,55 @@ impl ComputeContext {
                         .compute_command_list
                         .close()
                         .expect("Cannot close compute command list");
+                    trace!("Created compute command list");
 
                     // ToDo: pix marker
+
+                    // gpu wait for graphics to finish rendering previous srv
+
+                    if consumer_fence_value > 1 {
+                        trace!(
+                            "Compute queue: waiting on consumer fence value {}",
+                            consumer_fence_value
+                        );
+                        context
+                            .compute_command_queue
+                            .wait(&consumer_fence, consumer_fence_value)
+                            .expect("Cannot wait on queue");
+                    }
+                    consumer_fence_value += 1;
 
                     context.compute_command_queue.execute_command_lists(
                         slice::from_ref(&context.compute_command_list),
                     );
 
-                    context.compute_command_allocators[initial_frame_index]
-                        .reset()
-                        .expect("Cannot reset command allocator");
+                    trace!(
+                        "Compute queue: signaling producer fence value {}",
+                        producer_fence_value
+                    );
+                    context
+                        .compute_command_queue
+                        .signal(&producer_fence, producer_fence_value)
+                        .expect("Cannot signal queue");
+                    producer_fence_value += 1;
 
                     context
-                        .compute_command_list
-                        .reset(
-                            &context.compute_command_allocators[frame_idx],
-                            Some(&context.compute_pso),
+                        .compute_command_queue
+                        .signal(
+                            &frame_fence,
+                            frame_fence_value.fetch_add(1, Ordering::SeqCst),
                         )
-                        .expect("Cannot reset compute command list");
+                        .expect("Cannot signal queue");
+
+                    trace!(
+                        "Compute thread finished rendering frame #{} (signaled frame fence with value {})",
+                        frame_idx,
+                        frame_fence_value.load(Ordering::SeqCst) // race condition
+                    );
+
+                    render_finish_tx.send(ContextType::Compute).expect(
+                        "Cannot send rendering finish from compute thread",
+                    );
                 } else {
                     trace!("Shutting down compute thread");
                     break;
@@ -608,8 +868,6 @@ struct Pipeline {
     swapchain: Swapchain,
     swapchain_event: Win32Event,
     frame_index: usize,
-    viewport: Viewport,
-    scissor_rect: Rect,
     rtv_heap: DescriptorHeap,
     srv_uav_heap: DescriptorHeap,
 
@@ -618,6 +876,8 @@ struct Pipeline {
 
     compute_thread: Option<JoinHandle<()>>,
     compute_tx: Sender<Option<usize>>,
+
+    render_finish_rx: Receiver<ContextType>,
 
     particle_buffer_0: Resource,
     particle_buffer_0_upload: Resource,
@@ -637,7 +897,8 @@ struct Pipeline {
     consumer_fence_event: Win32Event,
     // frame_fence_values: [u64; FRAMES_IN_FLIGHT],
     frame_fence: Fence,
-    frame_fence_value: u64,
+    frame_fence_value: Arc<AtomicU64>,
+    last_frame_fence_value: u64,
     frame_fence_event: Win32Event,
 }
 
@@ -695,18 +956,6 @@ impl Pipeline {
             info_queue = None;
         }
 
-        let viewport = Viewport::default()
-            .set_top_left_x(0.)
-            .set_top_left_y(0.)
-            .set_width(WINDOW_WIDTH as f32)
-            .set_height(WINDOW_HEIGHT as f32);
-
-        let scissor_rect = Rect::default()
-            .set_left(0)
-            .set_top(0)
-            .set_right(WINDOW_WIDTH as i32)
-            .set_bottom(WINDOW_HEIGHT as i32);
-
         let direct_command_queue = device
             .create_command_queue(
                 &CommandQueueDesc::default()
@@ -725,17 +974,14 @@ impl Pipeline {
         let render_targets =
             create_render_targets(&device, &rtv_heap, &swapchain);
 
-        let (graphics_tx, graphics_rx) = mpsc::channel();
-        let graphics_thread = GraphicsContext::create_thread(
-            graphics_rx,
-            device.clone(),
-            direct_command_queue.clone(),
-            frame_index,
-            rtv_heap.clone(),
-            render_targets,
-        );
-
-        info!("Created graphics context");
+        let (
+            producer_fence,
+            producer_fence_event,
+            consumer_fence,
+            consumer_fence_event,
+            frame_fence,
+            frame_fence_event,
+        ) = create_fences(&device);
 
         let temp_command_allocator = device
             .create_command_allocator(CommandListType::Direct)
@@ -758,31 +1004,20 @@ impl Pipeline {
 
         trace!("Created partice buffers");
 
+        let (vertex_buffer, vertex_buffer_upload, vertex_buffer_view) =
+            create_vertex_buffer(&device, &temp_command_list);
+        trace!("Created vertex buffer");
+
+        let (constant_buffer_gs, constant_buffer_gs_mapped_data) =
+            create_gs_constant_buffer(&device, &temp_command_list);
+        trace!("Created gs constant buffer");
+
         let (constant_buffer_cs, constant_buffer_cs_upload) =
             create_cs_constant_buffer(&device, &temp_command_list);
 
-        let (
-            producer_fence,
-            producer_fence_event,
-            consumer_fence,
-            consumer_fence_event,
-            frame_fence,
-            frame_fence_event,
-        ) = create_fences(&device);
+        trace!("Created cs constant buffer");
 
-        let (compute_tx, compute_rx) = mpsc::channel();
-        let compute_thread = ComputeContext::create_thread(
-            compute_rx,
-            device.clone(),
-            frame_index,
-            [particle_buffer_0.clone(), particle_buffer_1.clone()],
-            srv_uav_heap.clone(),
-            constant_buffer_cs.clone(),
-        );
-
-        info!("Created compute context");
-
-        let mut frame_fence_value = 1;
+        let frame_fence_value = 1;
         {
             temp_command_list
                 .close()
@@ -804,6 +1039,49 @@ impl Pipeline {
 
         trace!("Executed command lists");
 
+        let frame_fence_value = Arc::new(AtomicU64::new(1));
+        let (graphics_render_start_tx, graphics_render_start_rx) =
+            mpsc::channel();
+        let (render_finish_tx, render_finish_rx) =
+            mpsc::channel::<ContextType>();
+        let graphics_thread = GraphicsContext::create_thread(
+            graphics_render_start_rx,
+            render_finish_tx.clone(),
+            device.clone(),
+            direct_command_queue,
+            frame_index,
+            [rtv_heap.clone(), srv_uav_heap.clone()],
+            render_targets,
+            vertex_buffer,
+            vertex_buffer_upload,
+            vertex_buffer_view,
+            constant_buffer_gs,
+            constant_buffer_gs_mapped_data as usize,
+            producer_fence.clone(),
+            consumer_fence.clone(),
+            frame_fence.clone(),
+            frame_fence_value.clone(),
+        );
+
+        info!("Created graphics context");
+
+        let (compute_tx, compute_rx) = mpsc::channel();
+        let compute_thread = ComputeContext::create_thread(
+            compute_rx,
+            render_finish_tx,
+            device.clone(),
+            frame_index,
+            [particle_buffer_0.clone(), particle_buffer_1.clone()],
+            srv_uav_heap.clone(),
+            constant_buffer_cs.clone(),
+            producer_fence.clone(),
+            consumer_fence.clone(),
+            frame_fence.clone(),
+            frame_fence_value.clone(),
+        );
+
+        info!("Created compute context");
+
         Self {
             device,
             debug_device,
@@ -811,16 +1089,16 @@ impl Pipeline {
             swapchain,
             swapchain_event,
             frame_index,
-            viewport,
-            scissor_rect,
             rtv_heap,
             srv_uav_heap,
 
             graphics_thread: Some(graphics_thread),
-            graphics_tx,
+            graphics_tx: graphics_render_start_tx,
 
             compute_thread: Some(compute_thread),
             compute_tx,
+
+            render_finish_rx,
 
             particle_buffer_0,
             particle_buffer_0_upload,
@@ -840,208 +1118,11 @@ impl Pipeline {
             consumer_fence_event,
 
             frame_fence,
-            frame_fence_value: 0,
+            frame_fence_value,
+            last_frame_fence_value: 1,
             frame_fence_event,
         }
     }
-
-    // fn populate_producer_command_list(&mut self) {
-    //     self.direct_command_allocators[self.frame_index]
-    //         .reset()
-    //         .expect("Cannot reset direct command allocator");
-
-    //     self.direct_command_list
-    //         .reset(
-    //             &self.direct_command_allocators[self.frame_index],
-    //             Some(&self.pipeline_state),
-    //         )
-    //         .expect("Cannot reset direct command list");
-
-    //     self.direct_command_list
-    //         .set_graphics_root_signature(&self.root_signature);
-
-    //     self.direct_command_list
-    //         .set_viewports(slice::from_ref(&self.viewport));
-
-    //     self.direct_command_list
-    //         .set_scissor_rects(slice::from_ref(&self.scissor_rect));
-
-    //     self.direct_command_list.resource_barrier(slice::from_ref(
-    //         &ResourceBarrier::new_transition(
-    //             &ResourceTransitionBarrier::default()
-    //                 .set_resource(&self.render_targets[self.frame_index])
-    //                 .set_state_before(ResourceStates::CommonOrPresent)
-    //                 .set_state_after(ResourceStates::RenderTarget),
-    //         ),
-    //     ));
-
-    //     let rtv_handle = self
-    //         .rtv_heap
-    //         .get_cpu_descriptor_handle_for_heap_start()
-    //         .advance(self.frame_index as u32);
-
-    //     self.direct_command_list.set_render_targets(
-    //         slice::from_ref(&rtv_handle),
-    //         false,
-    //         None,
-    //     );
-
-    //     self.direct_command_list.clear_render_target_view(
-    //         rtv_handle,
-    //         CLEAR_COLOR,
-    //         &[],
-    //     );
-
-    //     self.direct_command_list
-    //         .set_primitive_topology(PrimitiveTopology::TriangleList);
-    //     self.direct_command_list
-    //         .set_vertex_buffers(0, slice::from_ref(&self.vertex_buffer_view));
-
-    //     self.direct_command_list
-    //         .set_graphics_root_constant_buffer_view(
-    //             0,
-    //             GpuVirtualAddress(
-    //                 self.triangle_constant_buffer.get_gpu_virtual_address().0,
-    //             ),
-    //         );
-
-    //     self.direct_command_list.draw_instanced(3, 1, 0, 0);
-
-    //     self.direct_command_list.resource_barrier(&[
-    //         ResourceBarrier::new_transition(
-    //             &ResourceTransitionBarrier::default()
-    //                 .set_resource(&self.render_targets[self.frame_index])
-    //                 .set_state_before(ResourceStates::RenderTarget)
-    //                 .set_state_after(ResourceStates::CopySource),
-    //         ),
-    //         ResourceBarrier::new_transition(
-    //             &ResourceTransitionBarrier::default()
-    //                 .set_resource(&self.cross_process_resource)
-    //                 .set_state_before(ResourceStates::CommonOrPresent)
-    //                 .set_state_after(ResourceStates::CopyDest),
-    //         ),
-    //     ]);
-
-    //     self.direct_command_list.copy_resource(
-    //         &self.render_targets[self.frame_index],
-    //         &self.cross_process_resource,
-    //     );
-
-    //     self.direct_command_list.resource_barrier(&[
-    //         ResourceBarrier::new_transition(
-    //             &ResourceTransitionBarrier::default()
-    //                 .set_resource(&self.render_targets[self.frame_index])
-    //                 .set_state_before(ResourceStates::CopySource)
-    //                 .set_state_after(ResourceStates::CommonOrPresent),
-    //         ),
-    //         ResourceBarrier::new_transition(
-    //             &ResourceTransitionBarrier::default()
-    //                 .set_resource(&self.cross_process_resource)
-    //                 .set_state_before(ResourceStates::CopyDest)
-    //                 .set_state_after(ResourceStates::CommonOrPresent),
-    //         ),
-    //     ]);
-
-    //     self.direct_command_list
-    //         .close()
-    //         .expect("Cannot close command list");
-    // }
-
-    // fn populate_consumer_command_list(&mut self) {
-    //     self.direct_command_allocators[self.frame_index]
-    //         .reset()
-    //         .expect("Cannot reset direct command allocator");
-
-    //     self.direct_command_list
-    //         .reset(
-    //             &self.direct_command_allocators[self.frame_index],
-    //             Some(&self.pipeline_state),
-    //         )
-    //         .expect("Cannot reset direct command list");
-
-    //     self.direct_command_list
-    //         .set_graphics_root_signature(&self.root_signature);
-
-    //     self.direct_command_list
-    //         .set_viewports(slice::from_ref(&self.viewport));
-
-    //     self.direct_command_list
-    //         .set_scissor_rects(slice::from_ref(&self.scissor_rect));
-
-    //     self.direct_command_list.resource_barrier(&[
-    //         ResourceBarrier::new_transition(
-    //             &ResourceTransitionBarrier::default()
-    //                 .set_resource(&self.render_targets[self.frame_index])
-    //                 .set_state_before(ResourceStates::CommonOrPresent)
-    //                 .set_state_after(ResourceStates::CopyDest),
-    //         ),
-    //         ResourceBarrier::new_transition(
-    //             &ResourceTransitionBarrier::default()
-    //                 .set_resource(&self.cross_process_resource)
-    //                 .set_state_before(ResourceStates::CommonOrPresent)
-    //                 .set_state_after(ResourceStates::CopySource),
-    //         ),
-    //     ]);
-
-    //     self.direct_command_list.copy_resource(
-    //         &self.cross_process_resource,
-    //         &self.render_targets[self.frame_index],
-    //     );
-
-    //     self.direct_command_list.resource_barrier(&[
-    //         ResourceBarrier::new_transition(
-    //             &ResourceTransitionBarrier::default()
-    //                 .set_resource(&self.render_targets[self.frame_index])
-    //                 .set_state_before(ResourceStates::CopyDest)
-    //                 .set_state_after(ResourceStates::RenderTarget),
-    //         ),
-    //         ResourceBarrier::new_transition(
-    //             &ResourceTransitionBarrier::default()
-    //                 .set_resource(&self.cross_process_resource)
-    //                 .set_state_before(ResourceStates::CopySource)
-    //                 .set_state_after(ResourceStates::CommonOrPresent),
-    //         ),
-    //     ]);
-
-    //     let rtv_handle = self
-    //         .rtv_heap
-    //         .get_cpu_descriptor_handle_for_heap_start()
-    //         .advance(self.frame_index as u32);
-
-    //     self.direct_command_list.set_render_targets(
-    //         slice::from_ref(&rtv_handle),
-    //         false,
-    //         None,
-    //     );
-
-    //     self.direct_command_list
-    //         .set_primitive_topology(PrimitiveTopology::TriangleList);
-    //     self.direct_command_list
-    //         .set_vertex_buffers(0, slice::from_ref(&self.vertex_buffer_view));
-
-    //     self.direct_command_list
-    //         .set_graphics_root_constant_buffer_view(
-    //             0,
-    //             GpuVirtualAddress(
-    //                 self.triangle_constant_buffer.get_gpu_virtual_address().0,
-    //             ),
-    //         );
-
-    //     self.direct_command_list.draw_instanced(3, 1, 0, 0);
-
-    //     self.direct_command_list.resource_barrier(slice::from_ref(
-    //         &ResourceBarrier::new_transition(
-    //             &ResourceTransitionBarrier::default()
-    //                 .set_resource(&self.render_targets[self.frame_index])
-    //                 .set_state_before(ResourceStates::RenderTarget)
-    //                 .set_state_after(ResourceStates::CommonOrPresent),
-    //         ),
-    //     ));
-
-    //     self.direct_command_list
-    //         .close()
-    //         .expect("Cannot close command list");
-    // }
 
     fn render(&mut self) {
         trace!("Rendering frame, idx {}", self.frame_index);
@@ -1049,41 +1130,67 @@ impl Pipeline {
         self.graphics_tx
             .send(Some(self.frame_index))
             .expect("Cannot send message to graphics thread");
+
         self.compute_tx
             .send(Some(self.frame_index))
             .expect("Cannot send message to compute thread");
 
+        let context_count = 2; // graphics and compute
+        for _ in 0..context_count {
+            match self.render_finish_rx.recv() {
+                Ok(ctx_type) => {
+                    trace!("Context {:?} finished rendering", ctx_type)
+                }
+                Err(_) => panic!("Failed to query rendering finish msg"),
+            }
+        }
+
+        self.swapchain
+            .present(0, PresentFlags::None)
+            .expect("Cannot present");
+
+        // cpu wait for command allocators
+
+        // let temp_ff_value = self.frame_fence_value.load(Ordering::SeqCst);
+        // if temp_ff_value > 0 {
+        if self.last_frame_fence_value > 3 {
+            trace!(
+                "waiting for frame fence value {}",
+                self.last_frame_fence_value
+            );
+            let completed_frame_fence_value =
+                self.frame_fence.get_completed_value();
+
+            trace!(
+                "completed frame fence value {}",
+                completed_frame_fence_value
+            );
+
+            if completed_frame_fence_value < self.last_frame_fence_value {
+                self.frame_fence
+                    .set_event_on_completion(
+                        self.last_frame_fence_value,
+                        &self.frame_fence_event,
+                    )
+                    .expect("Cannot set fence event");
+
+                self.frame_fence_event.wait(None);
+            }
+
+            self.last_frame_fence_value += 2;
+        }
+
         self.frame_index = (self.frame_index + 1) % FRAMES_IN_FLIGHT;
-
-        // self.thread_render_context_fence_value
-        //     .swap(self.render_context_fence_value, Ordering::SeqCst);
-
-        // let thread_fence_value = self.thread_fence_value.load(Ordering::SeqCst);
-        // if self.thre
     }
 
     // fn move_to_next_frame(&mut self) {
     //     self.frame_index =
     //         self.swapchain.get_current_back_buffer_index() as usize;
 
-    //     let completed_frame_fence_value =
-    //         self.frame_resource_fence.get_completed_value();
-    //     if completed_frame_fence_value
-    //         < self.frame_resources_fence_values[self.frame_index]
-    //     {
-    //         self.frame_resource_fence
-    //             .set_event_on_completion(
-    //                 self.frame_resources_fence_values[self.frame_index],
-    //                 &self.frame_resource_fence_event,
-    //             )
-    //             .expect("Cannot set fence event");
-
-    //         self.frame_resource_fence_event.wait(None);
-    //     }
     // }
 
     fn update(&mut self) {
-        self.swapchain_event.wait(Some(100));
+        // self.swapchain_event.wait(Some(100));
     }
 }
 
@@ -1102,11 +1209,11 @@ fn simulate(
     if resource_selector == 0 {
         curr_srv_index = SRV_PARTICLE_POS_VEL_0;
         curr_uav_index = UAV_PARTICLE_POS_VEL_1;
-        curr_uav = &uavs[0];
+        curr_uav = &uavs[1];
     } else {
         curr_srv_index = SRV_PARTICLE_POS_VEL_1;
         curr_uav_index = UAV_PARTICLE_POS_VEL_0;
-        curr_uav = &uavs[1];
+        curr_uav = &uavs[0];
     }
     compute_command_list.resource_barrier(slice::from_ref(
         &ResourceBarrier::new_transition(
@@ -1147,100 +1254,6 @@ fn simulate(
         ),
     ));
 }
-
-fn create_async_contexts(
-    device: Device,
-    srv_uav_heap: DescriptorHeap,
-    uavs: [Resource; 2],
-    constant_buffer: Resource,
-    pso: PipelineState,
-    root_sig: RootSignature,
-    render_context_fence: Fence,
-    render_context_fence_value: Arc<AtomicU64>,
-    thread_fence_value: Arc<AtomicU64>,
-    resource_selector: Arc<AtomicU8>,
-) {
-    // let (tx, rx) = mpsc::channel();
-
-    // let async_thread_handle = std::thread::spawn(move || {
-    //     let thread_fence = device
-    //         .create_fence(0, FenceFlags::None)
-    //         .expect("Cannot create thread_fence");
-    //     let thread_fence_event = Win32Event::default();
-
-    //     loop {
-    //         match rx.try_recv() {
-    //             Ok(()) => break,
-    //             Err(err) => match err {
-    //                 TryRecvError::Empty => {}
-    //                 TryRecvError::Disconnected => {
-    //                     panic!("main thread destroyed its channel why async thread was alive")
-    //                 }
-    //             },
-    //         }
-
-    //         simulate(
-    //             resource_selector.clone(),
-    //             &uavs,
-    //             &compute_command_list,
-    //             &pso,
-    //             &root_sig,
-    //             &srv_uav_heap,
-    //             &constant_buffer,
-    //         );
-
-    //         compute_command_list
-    //             .close()
-    //             .expect("Cannot close compute command list");
-
-    //         // ToDo: pix marker
-
-    //         compute_command_queue
-    //             .execute_command_lists(slice::from_ref(&compute_command_list));
-
-    //         let fence_value =
-    //             thread_fence_value.fetch_add(1, Ordering::SeqCst) + 1;
-
-    //         compute_command_queue
-    //             .signal(&thread_fence, fence_value)
-    //             .expect("Cannot signal on compute queue");
-
-    //         thread_fence
-    //             .set_event_on_completion(fence_value, &thread_fence_event)
-    //             .expect("Cannot set event on thread fence");
-
-    //         thread_fence_event.wait(None);
-
-    //         let current_render_context_fence_value =
-    //             render_context_fence_value.load(Ordering::SeqCst);
-
-    //         if render_context_fence.get_completed_value()
-    //             < current_render_context_fence_value
-    //         {
-    //             compute_command_queue
-    //                 .wait(
-    //                     &render_context_fence,
-    //                     current_render_context_fence_value,
-    //                 )
-    //                 .expect("Cannot call wait on queue");
-
-    //             render_context_fence_value.swap(0, Ordering::SeqCst);
-    //         }
-
-    //         let prev_idx = resource_selector.load(Ordering::SeqCst);
-    //         resource_selector.store((prev_idx + 1) % 2, Ordering::SeqCst);
-
-    //         compute_command_allocator
-    //             .reset()
-    //             .expect("Cannot reset command allocator");
-
-    //         compute_command_list
-    //             .reset(&compute_command_allocator, Some(&pso))
-    //             .expect("Cannot reset compute command list");
-    //     }
-    // });
-}
-
 fn create_fences(
     device: &Device,
 ) -> (Fence, Win32Event, Fence, Win32Event, Fence, Win32Event) {
@@ -1524,6 +1537,24 @@ fn create_particle_buffers(
         .expect("Cannot upload particle buffer");
     trace!("Uploaded particle buffers");
 
+    direct_command_list.resource_barrier(slice::from_ref(
+        &ResourceBarrier::new_transition(
+            &ResourceTransitionBarrier::default()
+                .set_resource(&particle_buffer_0)
+                .set_state_before(ResourceStates::CopyDest)
+                .set_state_after(ResourceStates::NonPixelShaderResource),
+        ),
+    ));
+
+    direct_command_list.resource_barrier(slice::from_ref(
+        &ResourceBarrier::new_transition(
+            &ResourceTransitionBarrier::default()
+                .set_resource(&particle_buffer_1)
+                .set_state_before(ResourceStates::CopyDest)
+                .set_state_after(ResourceStates::NonPixelShaderResource),
+        ),
+    ));
+
     let srv_desc = ShaderResourceViewDesc::default()
         .new_buffer(
             &BufferSrv::default()
@@ -1593,7 +1624,7 @@ fn create_vertex_buffer(
         });
     }
 
-    let vertex_buffer_size = size_of!(Vertex);
+    let vertex_buffer_size = size_of!(Vertex) * particle_vertices.len();
 
     let vertex_buffer = device
         .create_committed_resource(
@@ -1602,7 +1633,7 @@ fn create_vertex_buffer(
             &ResourceDesc::default()
                 .set_dimension(ResourceDimension::Buffer)
                 .set_layout(TextureLayout::RowMajor)
-                .set_width(vertex_buffer_size.0.into()),
+                .set_width(vertex_buffer_size.0),
             ResourceStates::CopyDest,
             None,
         )

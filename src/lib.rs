@@ -1474,9 +1474,8 @@ impl Swapchain {
         unsafe { dx_call!(self.this, GetCurrentBackBufferIndex,) }
     }
 
-    // ToDo: flags
-    pub fn present(&self, sync_interval: UINT, flags: UINT) -> DxResult<()> {
-        unsafe { dx_try!(self.this, Present, sync_interval, flags) };
+    pub fn present(&self, sync_interval: u32, flags: PresentFlags) -> DxResult<()> {
+        unsafe { dx_try!(self.this, Present, sync_interval, flags.bits()) };
         Ok(())
     }
 }
