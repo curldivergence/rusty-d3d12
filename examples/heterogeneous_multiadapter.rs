@@ -209,9 +209,10 @@ pub struct Vertex {
 }
 
 impl Vertex {
-    pub fn make_desc() -> InputLayout {
+    pub fn make_desc() -> Vec<InputElementDesc<'static>> {
         vec![InputElementDesc::default()
-            .set_name(CString::new("POSITION").unwrap())
+            .set_name("POSITION")
+            .unwrap()
             .set_format(Format::R32G32B32_Float)
             .set_input_slot(0)
             .set_offset(Bytes::from(offset_of!(Self, position)))]
@@ -225,15 +226,17 @@ pub struct BlurVertex {
 }
 
 impl BlurVertex {
-    pub fn make_desc() -> InputLayout {
+    pub fn make_desc() -> Vec<InputElementDesc<'static>> {
         vec![
             InputElementDesc::default()
-                .set_name(CString::new("POSITION").unwrap())
+                .set_name("POSITION")
+                .unwrap()
                 .set_format(Format::R32G32B32_Float)
                 .set_input_slot(0)
                 .set_offset(Bytes::from(offset_of!(Self, position))),
             InputElementDesc::default()
-                .set_name(CString::new("TEXCOORD").unwrap())
+                .set_name("TEXCOORD")
+                .unwrap()
                 .set_format(Format::R32G32_Float)
                 .set_input_slot(0)
                 .set_offset(Bytes::from(offset_of!(Self, uv))),
@@ -465,7 +468,7 @@ impl Pipeline {
                 devices[device_idx]
                     .create_command_queue(
                         &CommandQueueDesc::default()
-                            .set_type(CommandListType::Direct),
+                            .set_queue_type(CommandListType::Direct),
                     )
                     .expect("Cannot create direct command queue"),
             );
@@ -488,7 +491,8 @@ impl Pipeline {
 
         let copy_command_queue = devices[0]
             .create_command_queue(
-                &CommandQueueDesc::default().set_type(CommandListType::Copy),
+                &CommandQueueDesc::default()
+                    .set_queue_type(CommandListType::Copy),
             )
             .expect("Cannot create copy command queue");
 
@@ -528,7 +532,8 @@ impl Pipeline {
             .create_heap(
                 &HeapDesc::default()
                     .set_properties(
-                        &HeapProperties::default().set_heap_type(HeapType::Default),
+                        &HeapProperties::default()
+                            .set_heap_type(HeapType::Default),
                     )
                     .set_size_in_bytes(texture_size * FRAMES_IN_FLIGHT)
                     .set_flags(
@@ -598,7 +603,8 @@ impl Pipeline {
             if !cross_adapter_textures_supported {
                 let secondary_adapter_texture = devices[1]
                     .create_committed_resource(
-                        &HeapProperties::default().set_heap_type(HeapType::Default),
+                        &HeapProperties::default()
+                            .set_heap_type(HeapType::Default),
                         HeapFlags::None,
                         &ResourceDesc::default()
                             .set_dimension(ResourceDimension::Texture2D)
@@ -647,7 +653,7 @@ impl Pipeline {
 
             let rtv_handle = rtv_heaps[1]
                 .get_cpu_descriptor_handle_for_heap_start()
-                .advance(Elements::from(FRAMES_IN_FLIGHT));
+                .advance(FRAMES_IN_FLIGHT as u32);
 
             devices[1].create_render_target_view(
                 &intermediate_blur_render_target,
@@ -666,7 +672,7 @@ impl Pipeline {
                 devices[1]
                     .create_shader_resource_view(resource, None, srv_handle);
 
-                srv_handle = srv_handle.advance(Elements(1));
+                srv_handle = srv_handle.advance(1);
             }
 
             devices[1].create_shader_resource_view(
@@ -893,57 +899,32 @@ impl Pipeline {
             let (texture_layout, _, _, _) = self.devices[adapter_idx]
                 .get_copyable_footprints(
                     &secondary_adapter_texture_desc,
-                    Elements(0),
-                    Elements(1),
+                    0,
+                    1,
                     Bytes(0),
                 );
 
-            // {
-            //     let dest_resource_desc = self.secondary_adapter_textures
-            //         [self.frame_index]
-            //         .get_desc();
-            //     trace!(
-            //         "About to copy texture region to resource {}: {:?}",
-            //         &self.secondary_adapter_textures[self.frame_index]
-            //             .get_name()
-            //             .expect("Cannot get resource name"),
-            //         &dest_resource_desc
-            //     );
-
-            //     let src_resource_desc = self.secondary_adapter_textures
-            //         [self.frame_index]
-            //         .get_desc();
-            //     trace!(
-            //         "About to copy texture region from resource {}: {:?}",
-            //         &self.cross_adapter_resources[adapter_idx]
-            //             [self.frame_index]
-            //             .get_name()
-            //             .expect("Cannot get resource name"),
-            //         &src_resource_desc
-            //     );
-            // }
-
-            let dest = TextureCopyLocation::new(
+            let dest = TextureCopyLocation::new_subresource_index(
                 &self.secondary_adapter_textures[self.frame_index],
-                &TextureLocationType::SubresourceIndex(Elements(0)),
+                0,
             );
 
-            let src = TextureCopyLocation::new(
+            let src = TextureCopyLocation::new_placed_footprint(
                 &self.cross_adapter_resources[adapter_idx][self.frame_index],
-                &TextureLocationType::PlacedFootprint(texture_layout[0]),
+                &texture_layout[0],
             );
 
             let resource_box = Box::default()
-                .set_left(Elements(0))
-                .set_top(Elements(0))
-                .set_right(Elements::from(WINDOW_WIDTH))
-                .set_bottom(Elements::from(WINDOW_HEIGHT));
+                .set_left(0)
+                .set_top(0)
+                .set_right(u32::from(WINDOW_WIDTH))
+                .set_bottom(u32::from(WINDOW_HEIGHT));
 
             self.direct_command_lists[adapter_idx].copy_texture_region(
                 &dest,
-                Elements(0),
-                Elements(0),
-                Elements(0),
+                0,
+                0,
+                0,
                 &src,
                 Some(&resource_box),
             );
@@ -964,7 +945,7 @@ impl Pipeline {
         self.direct_command_lists[adapter_idx].end_query(
             &self.query_heaps[adapter_idx],
             QueryType::Timestamp,
-            Elements::from(timestamp_heap_index),
+            timestamp_heap_index as u32,
         );
 
         self.direct_command_lists[adapter_idx]
@@ -991,19 +972,19 @@ impl Pipeline {
         self.direct_command_lists[adapter_idx]
             .set_primitive_topology(PrimitiveTopology::TriangleStrip);
         self.direct_command_lists[adapter_idx].set_vertex_buffers(
-            Elements(0),
+            0,
             slice::from_ref(&self.quad_vertex_buffer_view),
         );
 
         self.direct_command_lists[adapter_idx]
             .set_graphics_root_constant_buffer_view(
-                Elements(0),
+                0,
                 self.blur_constant_buffer.get_gpu_virtual_address(),
             );
 
         self.direct_command_lists[adapter_idx]
             .set_graphics_root_constant_buffer_view(
-                Elements(2),
+                2,
                 GpuVirtualAddress(
                     self.blur_workload_constant_buffer
                         .get_gpu_virtual_address()
@@ -1019,14 +1000,14 @@ impl Pipeline {
             let srv_handle = self
                 .cbv_srv_heap
                 .get_gpu_descriptor_handle_for_heap_start()
-                .advance(Elements::from(self.frame_index));
+                .advance(self.frame_index as u32);
 
             self.direct_command_lists[adapter_idx]
-                .set_graphics_root_descriptor_table(Elements(1), srv_handle);
+                .set_graphics_root_descriptor_table(1, srv_handle);
 
             let rtv_handle = self.rtv_heaps[adapter_idx]
                 .get_cpu_descriptor_handle_for_heap_start()
-                .advance(Elements::from(FRAMES_IN_FLIGHT));
+                .advance(FRAMES_IN_FLIGHT as u32);
 
             self.direct_command_lists[adapter_idx].set_render_targets(
                 slice::from_ref(&rtv_handle),
@@ -1034,12 +1015,7 @@ impl Pipeline {
                 None,
             );
 
-            self.direct_command_lists[adapter_idx].draw_instanced(
-                Elements(4),
-                Elements(1),
-                Elements(0),
-                Elements(0),
-            );
+            self.direct_command_lists[adapter_idx].draw_instanced(4, 1, 0, 0);
         }
 
         // Draw the fullscreen quad - Blur pass #2.
@@ -1068,14 +1044,14 @@ impl Pipeline {
             let srv_handle = self
                 .cbv_srv_heap
                 .get_gpu_descriptor_handle_for_heap_start()
-                .advance(Elements::from(FRAMES_IN_FLIGHT));
+                .advance(FRAMES_IN_FLIGHT as u32);
 
             self.direct_command_lists[adapter_idx]
-                .set_graphics_root_descriptor_table(Elements(1), srv_handle);
+                .set_graphics_root_descriptor_table(1, srv_handle);
 
             let rtv_handle = self.rtv_heaps[adapter_idx]
                 .get_cpu_descriptor_handle_for_heap_start()
-                .advance(Elements::from(self.frame_index));
+                .advance(self.frame_index as u32);
 
             self.direct_command_lists[adapter_idx].set_render_targets(
                 slice::from_ref(&rtv_handle),
@@ -1083,12 +1059,7 @@ impl Pipeline {
                 None,
             );
 
-            self.direct_command_lists[adapter_idx].draw_instanced(
-                Elements(4),
-                Elements(1),
-                Elements(0),
-                Elements(0),
-            );
+            self.direct_command_lists[adapter_idx].draw_instanced(4, 1, 0, 0);
         }
 
         self.direct_command_lists[adapter_idx].resource_barrier(
@@ -1105,14 +1076,14 @@ impl Pipeline {
         self.direct_command_lists[adapter_idx].end_query(
             &self.query_heaps[adapter_idx],
             QueryType::Timestamp,
-            Elements::from(timestamp_heap_index + 1),
+            timestamp_heap_index as u32 + 1,
         );
 
         self.direct_command_lists[adapter_idx].resolve_query_data(
             &self.query_heaps[adapter_idx],
             QueryType::Timestamp,
-            Elements::from(timestamp_heap_index),
-            Elements(2),
+            timestamp_heap_index as u32,
+            2,
             &self.timestamp_result_buffers[adapter_idx],
             Bytes::from(timestamp_heap_index * size_of::<u64>()),
         );
@@ -1139,34 +1110,29 @@ impl Pipeline {
             let render_target_desc =
                 self.render_targets[adapter_idx][self.frame_index].get_desc();
             let (render_target_layout, _, _, _) = self.devices[adapter_idx]
-                .get_copyable_footprints(
-                    &render_target_desc,
-                    Elements(0),
-                    Elements(1),
-                    Bytes(0),
-                );
+                .get_copyable_footprints(&render_target_desc, 0, 1, Bytes(0));
 
-            let dest = TextureCopyLocation::new(
+            let dest = TextureCopyLocation::new_placed_footprint(
                 &self.cross_adapter_resources[adapter_idx][self.frame_index],
-                &TextureLocationType::PlacedFootprint(render_target_layout[0]),
+                &render_target_layout[0],
             );
 
-            let src = TextureCopyLocation::new(
+            let src = TextureCopyLocation::new_subresource_index(
                 &self.render_targets[adapter_idx][self.frame_index],
-                &TextureLocationType::SubresourceIndex(Elements(0)),
+                0,
             );
 
             let resource_box = Box::default()
-                .set_left(Elements(0))
-                .set_top(Elements(0))
-                .set_right(Elements::from(WINDOW_WIDTH))
-                .set_bottom(Elements::from(WINDOW_HEIGHT));
+                .set_left(0)
+                .set_top(0)
+                .set_right(u32::from(WINDOW_WIDTH))
+                .set_bottom(u32::from(WINDOW_HEIGHT));
 
             self.copy_command_list.copy_texture_region(
                 &dest,
-                Elements(0),
-                Elements(0),
-                Elements(0),
+                0,
+                0,
+                0,
                 &src,
                 Some(&resource_box),
             );
@@ -1194,7 +1160,7 @@ impl Pipeline {
         self.direct_command_lists[adapter_idx].end_query(
             &self.query_heaps[adapter_idx],
             QueryType::Timestamp,
-            Elements::from(timestamp_heap_index),
+            timestamp_heap_index as u32,
         );
 
         self.direct_command_lists[adapter_idx]
@@ -1219,7 +1185,7 @@ impl Pipeline {
 
         let rtv_handle = self.rtv_heaps[adapter_idx]
             .get_cpu_descriptor_handle_for_heap_start()
-            .advance(Elements::from(self.frame_index));
+            .advance(self.frame_index as u32);
 
         let dsv_handle =
             self.dsv_heap.get_cpu_descriptor_handle_for_heap_start();
@@ -1245,14 +1211,12 @@ impl Pipeline {
 
         self.direct_command_lists[adapter_idx]
             .set_primitive_topology(PrimitiveTopology::TriangleStrip);
-        self.direct_command_lists[adapter_idx].set_vertex_buffers(
-            Elements(0),
-            slice::from_ref(&self.vertex_buffer_view),
-        );
+        self.direct_command_lists[adapter_idx]
+            .set_vertex_buffers(0, slice::from_ref(&self.vertex_buffer_view));
 
         self.direct_command_lists[adapter_idx]
             .set_graphics_root_constant_buffer_view(
-                Elements(1),
+                1,
                 GpuVirtualAddress(
                     self.workload_constant_buffer.get_gpu_virtual_address().0
                         + (self.frame_index
@@ -1275,17 +1239,9 @@ impl Pipeline {
             );
 
             self.direct_command_lists[adapter_idx]
-                .set_graphics_root_constant_buffer_view(
-                    Elements(0),
-                    cb_location,
-                );
+                .set_graphics_root_constant_buffer_view(0, cb_location);
 
-            self.direct_command_lists[adapter_idx].draw_instanced(
-                Elements(3),
-                Elements(1),
-                Elements(0),
-                Elements(0),
-            );
+            self.direct_command_lists[adapter_idx].draw_instanced(3, 1, 0, 0);
         }
 
         self.direct_command_lists[adapter_idx].resource_barrier(
@@ -1302,14 +1258,14 @@ impl Pipeline {
         self.direct_command_lists[adapter_idx].end_query(
             &self.query_heaps[adapter_idx],
             QueryType::Timestamp,
-            Elements::from(timestamp_heap_index + 1),
+            timestamp_heap_index as u32 + 1,
         );
 
         self.direct_command_lists[adapter_idx].resolve_query_data(
             &self.query_heaps[adapter_idx],
             QueryType::Timestamp,
-            Elements::from(timestamp_heap_index),
-            Elements(2),
+            timestamp_heap_index as u32,
+            2,
             &self.timestamp_result_buffers[adapter_idx],
             Bytes::from(timestamp_heap_index * size_of::<u64>()),
         );
@@ -1324,7 +1280,9 @@ impl Pipeline {
 
         self.execute_command_lists();
 
-        self.swapchain.present(1, 0).expect("Cannot present");
+        self.swapchain
+            .present(1, PresentFlags::None)
+            .expect("Cannot present");
 
         self.direct_command_queues[1]
             .signal(&self.frame_fence, self.current_present_fence_value)
@@ -1564,14 +1522,14 @@ impl Pipeline {
                 .set_end(range_begin + Bytes(2 * size_of::<u64>() as u64));
 
             let mapped_data = self.timestamp_result_buffers[device_idx]
-                .map(Elements(0), Some(&read_range))
+                .map(0, Some(&read_range))
                 .expect("Cannot map timestamp result buffer")
                 as *mut u64;
 
             let (begin, end) = unsafe {
                 (
-                    *mapped_data.offset(read_range.get_begin().0 as isize),
-                    *mapped_data.offset(read_range.get_begin().0 as isize + 1),
+                    *mapped_data.offset(read_range.begin().0 as isize),
+                    *mapped_data.offset(read_range.begin().0 as isize + 1),
                 )
             };
 
@@ -1663,7 +1621,7 @@ fn create_blur_constant_buffer(devices: &[Device; DEVICE_COUNT]) -> Resource {
             &ResourceDesc::default()
                 .set_dimension(ResourceDimension::Buffer)
                 .set_layout(TextureLayout::RowMajor)
-                .set_width(size_of::<BlurConstantBufferData>().into()),
+                .set_width(size_of::<BlurConstantBufferData>() as u64),
             ResourceStates::GenericRead,
             None,
         )
@@ -1682,7 +1640,7 @@ fn create_blur_constant_buffer(devices: &[Device; DEVICE_COUNT]) -> Resource {
     };
 
     let mapped_data = blur_constant_buffer
-        .map(Elements(0), None)
+        .map(0, None)
         .expect("Cannot map blur_constant_buffer");
     unsafe {
         copy_nonoverlapping(
@@ -1724,7 +1682,7 @@ fn create_blur_workload_constant_buffer(
         padding: [0.; 63],
     };
     let mapped_data = blur_workload_constant_buffer
-        .map(Elements(0), None)
+        .map(0, None)
         .expect("Cannot map blur_workload_constant_buffer");
     unsafe {
         copy_nonoverlapping(
@@ -1765,7 +1723,7 @@ fn create_workload_constant_buffer(
         padding: [0.; 63],
     };
     let mapped_data = workload_constant_buffer
-        .map(Elements(0), None)
+        .map(0, None)
         .expect("Cannot map workload_constant_buffer buffer");
     unsafe {
         copy_nonoverlapping(
@@ -1834,7 +1792,7 @@ fn create_triangle_constant_buffer(
         });
     }
     let mapped_data = constant_buffer
-        .map(Elements(0), None)
+        .map(0, None)
         .expect("Cannot map constant buffer");
     unsafe {
         copy_nonoverlapping(
@@ -1947,8 +1905,8 @@ fn create_blur_vertex_buffer(
             &quad_vertex_buffer,
             &quad_vertex_buffer_upload,
             Bytes(0),
-            Elements(0),
-            Elements(1),
+            0,
+            1,
             slice::from_ref(&quad_vertex_data),
         )
         .expect("Cannot upload quad_vertex buffer");
@@ -2041,8 +1999,8 @@ fn create_primary_vertex_buffer(
             &vertex_buffer,
             &vertex_buffer_upload,
             Bytes(0),
-            Elements(0),
-            Elements(1),
+            0,
+            1,
             slice::from_ref(&vertex_data),
         )
         .expect("Cannot upload vertex buffer");
@@ -2137,10 +2095,10 @@ fn create_psos(
     let vs_bytecode = ShaderBytecode::from_bytes(&vertex_shader);
     let ps_bytecode = ShaderBytecode::from_bytes(&pixel_shader);
 
+    let vsps_layout =
+        InputLayoutDesc::default().from_input_elements(&input_layout);
     let pso_desc = GraphicsPipelineStateDesc::default()
-        .set_input_layout(
-            &InputLayoutDesc::default().from_input_elements(&input_layout),
-        )
+        .set_input_layout(&vsps_layout)
         .set_root_signature(root_signature)
         .set_vs_bytecode(&vs_bytecode)
         .set_ps_bytecode(&ps_bytecode)
@@ -2148,7 +2106,6 @@ fn create_psos(
         .set_blend_state(&BlendDesc::default())
         .set_depth_stencil_state(&DepthStencilDesc::default())
         .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
-        .set_num_render_targets(Elements(1))
         .set_rtv_formats(&[Format::R8G8B8A8_UNorm])
         .set_dsv_format(Format::D32_Float);
 
@@ -2190,12 +2147,13 @@ fn create_psos(
     .expect("Cannot compile blur pixel shader V");
 
     let blur_input_layout = BlurVertex::make_desc();
+    let blur_layout = InputLayoutDesc::default().from_input_elements(&blur_input_layout);
     let blur_vs_bytecode = ShaderBytecode::from_bytes(&blur_vertex_shader);
     let blur_ps_bytecode_u = ShaderBytecode::from_bytes(&blur_pixel_shader_u);
     let blur_ps_bytecode_v = ShaderBytecode::from_bytes(&blur_pixel_shader_v);
     let blur_pso_desc_u = GraphicsPipelineStateDesc::default()
         .set_input_layout(
-            &InputLayoutDesc::default().from_input_elements(&blur_input_layout),
+            &blur_layout,
         )
         .set_root_signature(blur_root_signature)
         .set_vs_bytecode(&blur_vs_bytecode)
@@ -2206,7 +2164,6 @@ fn create_psos(
             &DepthStencilDesc::default().set_depth_enable(false),
         )
         .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
-        .set_num_render_targets(Elements(1))
         .set_rtv_formats(&[Format::R8G8B8A8_UNorm]);
     let blur_pso_u = devices[1]
         .create_graphics_pipeline_state(&blur_pso_desc_u)
@@ -2218,7 +2175,7 @@ fn create_psos(
 
     let blur_pso_desc_v = GraphicsPipelineStateDesc::default()
         .set_input_layout(
-            &InputLayoutDesc::default().from_input_elements(&blur_input_layout),
+            &blur_layout,
         )
         .set_root_signature(&blur_root_signature)
         .set_vs_bytecode(&blur_vs_bytecode)
@@ -2229,7 +2186,6 @@ fn create_psos(
             &DepthStencilDesc::default().set_depth_enable(false),
         )
         .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
-        .set_num_render_targets(Elements(1))
         .set_rtv_formats(&[Format::R8G8B8A8_UNorm]);
     let blur_pso_v = devices[1]
         .create_graphics_pipeline_state(&blur_pso_desc_v)
@@ -2248,21 +2204,20 @@ fn create_root_signatures(
     let (root_signature, blur_root_signature) = {
         let root_parameters = [
             RootParameter::default()
-                .set_parameter_type(RootParameterType::Cbv)
                 .set_shader_visibility(ShaderVisibility::Vertex)
-                .set_descriptor(
-                    &RootDescriptor::default().set_shader_register(Elements(0)),
+                .new_descriptor(
+                    &RootDescriptor::default().set_shader_register(0),
+                    RootParameterType::Cbv,
                 ),
             RootParameter::default()
-                .set_parameter_type(RootParameterType::Cbv)
                 .set_shader_visibility(ShaderVisibility::Pixel)
-                .set_descriptor(
-                    &RootDescriptor::default().set_shader_register(Elements(1)),
+                .new_descriptor(
+                    &RootDescriptor::default().set_shader_register(1),
+                    RootParameterType::Cbv,
                 ),
         ];
 
         let root_signature_desc = VersionedRootSignatureDesc::default()
-            .set_version(RootSignatureVersion::V1_1)
             .set_desc_1_1(
                 &RootSignatureDesc::default()
                     .set_parameters(&root_parameters)
@@ -2287,7 +2242,7 @@ fn create_root_signatures(
             .expect("Cannot create root signature on device 0");
 
         let range = DescriptorRange::default()
-            .set_num_descriptors(Elements(1))
+            .set_num_descriptors(1)
             .set_range_type(DescriptorRangeType::Srv)
             .set_offset_in_descriptors_from_table_start(
                 DescriptorRangeOffset::append(),
@@ -2295,43 +2250,41 @@ fn create_root_signatures(
 
         let blur_root_parameters = [
             RootParameter::default()
-                .set_parameter_type(RootParameterType::Cbv)
-                .set_descriptor(
+                .new_descriptor(
                     &RootDescriptor::default()
-                        .set_shader_register(Elements(0))
-                        .set_flags(RootDescriptorFlags::Static),
+                        .set_shader_register(0)
+                        .set_flags(RootDescriptorFlags::DataStatic),
+                    RootParameterType::Cbv,
                 )
                 .set_shader_visibility(ShaderVisibility::Pixel),
             RootParameter::default()
-                .set_parameter_type(RootParameterType::DescriptorTable)
                 .new_descriptor_table(
                     &RootDescriptorTable::default()
                         .set_descriptor_ranges(slice::from_ref(&range)),
                 )
                 .set_shader_visibility(ShaderVisibility::Pixel),
             RootParameter::default()
-                .set_parameter_type(RootParameterType::Cbv)
-                .set_descriptor(
+                .new_descriptor(
                     &RootDescriptor::default()
-                        .set_shader_register(Elements(1))
-                        .set_flags(RootDescriptorFlags::Static),
+                        .set_shader_register(1)
+                        .set_flags(RootDescriptorFlags::DataStatic),
+                    RootParameterType::Cbv,
                 )
                 .set_shader_visibility(ShaderVisibility::Pixel),
         ];
 
         let static_point_sampler = StaticSamplerDesc::default()
-            .set_shader_register(Elements(0))
+            .set_shader_register(0)
             .set_filter(Filter::MinMagMipPoint)
             .set_shader_visibility(ShaderVisibility::Pixel);
         let static_linear_sampler = StaticSamplerDesc::default()
-            .set_shader_register(Elements(1))
+            .set_shader_register(1)
             .set_filter(Filter::MinMagMipLinear)
             .set_shader_visibility(ShaderVisibility::Pixel);
 
         let static_samplers = [static_point_sampler, static_linear_sampler];
 
         let root_signature_desc = VersionedRootSignatureDesc::default()
-            .set_version(RootSignatureVersion::V1_1)
             .set_desc_1_1(
                 &RootSignatureDesc::default()
                     .set_parameters(&blur_root_parameters)
@@ -2401,9 +2354,9 @@ fn create_shared_resource_descs(
                 .set_width(WINDOW_WIDTH.into())
                 .set_height(WINDOW_HEIGHT.into())
                 .set_flags(ResourceFlags::AllowRenderTarget),
-            0.into(),
-            1.into(),
-            0.into(),
+            0,
+            1,
+            Bytes(0),
         );
 
         texture_size = align_to_multiple(
@@ -2455,7 +2408,7 @@ fn create_frame_resources(
             if device_idx == 1 {
                 render_targets[device_idx][frame_idx] = MaybeUninit::new(
                     swapchain
-                        .get_buffer(frame_idx.into())
+                        .get_buffer(frame_idx as u32)
                         .expect("Cannot get buffer from swapchain"),
                 );
             } else {
@@ -2496,7 +2449,7 @@ fn create_frame_resources(
                 rtv_handle,
             );
 
-            rtv_handle = rtv_handle.advance(Elements(1));
+            rtv_handle = rtv_handle.advance(1);
 
             direct_command_allocators[device_idx][frame_idx] = MaybeUninit::new(
                 devices[device_idx]
@@ -2528,13 +2481,13 @@ fn create_frame_resources(
 fn create_query_heaps(
     devices: &[Device; DEVICE_COUNT],
 ) -> ([Resource; DEVICE_COUNT], [QueryHeap; DEVICE_COUNT]) {
-    let query_result_count = Elements::from(FRAMES_IN_FLIGHT * 2);
+    let query_result_count = (FRAMES_IN_FLIGHT * 2) as u64;
     let query_results_buffer_size =
-        Bytes::from((query_result_count * std::mem::size_of::<u64>() as u64).0);
+        Bytes::from(query_result_count * std::mem::size_of::<u64>() as u64);
 
     let query_heap_desc = QueryHeapDesc::default()
-        .set_type(QueryHeapType::Timestamp)
-        .set_count(query_result_count);
+        .set_heap_type(QueryHeapType::Timestamp)
+        .set_count(query_result_count as u32);
 
     let mut timestamp_result_buffers: [MaybeUninit<Resource>; DEVICE_COUNT] =
         unsafe { MaybeUninit::uninit().assume_init() };
@@ -2545,7 +2498,8 @@ fn create_query_heaps(
         timestamp_result_buffers[device_idx] = MaybeUninit::new(
             devices[device_idx]
                 .create_committed_resource(
-                    &HeapProperties::default().set_heap_type(HeapType::Readback),
+                    &HeapProperties::default()
+                        .set_heap_type(HeapType::Readback),
                     HeapFlags::None,
                     &ResourceDesc::default()
                         .set_dimension(ResourceDimension::Buffer)
@@ -2593,7 +2547,7 @@ fn create_descriptor_heaps(
             .create_descriptor_heap(
                 &DescriptorHeapDesc::default()
                     .set_heap_type(DescriptorHeapType::RTV)
-                    .set_num_descriptors(Elements::from(num_descriptors)),
+                    .set_num_descriptors(num_descriptors as u32),
             )
             .expect("Cannot create RTV heap");
         current_heap
@@ -2609,7 +2563,7 @@ fn create_descriptor_heaps(
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
                 .set_heap_type(DescriptorHeapType::DSV)
-                .set_num_descriptors(Elements(1)),
+                .set_num_descriptors(1),
         )
         .expect("Cannot create DSV heap");
     dsv_heap
@@ -2620,7 +2574,7 @@ fn create_descriptor_heaps(
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
                 .set_heap_type(DescriptorHeapType::CBV_SRV_UAV)
-                .set_num_descriptors(Elements::from(FRAMES_IN_FLIGHT + 1))
+                .set_num_descriptors(FRAMES_IN_FLIGHT as u32 + 1)
                 .set_flags(DescriptorHeapFlags::ShaderVisible),
         )
         .expect("Cannot create CBV_SRV heap");
@@ -2639,7 +2593,7 @@ fn create_swapchain(
     let swapchain_desc = SwapchainDesc::default()
         .set_width(WINDOW_WIDTH)
         .set_height(WINDOW_HEIGHT)
-        .set_buffer_count(FRAMES_IN_FLIGHT.into());
+        .set_buffer_count(FRAMES_IN_FLIGHT as u32);
     let swapchain = factory
         .create_swapchain(&command_queue, hwnd as *mut HWND__, &swapchain_desc)
         .expect("Cannot create swapchain");
