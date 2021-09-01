@@ -70,9 +70,10 @@ struct Vertex {
 }
 
 impl Vertex {
-    fn make_desc() -> InputLayout {
+    fn make_desc() -> Vec<InputElementDesc<'static>> {
         vec![InputElementDesc::default()
-            .set_name(CString::new("POSITION").unwrap())
+            .set_name("POSITION")
+            .unwrap()
             .set_format(Format::R32G32B32_Float)
             .set_input_slot(0)
             .set_offset(Bytes(offset_of!(Self, position) as u64))]
@@ -127,7 +128,7 @@ struct HelloMeshShadersSample {
 
     depth_stencil: Option<Resource>,
 
-    meshlet_count: Elements,
+    meshlet_count: u32,
     vertex_buffer: Option<Resource>,
     meshlet_buffer: Option<Resource>,
     triangle_indices_buffer: Option<Resource>,
@@ -261,7 +262,7 @@ impl HelloMeshShadersSample {
             command_list,
             depth_stencil: None,
 
-            meshlet_count: 0.into(),
+            meshlet_count: 0,
             vertex_buffer: None,
             meshlet_buffer: None,
             triangle_indices_buffer: None,
@@ -303,7 +304,7 @@ impl HelloMeshShadersSample {
         self.vertex_buffer =
             Some(self.create_default_buffer(&vertices, "VertexBuffer"));
 
-        self.meshlet_count = Elements::from(meshlets.len());
+        self.meshlet_count = meshlets.len() as u32;
         self.meshlet_buffer =
             Some(self.create_default_buffer(&meshlets, "MeshletBuffer"));
         self.triangle_indices_buffer =
@@ -336,7 +337,7 @@ impl HelloMeshShadersSample {
                 HeapFlags::None,
                 &ResourceDesc::default()
                     .set_dimension(ResourceDimension::Buffer)
-                    .set_width(Elements(size.0))
+                    .set_width(size.0)
                     .set_layout(TextureLayout::RowMajor),
                 ResourceStates::GenericRead,
                 None,
@@ -348,7 +349,7 @@ impl HelloMeshShadersSample {
             .expect("Cannot set name on staging buffer");
 
         let data = staging_buffer
-            .map(Elements(0), None)
+            .map(0, None)
             .expect("Cannot map staging buffer");
 
         unsafe {
@@ -367,7 +368,7 @@ impl HelloMeshShadersSample {
                 HeapFlags::None,
                 &ResourceDesc::default()
                     .set_dimension(ResourceDimension::Buffer)
-                    .set_width(Elements(size.0))
+                    .set_width(size.0)
                     .set_layout(TextureLayout::RowMajor),
                 ResourceStates::CopyDest,
                 None,
@@ -426,35 +427,35 @@ impl HelloMeshShadersSample {
             .set_graphics_root_signature(&self.root_signature);
 
         self.command_list.set_graphics_root_constant_buffer_view(
-            Elements(0),
+            0,
             self.constant_buffer
                 .as_ref()
                 .expect("No constant buffer created")
                 .get_gpu_virtual_address(),
         );
         self.command_list.set_graphics_root_shader_resource_view(
-            Elements(1),
+            1,
             self.vertex_buffer
                 .as_ref()
                 .expect("No vertex buffer created")
                 .get_gpu_virtual_address(),
         );
         self.command_list.set_graphics_root_shader_resource_view(
-            Elements(2),
+            2,
             self.meshlet_buffer
                 .as_ref()
                 .expect("No meshlet buffer created")
                 .get_gpu_virtual_address(),
         );
         self.command_list.set_graphics_root_shader_resource_view(
-            Elements(3),
+            3,
             self.triangle_indices_buffer
                 .as_ref()
                 .expect("No triangle index buffer created")
                 .get_gpu_virtual_address(),
         );
         self.command_list.set_graphics_root_shader_resource_view(
-            Elements(4),
+            4,
             self.vertex_indices_buffer
                 .as_ref()
                 .expect("No vertex index buffer created")
@@ -465,22 +466,21 @@ impl HelloMeshShadersSample {
         self.command_list
             .set_scissor_rects(&vec![self.scissor_desc]);
 
-        self.command_list
-            .resource_barrier(&vec![ResourceBarrier::new_transition(
+        self.command_list.resource_barrier(&vec![
+            ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
                     .set_resource(
                         &self.render_targets[self.frame_index as usize],
                     )
                     .set_state_before(ResourceStates::CommonOrPresent)
                     .set_state_after(ResourceStates::RenderTarget),
-            )]);
+            ),
+        ]);
 
         let rtv_handle = self
             .rtv_heap
             .get_cpu_descriptor_handle_for_heap_start()
-            .advance(Elements(
-                self.swapchain.get_current_back_buffer_index() as u64,
-            ));
+            .advance(self.swapchain.get_current_back_buffer_index());
 
         self.command_list.set_render_targets(
             &mut [rtv_handle],
@@ -497,11 +497,7 @@ impl HelloMeshShadersSample {
 
         // ToDo: DSV
 
-        self.command_list.dispatch_mesh(
-            self.meshlet_count,
-            Elements(1),
-            Elements(1),
-        );
+        self.command_list.dispatch_mesh(self.meshlet_count, 1, 1);
 
         self.command_list
             .resource_barrier(&[ResourceBarrier::new_transition(
@@ -541,7 +537,9 @@ impl HelloMeshShadersSample {
         self.command_queue
             .execute_command_lists(std::slice::from_ref(&self.command_list));
 
-        self.swapchain.present(1, 0).expect("Cannot present");
+        self.swapchain
+            .present(1, PresentFlags::None)
+            .expect("Cannot present");
 
         self.fence_values[self.frame_index] = last_fence_value + 1;
         trace!(
@@ -636,7 +634,7 @@ impl HelloMeshShadersSample {
                 HeapFlags::None,
                 &ResourceDesc::default()
                     .set_dimension(ResourceDimension::Buffer)
-                    .set_width((size_of::<MeshletConstantBuffer>()).into())
+                    .set_width(size_of::<MeshletConstantBuffer>() as u64)
                     .set_layout(TextureLayout::RowMajor),
                 ResourceStates::GenericRead,
                 None,
@@ -644,7 +642,7 @@ impl HelloMeshShadersSample {
             .expect("Cannot create cbuffer staging buffer");
 
         let constant_buffer_ptr = constant_buffer
-            .map(Elements(0), None)
+            .map(0, None)
             .expect("Cannot map cbv staging buffer");
 
         let camera = Camera::default();
@@ -757,7 +755,7 @@ fn setup_heaps(
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
                 .set_heap_type(DescriptorHeapType::RTV)
-                .set_num_descriptors(Elements::from(FRAMES_IN_FLIGHT)),
+                .set_num_descriptors(u32::from(FRAMES_IN_FLIGHT)),
         )
         .expect("Cannot create RTV heap");
     rtv_heap
@@ -768,7 +766,7 @@ fn setup_heaps(
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
                 .set_heap_type(DescriptorHeapType::DSV)
-                .set_num_descriptors(Elements(1)),
+                .set_num_descriptors(1),
         )
         .expect("Cannot create RTV heap");
     dsv_heap
@@ -780,13 +778,13 @@ fn setup_heaps(
     let mut render_targets = vec![];
     for frame_idx in 0..FRAMES_IN_FLIGHT {
         let render_target = swapchain
-            .get_buffer(Elements::from(frame_idx))
+            .get_buffer(u32::from(frame_idx))
             .expect("cannot get buffer from swapchain");
 
         device.create_render_target_view(&render_target, rtv_handle);
         render_targets.push(render_target);
 
-        rtv_handle = rtv_handle.advance(Elements(1));
+        rtv_handle = rtv_handle.advance(1);
     }
 
     (render_targets, rtv_heap, dsv_heap)
@@ -800,7 +798,7 @@ fn create_swapchain(
     let swapchain_desc = SwapchainDesc::default()
         .set_width(WINDOW_WIDTH)
         .set_height(WINDOW_HEIGHT)
-        .set_buffer_count(Elements::from(FRAMES_IN_FLIGHT));
+        .set_buffer_count(u32::from(FRAMES_IN_FLIGHT));
     let swapchain = factory
         .create_swapchain(&command_queue, hwnd as *mut HWND__, &swapchain_desc)
         .expect("Cannot create swapchain");
@@ -974,6 +972,12 @@ fn load_mesh() -> (Vec<Vertex>, Vec<Meshlet>, Vec<u32>, Vec<u32>) {
 
     (vertices, meshlets, triangle_indices, vertex_indices)
 }
+
+#[derive(Debug, Copy, Clone)]
+pub struct Radians(pub f32);
+
+#[derive(Debug, Copy, Clone)]
+pub struct Degrees(pub f32);
 
 #[derive(Debug, Copy, Clone)]
 pub struct Camera {
