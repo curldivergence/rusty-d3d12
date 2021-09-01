@@ -12,14 +12,15 @@ Features:
 - not yet covered APIs can be accessed through raw bindings exports, and new APIs can be wrapped in semi-automatic mode with the help of `conversion_assist.py` script
 
 A list of currently implemented examples (note their code can be dirty and should not be treated as sane D3D12 tutorials or high-quality Rust code examples since their purpose is just to showcase the API):
-- hello triangle
-- hello texture (based on Microsoft sample)
-- dynamic indexing (based on Microsoft sample)
-- dynamic indexing using SM6.6 dynamic resources (basically a clone of the previous example with changes to indexing method and Agility SDK exports)
-- mesh shaders (loosely based on Microsoft sample)
-- heterogeneous multiadapter (closely follows Microsoft sample, so currently it is the most recommended sample to start exploring these bindings)
-- interprocess communication (demonstrates usage of a shared heap by two processes - producer and consumer).
+- hello_triangle
+- hello_texture (based on Microsoft sample)
+- dynamic_indexing (based on Microsoft sample)
+- dynamic_indexing_sm66 (basically a clone of the previous example with changes related to using SM6.6 dynamic resources and Agility SDK exports)
+- hello_mesh_shaders (loosely based on Microsoft sample)
+- heterogeneous_multiadapter (closely follows Microsoft sample, so currently it is the most recommended sample to start exploring these bindings if you want to compare them to C++ code line-by-line)
+- interprocess_communication (demonstrates usage of a shared heap by two processes - producer and consumer)
+- n_body_gravity (based on Microsoft sample, but uses a different threading model).
 
-Examples that are planned to be added in the near future include port of Microsoft's D3D12nBodyGravity sample and DXR showcase.
+The next milestone for this project is to cover DXR APIs and provide the corresponding samples.
 
 This library is still a work-in-progress and is not ready yet to be used in production, so all contributions, including code reviews, are welcome :)

@@ -4664,7 +4664,7 @@ impl<'rs, 'sh> MeshShaderPipelineStateDesc<'rs, 'sh> {
         self
     }
 
-    pub fn set_pixel_shader_bytecode(
+    pub fn set_ps_bytecode(
         mut self,
         bytecode: &'sh ShaderBytecode,
     ) -> Self {

@@ -335,8 +335,7 @@ impl HelloTextureSample {
         let srv_desc = ShaderResourceViewDesc::default()
             .new_texture_2d(&Tex2DSrv::default().set_mip_levels(1))
             .set_shader4_component_mapping(ShaderComponentMapping::default())
-            .set_format(Format::R8G8B8A8_UNorm)
-            .set_view_dimension(SrvDimension::Texture2D);
+            .set_format(Format::R8G8B8A8_UNorm);
         self.device.create_shader_resource_view(
             &self.texture.as_ref().expect("No texture has been created"),
             Some(&srv_desc),
@@ -482,7 +481,9 @@ impl HelloTextureSample {
         self.command_queue
             .execute_command_lists(std::slice::from_ref(&self.command_list));
 
-        self.swapchain.present(1, 0).expect("Cannot present");
+        self.swapchain
+            .present(1, PresentFlags::None)
+            .expect("Cannot present");
         self.flush_gpu();
 
         self.frame_index =

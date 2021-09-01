@@ -279,7 +279,7 @@ impl DynamicIndexingSample {
         let fence_event = Win32Event::default();
 
         let swapchain = create_swapchain(factory, &command_queue, hwnd);
-        let frame_index = swapchain.get_current_back_buffer_index().0 as u32;
+        let frame_index = swapchain.get_current_back_buffer_index() as u32;
 
         let viewport_desc = Viewport::default()
             .set_width(WINDOW_WIDTH as f32)
@@ -481,7 +481,7 @@ impl DynamicIndexingSample {
         let depth_stencil = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_type(HeapType::Default),
+                &HeapProperties::default().set_heap_type(HeapType::Default),
                 HeapFlags::None,
                 &ResourceDesc::default()
                     .set_dimension(ResourceDimension::Texture2D)
@@ -524,7 +524,7 @@ impl DynamicIndexingSample {
         let vertex_buffer = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_type(HeapType::Default),
+                &HeapProperties::default().set_heap_type(HeapType::Default),
                 HeapFlags::None,
                 &ResourceDesc::default()
                     .set_dimension(ResourceDimension::Buffer)
@@ -542,7 +542,7 @@ impl DynamicIndexingSample {
         let vertex_staging_buffer = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_type(HeapType::Upload),
+                &HeapProperties::default().set_heap_type(HeapType::Upload),
                 HeapFlags::None,
                 &ResourceDesc::default()
                     .set_dimension(ResourceDimension::Buffer)
@@ -577,7 +577,7 @@ impl DynamicIndexingSample {
             .expect("Cannot update vertex buffer");
 
         self.command_list
-            .resource_barrier(&[ResourceBarrier::transition(
+            .resource_barrier(&[ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
                     .set_resource(&vertex_buffer)
                     .set_state_before(ResourceStates::CopyDest)
@@ -612,7 +612,7 @@ impl DynamicIndexingSample {
         let index_buffer = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_type(HeapType::Default),
+                &HeapProperties::default().set_heap_type(HeapType::Default),
                 HeapFlags::None,
                 &ResourceDesc::default()
                     .set_dimension(ResourceDimension::Buffer)
@@ -630,7 +630,7 @@ impl DynamicIndexingSample {
         let index_staging_buffer = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_type(HeapType::Upload),
+                &HeapProperties::default().set_heap_type(HeapType::Upload),
                 HeapFlags::None,
                 &ResourceDesc::default()
                     .set_dimension(ResourceDimension::Buffer)
@@ -665,7 +665,7 @@ impl DynamicIndexingSample {
             .expect("Cannot update index buffer");
 
         self.command_list
-            .resource_barrier(&[ResourceBarrier::transition(
+            .resource_barrier(&[ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
                     .set_resource(&index_buffer)
                     .set_state_before(ResourceStates::CopyDest)
@@ -729,7 +729,7 @@ impl DynamicIndexingSample {
             .set_shader4_component_mapping(ShaderComponentMapping::default())
             .set_format(TEXTURES[0].format)
             .set_view_dimension(SrvDimension::Texture2D)
-            .set_texture_2d(&Tex2DSrv::default().set_mip_levels(Elements(1)));
+            .new_texture_2d(&Tex2DSrv::default().set_mip_levels(Elements(1)));
         self.device.create_shader_resource_view(
             &self
                 .city_diffuse_texture
@@ -749,7 +749,7 @@ impl DynamicIndexingSample {
                     )
                     .set_format(Format::R8G8B8A8_UNorm)
                     .set_view_dimension(SrvDimension::Texture2D)
-                    .set_texture_2d(
+                    .new_texture_2d(
                         &Tex2DSrv::default().set_mip_levels(Elements(1)),
                     );
 
@@ -776,7 +776,7 @@ impl DynamicIndexingSample {
         let city_diffuse_texture = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_type(HeapType::Default),
+                &HeapProperties::default().set_heap_type(HeapType::Default),
                 HeapFlags::None,
                 &texture_desc,
                 ResourceStates::CopyDest,
@@ -799,7 +799,7 @@ impl DynamicIndexingSample {
         let texture_staging_buffer = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_type(HeapType::Upload),
+                &HeapProperties::default().set_heap_type(HeapType::Upload),
                 HeapFlags::None,
                 &ResourceDesc::default()
                     .set_dimension(ResourceDimension::Buffer)
@@ -835,7 +835,7 @@ impl DynamicIndexingSample {
             .expect("Cannot upload diffuse texture");
 
         self.command_list
-            .resource_barrier(&[ResourceBarrier::transition(
+            .resource_barrier(&[ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
                     .set_resource(&city_diffuse_texture)
                     .set_state_before(ResourceStates::CopyDest)
@@ -868,7 +868,7 @@ impl DynamicIndexingSample {
         let materials_staging_buffer = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_type(HeapType::Upload),
+                &HeapProperties::default().set_heap_type(HeapType::Upload),
                 HeapFlags::None,
                 &ResourceDesc::default()
                     .set_dimension(ResourceDimension::Buffer)
@@ -907,7 +907,7 @@ impl DynamicIndexingSample {
                 .expect("Cannot update material staging buffer");
 
             self.command_list.resource_barrier(slice::from_ref(
-                &ResourceBarrier::transition(
+                &ResourceBarrier::new_transition(
                     &ResourceTransitionBarrier::default()
                         .set_resource(&self.city_material_textures[mat_idx])
                         .set_state_before(ResourceStates::CopyDest)
@@ -932,7 +932,7 @@ impl DynamicIndexingSample {
             let material_texture = self
                 .device
                 .create_committed_resource(
-                    &HeapProperties::default().set_type(HeapType::Default),
+                    &HeapProperties::default().set_heap_type(HeapType::Default),
                     HeapFlags::None,
                     texture_desc,
                     ResourceStates::CopyDest,
@@ -1015,7 +1015,7 @@ impl DynamicIndexingSample {
             .set_scissor_rects(&vec![self.scissor_desc]);
 
         self.command_list
-            .resource_barrier(&[ResourceBarrier::transition(
+            .resource_barrier(&[ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
                     .set_resource(
                         &self.render_targets[self.frame_index as usize],
@@ -1081,7 +1081,7 @@ impl DynamicIndexingSample {
         }
 
         self.command_list
-            .resource_barrier(&[ResourceBarrier::transition(
+            .resource_barrier(&[ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
                     .set_resource(
                         &self.render_targets[self.frame_index as usize],
@@ -1150,7 +1150,7 @@ impl DynamicIndexingSample {
 
         self.swapchain.present(1, 0).expect("Cannot present");
         self.frame_index =
-            self.swapchain.get_current_back_buffer_index().0 as u32;
+            self.swapchain.get_current_back_buffer_index() as u32;
 
         self.frame_resources[self.current_frame_resource_index as usize]
             .fence_value = self.fence_value;
@@ -1202,11 +1202,11 @@ fn create_pipeline_state(
 
     let pso_desc = GraphicsPipelineStateDesc::default()
         .set_input_layout(
-            &InputLayoutDesc::default().from_input_layout(&input_layout),
+            &InputLayoutDesc::default().from_input_elements(&input_layout),
         )
         .set_root_signature(root_signature)
-        .set_vertex_shader_bytecode(&vs_bytecode)
-        .set_pixel_shader_bytecode(&ps_bytecode)
+        .set_vs_bytecode(&vs_bytecode)
+        .set_ps_bytecode(&ps_bytecode)
         .set_rasterizer_state(&RasterizerDesc::default())
         .set_blend_state(&BlendDesc::default())
         .set_depth_stencil_state(&DepthStencilDesc::default())
@@ -1323,14 +1323,14 @@ d3dx12.h as a dependency to have X12SerializeVersionedRootSignature"
     let root_parameters = vec![
         RootParameter::default()
             .set_parameter_type(RootParameterType::DescriptorTable)
-            .set_descriptor_table(
+            .new_descriptor_table(
                 &RootDescriptorTable::default()
                     .set_descriptor_ranges(slice::from_ref(&ranges[0])),
             )
             .set_shader_visibility(ShaderVisibility::Pixel),
         RootParameter::default()
             .set_parameter_type(RootParameterType::DescriptorTable)
-            .set_descriptor_table(
+            .new_descriptor_table(
                 &RootDescriptorTable::default()
                     .set_descriptor_ranges(slice::from_ref(&ranges[1])),
             )
@@ -1384,7 +1384,7 @@ fn setup_heaps(
     let rtv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_type(DescriptorHeapType::RTV)
+                .set_heap_type(DescriptorHeapType::RTV)
                 .set_num_descriptors(Elements(FRAMES_IN_FLIGHT.into())),
         )
         .expect("Cannot create RTV heap");
@@ -1395,7 +1395,7 @@ fn setup_heaps(
     let dsv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_type(DescriptorHeapType::DSV)
+                .set_heap_type(DescriptorHeapType::DSV)
                 .set_num_descriptors(Elements(1)),
         )
         .expect("Cannot create RTV heap");
@@ -1406,7 +1406,7 @@ fn setup_heaps(
     let cbv_srv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_type(DescriptorHeapType::CBV_SRV_UAV)
+                .set_heap_type(DescriptorHeapType::CBV_SRV_UAV)
                 .set_flags(DescriptorHeapFlags::ShaderVisible)
                 .set_num_descriptors(Elements::from(
                     FRAMES_IN_FLIGHT * CITY_ROW_COUNT * CITY_COLUMN_COUNT
@@ -1422,7 +1422,7 @@ fn setup_heaps(
     let sampler_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_type(DescriptorHeapType::Sampler)
+                .set_heap_type(DescriptorHeapType::Sampler)
                 .set_flags(DescriptorHeapFlags::ShaderVisible)
                 .set_num_descriptors(Elements::from(1)),
         )
@@ -1523,7 +1523,7 @@ impl FrameResource {
 
         let cbv_staging_buffer = device
             .create_committed_resource(
-                &HeapProperties::default().set_type(HeapType::Upload),
+                &HeapProperties::default().set_heap_type(HeapType::Upload),
                 HeapFlags::None,
                 &ResourceDesc::default()
                     .set_dimension(ResourceDimension::Buffer)

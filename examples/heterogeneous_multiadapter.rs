@@ -494,7 +494,7 @@ impl Pipeline {
 
         let swapchain =
             create_swapchain(factory, &direct_command_queues[1], hwnd);
-        let frame_index = swapchain.get_current_back_buffer_index().0 as usize;
+        let frame_index = swapchain.get_current_back_buffer_index() as usize;
         trace!("Swapchain returned frame index {}", frame_index);
 
         let viewport = Viewport::default()
@@ -528,7 +528,7 @@ impl Pipeline {
             .create_heap(
                 &HeapDesc::default()
                     .set_properties(
-                        &HeapProperties::default().set_type(HeapType::Default),
+                        &HeapProperties::default().set_heap_type(HeapType::Default),
                     )
                     .set_size_in_bytes(texture_size * FRAMES_IN_FLIGHT)
                     .set_flags(
@@ -598,7 +598,7 @@ impl Pipeline {
             if !cross_adapter_textures_supported {
                 let secondary_adapter_texture = devices[1]
                     .create_committed_resource(
-                        &HeapProperties::default().set_type(HeapType::Default),
+                        &HeapProperties::default().set_heap_type(HeapType::Default),
                         HeapFlags::None,
                         &ResourceDesc::default()
                             .set_dimension(ResourceDimension::Texture2D)
@@ -634,7 +634,7 @@ impl Pipeline {
 
             intermediate_blur_render_target =  devices[1]
                 .create_committed_resource(
-                    &HeapProperties::default().set_type(HeapType::Default),
+                    &HeapProperties::default().set_heap_type(HeapType::Default),
                     HeapFlags::None,
                     &intermediate_render_target_desc,
                     ResourceStates::CommonOrPresent,
@@ -877,7 +877,7 @@ impl Pipeline {
 
         if !self.cross_adapter_textures_supported {
             self.direct_command_lists[adapter_idx].resource_barrier(
-                slice::from_ref(&ResourceBarrier::transition(
+                slice::from_ref(&ResourceBarrier::new_transition(
                     &ResourceTransitionBarrier::default()
                         .set_resource(
                             &self.secondary_adapter_textures[self.frame_index],
@@ -949,7 +949,7 @@ impl Pipeline {
             );
 
             self.direct_command_lists[adapter_idx].resource_barrier(
-                slice::from_ref(&ResourceBarrier::transition(
+                slice::from_ref(&ResourceBarrier::new_transition(
                     &ResourceTransitionBarrier::default()
                         .set_resource(
                             &self.secondary_adapter_textures[self.frame_index],
@@ -980,7 +980,7 @@ impl Pipeline {
             .set_scissor_rects(slice::from_ref(&self.scissor_rect));
 
         self.direct_command_lists[adapter_idx].resource_barrier(
-            slice::from_ref(&ResourceBarrier::transition(
+            slice::from_ref(&ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
                     .set_resource(&self.intermediate_blur_render_target)
                     .set_state_before(ResourceStates::PixelShaderResource)
@@ -1048,7 +1048,7 @@ impl Pipeline {
                 .set_pipeline_state(&self.blur_pipeline_states[1]);
 
             let barriers = [
-                ResourceBarrier::transition(
+                ResourceBarrier::new_transition(
                     &ResourceTransitionBarrier::default()
                         .set_resource(
                             &self.render_targets[adapter_idx][self.frame_index],
@@ -1056,7 +1056,7 @@ impl Pipeline {
                         .set_state_before(ResourceStates::CommonOrPresent)
                         .set_state_after(ResourceStates::RenderTarget),
                 ),
-                ResourceBarrier::transition(
+                ResourceBarrier::new_transition(
                     &ResourceTransitionBarrier::default()
                         .set_resource(&self.intermediate_blur_render_target)
                         .set_state_before(ResourceStates::RenderTarget)
@@ -1092,7 +1092,7 @@ impl Pipeline {
         }
 
         self.direct_command_lists[adapter_idx].resource_barrier(
-            slice::from_ref(&ResourceBarrier::transition(
+            slice::from_ref(&ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
                     .set_resource(
                         &self.render_targets[adapter_idx][self.frame_index],
@@ -1207,7 +1207,7 @@ impl Pipeline {
             .set_scissor_rects(slice::from_ref(&self.scissor_rect));
 
         self.direct_command_lists[adapter_idx].resource_barrier(
-            slice::from_ref(&ResourceBarrier::transition(
+            slice::from_ref(&ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
                     .set_resource(
                         &self.render_targets[adapter_idx][self.frame_index],
@@ -1289,7 +1289,7 @@ impl Pipeline {
         }
 
         self.direct_command_lists[adapter_idx].resource_barrier(
-            slice::from_ref(&ResourceBarrier::transition(
+            slice::from_ref(&ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
                     .set_resource(
                         &self.render_targets[adapter_idx][self.frame_index],
@@ -1340,7 +1340,7 @@ impl Pipeline {
     fn move_to_next_frame(&mut self) {
         {
             self.frame_index =
-                self.swapchain.get_current_back_buffer_index().0 as usize;
+                self.swapchain.get_current_back_buffer_index() as usize;
 
             let completed_fence_value = self.frame_fence.get_completed_value();
             if completed_fence_value < self.frame_fence_values[self.frame_index]
@@ -1658,7 +1658,7 @@ fn create_fences(
 fn create_blur_constant_buffer(devices: &[Device; DEVICE_COUNT]) -> Resource {
     let blur_constant_buffer = devices[1]
         .create_committed_resource(
-            &HeapProperties::default().set_type(HeapType::Upload),
+            &HeapProperties::default().set_heap_type(HeapType::Upload),
             HeapFlags::None,
             &ResourceDesc::default()
                 .set_dimension(ResourceDimension::Buffer)
@@ -1706,7 +1706,7 @@ fn create_blur_workload_constant_buffer(
     );
     let blur_workload_constant_buffer = devices[1]
         .create_committed_resource(
-            &HeapProperties::default().set_type(HeapType::Upload),
+            &HeapProperties::default().set_heap_type(HeapType::Upload),
             HeapFlags::None,
             &ResourceDesc::default()
                 .set_dimension(ResourceDimension::Buffer)
@@ -1747,7 +1747,7 @@ fn create_workload_constant_buffer(
     );
     let workload_constant_buffer = devices[0]
         .create_committed_resource(
-            &HeapProperties::default().set_type(HeapType::Upload),
+            &HeapProperties::default().set_heap_type(HeapType::Upload),
             HeapFlags::None,
             &ResourceDesc::default()
                 .set_dimension(ResourceDimension::Buffer)
@@ -1789,7 +1789,7 @@ fn create_triangle_constant_buffer(
 
     let constant_buffer = devices[0]
         .create_committed_resource(
-            &HeapProperties::default().set_type(HeapType::Upload),
+            &HeapProperties::default().set_heap_type(HeapType::Upload),
             HeapFlags::None,
             &ResourceDesc::default()
                 .set_dimension(ResourceDimension::Buffer)
@@ -1861,7 +1861,7 @@ fn create_depth_stencil(
         );
     let depth_stencil = devices[0]
         .create_committed_resource(
-            &HeapProperties::default().set_type(HeapType::Default),
+            &HeapProperties::default().set_heap_type(HeapType::Default),
             HeapFlags::None,
             &ResourceDesc::default()
                 .set_dimension(ResourceDimension::Texture2D)
@@ -1910,7 +1910,7 @@ fn create_blur_vertex_buffer(
         Bytes::from(quad_vertices.len() * size_of::<BlurVertex>());
     let quad_vertex_buffer = devices[1]
         .create_committed_resource(
-            &HeapProperties::default().set_type(HeapType::Default),
+            &HeapProperties::default().set_heap_type(HeapType::Default),
             HeapFlags::None,
             &ResourceDesc::default()
                 .set_dimension(ResourceDimension::Buffer)
@@ -1925,7 +1925,7 @@ fn create_blur_vertex_buffer(
         .expect("Cannot set name on resource");
     let quad_vertex_buffer_upload = devices[1]
         .create_committed_resource(
-            &HeapProperties::default().set_type(HeapType::Upload),
+            &HeapProperties::default().set_heap_type(HeapType::Upload),
             HeapFlags::None,
             &ResourceDesc::default()
                 .set_dimension(ResourceDimension::Buffer)
@@ -1954,7 +1954,7 @@ fn create_blur_vertex_buffer(
         .expect("Cannot upload quad_vertex buffer");
     trace!("Uploaded quad vertex buffer");
     direct_command_lists[1].resource_barrier(slice::from_ref(
-        &ResourceBarrier::transition(
+        &ResourceBarrier::new_transition(
             &ResourceTransitionBarrier::default()
                 .set_resource(&quad_vertex_buffer)
                 .set_state_before(ResourceStates::CopyDest)
@@ -2001,7 +2001,7 @@ fn create_primary_vertex_buffer(
 
     let vertex_buffer = devices[0]
         .create_committed_resource(
-            &HeapProperties::default().set_type(HeapType::Default),
+            &HeapProperties::default().set_heap_type(HeapType::Default),
             HeapFlags::None,
             &ResourceDesc::default()
                 .set_dimension(ResourceDimension::Buffer)
@@ -2017,7 +2017,7 @@ fn create_primary_vertex_buffer(
 
     let vertex_buffer_upload = devices[0]
         .create_committed_resource(
-            &HeapProperties::default().set_type(HeapType::Upload),
+            &HeapProperties::default().set_heap_type(HeapType::Upload),
             HeapFlags::None,
             &ResourceDesc::default()
                 .set_dimension(ResourceDimension::Buffer)
@@ -2049,7 +2049,7 @@ fn create_primary_vertex_buffer(
     trace!("Uploaded vertex buffer");
 
     direct_command_lists[0].resource_barrier(slice::from_ref(
-        &ResourceBarrier::transition(
+        &ResourceBarrier::new_transition(
             &ResourceTransitionBarrier::default()
                 .set_resource(&vertex_buffer)
                 .set_state_before(ResourceStates::CopyDest)
@@ -2139,11 +2139,11 @@ fn create_psos(
 
     let pso_desc = GraphicsPipelineStateDesc::default()
         .set_input_layout(
-            &InputLayoutDesc::default().from_input_layout(&input_layout),
+            &InputLayoutDesc::default().from_input_elements(&input_layout),
         )
         .set_root_signature(root_signature)
-        .set_vertex_shader_bytecode(&vs_bytecode)
-        .set_pixel_shader_bytecode(&ps_bytecode)
+        .set_vs_bytecode(&vs_bytecode)
+        .set_ps_bytecode(&ps_bytecode)
         .set_rasterizer_state(&RasterizerDesc::default())
         .set_blend_state(&BlendDesc::default())
         .set_depth_stencil_state(&DepthStencilDesc::default())
@@ -2195,11 +2195,11 @@ fn create_psos(
     let blur_ps_bytecode_v = ShaderBytecode::from_bytes(&blur_pixel_shader_v);
     let blur_pso_desc_u = GraphicsPipelineStateDesc::default()
         .set_input_layout(
-            &InputLayoutDesc::default().from_input_layout(&blur_input_layout),
+            &InputLayoutDesc::default().from_input_elements(&blur_input_layout),
         )
         .set_root_signature(blur_root_signature)
-        .set_vertex_shader_bytecode(&blur_vs_bytecode)
-        .set_pixel_shader_bytecode(&blur_ps_bytecode_u)
+        .set_vs_bytecode(&blur_vs_bytecode)
+        .set_ps_bytecode(&blur_ps_bytecode_u)
         .set_rasterizer_state(&RasterizerDesc::default())
         .set_blend_state(&BlendDesc::default())
         .set_depth_stencil_state(
@@ -2218,11 +2218,11 @@ fn create_psos(
 
     let blur_pso_desc_v = GraphicsPipelineStateDesc::default()
         .set_input_layout(
-            &InputLayoutDesc::default().from_input_layout(&blur_input_layout),
+            &InputLayoutDesc::default().from_input_elements(&blur_input_layout),
         )
         .set_root_signature(&blur_root_signature)
-        .set_vertex_shader_bytecode(&blur_vs_bytecode)
-        .set_pixel_shader_bytecode(&blur_ps_bytecode_v)
+        .set_vs_bytecode(&blur_vs_bytecode)
+        .set_ps_bytecode(&blur_ps_bytecode_v)
         .set_rasterizer_state(&RasterizerDesc::default())
         .set_blend_state(&BlendDesc::default())
         .set_depth_stencil_state(
@@ -2304,7 +2304,7 @@ fn create_root_signatures(
                 .set_shader_visibility(ShaderVisibility::Pixel),
             RootParameter::default()
                 .set_parameter_type(RootParameterType::DescriptorTable)
-                .set_descriptor_table(
+                .new_descriptor_table(
                     &RootDescriptorTable::default()
                         .set_descriptor_ranges(slice::from_ref(&range)),
                 )
@@ -2463,7 +2463,7 @@ fn create_frame_resources(
                     devices[device_idx]
                         .create_committed_resource(
                             &HeapProperties::default()
-                                .set_type(HeapType::Default),
+                                .set_heap_type(HeapType::Default),
                             HeapFlags::None,
                             &render_target_desc,
                             ResourceStates::CommonOrPresent,
@@ -2545,7 +2545,7 @@ fn create_query_heaps(
         timestamp_result_buffers[device_idx] = MaybeUninit::new(
             devices[device_idx]
                 .create_committed_resource(
-                    &HeapProperties::default().set_type(HeapType::Readback),
+                    &HeapProperties::default().set_heap_type(HeapType::Readback),
                     HeapFlags::None,
                     &ResourceDesc::default()
                         .set_dimension(ResourceDimension::Buffer)
@@ -2592,7 +2592,7 @@ fn create_descriptor_heaps(
         let current_heap = devices[device_idx]
             .create_descriptor_heap(
                 &DescriptorHeapDesc::default()
-                    .set_type(DescriptorHeapType::RTV)
+                    .set_heap_type(DescriptorHeapType::RTV)
                     .set_num_descriptors(Elements::from(num_descriptors)),
             )
             .expect("Cannot create RTV heap");
@@ -2608,7 +2608,7 @@ fn create_descriptor_heaps(
     let dsv_heap = devices[0]
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_type(DescriptorHeapType::DSV)
+                .set_heap_type(DescriptorHeapType::DSV)
                 .set_num_descriptors(Elements(1)),
         )
         .expect("Cannot create DSV heap");
@@ -2619,7 +2619,7 @@ fn create_descriptor_heaps(
     let cbv_srv_heap = devices[1]
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_type(DescriptorHeapType::CBV_SRV_UAV)
+                .set_heap_type(DescriptorHeapType::CBV_SRV_UAV)
                 .set_num_descriptors(Elements::from(FRAMES_IN_FLIGHT + 1))
                 .set_flags(DescriptorHeapFlags::ShaderVisible),
         )

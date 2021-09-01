@@ -15,7 +15,7 @@ macro_rules! impl_from {
     };
 }
 
-macro_rules! impl_mul {
+macro_rules! impl_mul_div {
     ($struct_type:tt, $integer_type:ty) => {
         impl std::ops::Mul<$integer_type> for $struct_type {
             type Output = Self;
@@ -30,6 +30,22 @@ macro_rules! impl_mul {
 
             fn mul(self, rhs: $struct_type) -> Self::Output {
                 $struct_type(self as u64 * rhs.0)
+            }
+        }
+
+        impl std::ops::Div<$integer_type> for $struct_type {
+            type Output = Self;
+
+            fn div(self, rhs: $integer_type) -> Self {
+                Self(self.0 / rhs as u64)
+            }
+        }
+
+        impl std::ops::Div<$struct_type> for $integer_type {
+            type Output = $struct_type;
+
+            fn div(self, rhs: $struct_type) -> Self::Output {
+                $struct_type(self as u64 / rhs.0)
             }
         }
     };
@@ -55,16 +71,16 @@ impl std::ops::AddAssign<Bytes> for Bytes {
     }
 }
 
-impl_mul!(Bytes, u8);
-impl_mul!(Bytes, i8);
-impl_mul!(Bytes, u16);
-impl_mul!(Bytes, i16);
-impl_mul!(Bytes, u32);
-impl_mul!(Bytes, i32);
-impl_mul!(Bytes, u64);
-impl_mul!(Bytes, i64);
-impl_mul!(Bytes, usize);
-impl_mul!(Bytes, isize);
+impl_mul_div!(Bytes, u8);
+impl_mul_div!(Bytes, i8);
+impl_mul_div!(Bytes, u16);
+impl_mul_div!(Bytes, i16);
+impl_mul_div!(Bytes, u32);
+impl_mul_div!(Bytes, i32);
+impl_mul_div!(Bytes, u64);
+impl_mul_div!(Bytes, i64);
+impl_mul_div!(Bytes, usize);
+impl_mul_div!(Bytes, isize);
 
 // // Bytes * Elements = Bytes
 // impl std::ops::Mul<Elements> for Bytes {

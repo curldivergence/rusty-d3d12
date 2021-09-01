@@ -438,7 +438,9 @@ float4 PS(VertexOut input) : SV_Target
         self.command_queue
             .execute_command_lists(std::slice::from_ref(&self.command_list));
 
-        self.swapchain.present(0, 0).expect("Cannot present frame");
+        self.swapchain
+            .present(0, PresentFlags::None)
+            .expect("Cannot present frame");
 
         self.flush_command_queue();
 

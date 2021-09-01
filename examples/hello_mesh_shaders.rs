@@ -332,7 +332,7 @@ impl HelloMeshShadersSample {
         let staging_buffer = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_type(HeapType::Upload),
+                &HeapProperties::default().set_heap_type(HeapType::Upload),
                 HeapFlags::None,
                 &ResourceDesc::default()
                     .set_dimension(ResourceDimension::Buffer)
@@ -363,7 +363,7 @@ impl HelloMeshShadersSample {
         let default_buffer = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_type(HeapType::Default),
+                &HeapProperties::default().set_heap_type(HeapType::Default),
                 HeapFlags::None,
                 &ResourceDesc::default()
                     .set_dimension(ResourceDimension::Buffer)
@@ -379,7 +379,7 @@ impl HelloMeshShadersSample {
             .expect("Cannot set name on default buffer");
 
         // self.command_list
-        //     .resource_barrier(&[ResourceBarrier::transition(
+        //     .resource_barrier(&[ResourceBarrier::new_transition(
         //         &ResourceTransitionBarrier::default()
         //             .set_resource(&default_buffer)
         //             .set_state_before(ResourceStates::CommonOrPresent)
@@ -395,7 +395,7 @@ impl HelloMeshShadersSample {
         );
 
         self.command_list
-            .resource_barrier(&[ResourceBarrier::transition(
+            .resource_barrier(&[ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
                     .set_resource(&default_buffer)
                     .set_state_before(ResourceStates::CopyDest)
@@ -466,7 +466,7 @@ impl HelloMeshShadersSample {
             .set_scissor_rects(&vec![self.scissor_desc]);
 
         self.command_list
-            .resource_barrier(&vec![ResourceBarrier::transition(
+            .resource_barrier(&vec![ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
                     .set_resource(
                         &self.render_targets[self.frame_index as usize],
@@ -479,7 +479,7 @@ impl HelloMeshShadersSample {
             .rtv_heap
             .get_cpu_descriptor_handle_for_heap_start()
             .advance(Elements(
-                self.swapchain.get_current_back_buffer_index().0 as u64,
+                self.swapchain.get_current_back_buffer_index() as u64,
             ));
 
         self.command_list.set_render_targets(
@@ -504,7 +504,7 @@ impl HelloMeshShadersSample {
         );
 
         self.command_list
-            .resource_barrier(&[ResourceBarrier::transition(
+            .resource_barrier(&[ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
                     .set_resource(
                         &self.render_targets[self.frame_index as usize],
@@ -591,7 +591,7 @@ impl HelloMeshShadersSample {
         let depth_stencil = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_type(HeapType::Default),
+                &HeapProperties::default().set_heap_type(HeapType::Default),
                 HeapFlags::None,
                 &ResourceDesc::default()
                     .set_dimension(ResourceDimension::Texture2D)
@@ -632,7 +632,7 @@ impl HelloMeshShadersSample {
         let constant_buffer = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_type(HeapType::Upload),
+                &HeapProperties::default().set_heap_type(HeapType::Upload),
                 HeapFlags::None,
                 &ResourceDesc::default()
                     .set_dimension(ResourceDimension::Buffer)
@@ -691,7 +691,7 @@ fn create_pipeline_state(
     let pso_subobjects_desc = MeshShaderPipelineStateDesc::default()
         .set_root_signature(root_signature)
         .set_mesh_shader_bytecode(&ms_bytecode)
-        .set_pixel_shader_bytecode(&ps_bytecode)
+        .set_ps_bytecode(&ps_bytecode)
         .set_rasterizer_state(
             &RasterizerDesc::default().set_cull_mode(CullMode::Back),
         )
@@ -756,7 +756,7 @@ fn setup_heaps(
     let rtv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_type(DescriptorHeapType::RTV)
+                .set_heap_type(DescriptorHeapType::RTV)
                 .set_num_descriptors(Elements::from(FRAMES_IN_FLIGHT)),
         )
         .expect("Cannot create RTV heap");
@@ -767,7 +767,7 @@ fn setup_heaps(
     let dsv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_type(DescriptorHeapType::DSV)
+                .set_heap_type(DescriptorHeapType::DSV)
                 .set_num_descriptors(Elements(1)),
         )
         .expect("Cannot create RTV heap");

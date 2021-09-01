@@ -390,10 +390,12 @@ impl GraphicsContext {
                     let alloc = device
                         .create_command_allocator(CommandListType::Direct)
                         .expect("Cannot create graphics command allocator");
-                    alloc.set_name(&format!(
-                        "graphics command allocator {}",
-                        idx
-                    ));
+                    alloc
+                        .set_name(&format!(
+                            "graphics command allocator {}",
+                            idx
+                        ))
+                        .expect("Cannot set name on command allocator");
                     alloc
                 })
                 .collect::<Vec<_>>();
@@ -680,10 +682,9 @@ impl ComputeContext {
                     let alloc = device
                         .create_command_allocator(CommandListType::Compute)
                         .expect("Cannot create compute command allocator");
-                    alloc.set_name(&format!(
-                        "compute command allocator {}",
-                        idx
-                    ));
+                    alloc
+                        .set_name(&format!("compute command allocator {}", idx))
+                        .expect("Cannot set name on command allocator");
                     alloc
                 })
                 .collect::<Vec<_>>();
