@@ -54,6 +54,7 @@ macro_rules! impl_mul_div {
 /// Bytes
 
 #[derive(Copy, Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Bytes(pub u64);
 
 // Bytes + Bytes = Bytes
