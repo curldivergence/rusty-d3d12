@@ -1,5 +1,7 @@
 use log::{debug, error, info, trace, warn};
-use winapi::shared::winerror;
+
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 use crate::{DXError, DxResult};
 
