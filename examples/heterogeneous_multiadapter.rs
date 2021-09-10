@@ -2680,7 +2680,7 @@ fn create_devices(factory: &Factory) -> ([Device; DEVICE_COUNT], bool) {
 
 fn main() {
     //wait_for_debugger();
-    simple_logger::init_with_level(log::Level::Trace).unwrap();
+    simple_logger::init_with_level(log::Level::Info).unwrap();
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()

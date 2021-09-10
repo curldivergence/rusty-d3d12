@@ -23,7 +23,6 @@ cc = "1.0"
 winapi = { version = "0.3", features = ["winuser", "debugapi"] }
 bitflags = "1.2.1"
 log = "0.4.8"
-thiserror = "1.0"
 static_assertions = "1.1.0"
 widestring = "0.4"
 hassle-rs = "0.3"
