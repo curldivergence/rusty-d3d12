@@ -2,11 +2,13 @@ extern crate bindgen;
 
 use regex::Regex;
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+const D3D12_AGILITY_SDK_INCLUDE_PATH: &str = "D3D12AgilitySDK\\include";
+const D3D12_AGILITY_SDK_LIB_PATH: &str = "D3D12AgilitySDK\\bin";
 
 fn find_d3d12_header() -> Option<String> {
-    let path = std::path::Path::new("D3D12AgilitySDK")
-        .join("Include")
+    let path = PathBuf::from(D3D12_AGILITY_SDK_INCLUDE_PATH)
         .join("d3d12.h")
         .to_str()
         .expect("Path to Agility SDK is not valid UTF-8")
@@ -110,6 +112,12 @@ fn main() {
         .clang_arg("-std=c99")
         .header_contents("d3d12_patched.h", &patch_d3d12_header())
         .header("wrapper.h")
+        .header(
+            PathBuf::from(D3D12_AGILITY_SDK_INCLUDE_PATH)
+                .join("d3d12sdklayers.h")
+                .to_str()
+                .expect("Cannot find vendored d3d12sdklayers.h"),
+        )
         .layout_tests(false)
         .derive_debug(true)
         .impl_debug(true)
@@ -145,7 +153,7 @@ fn main() {
 
     // Copy DX12 Agility SDK libs that are needed by examples
     let manifest_path = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-    let copy_source_path = manifest_path.join("D3D12AgilitySDK").join("bin");
+    let copy_source_path = manifest_path.join(D3D12_AGILITY_SDK_LIB_PATH);
     let profile = env::var("PROFILE").unwrap();
     let examples_bin_path =
         manifest_path.join("target").join(profile).join("examples");
@@ -169,6 +177,7 @@ fn main() {
     setup_pix_wrapper();
 }
 
+#[cfg(feature = "pix")]
 fn setup_pix_wrapper() {
     let pix_runtime_path = PathBuf::from(env::var("PIX_RUNTIME_PATH").unwrap())
         .to_str()
