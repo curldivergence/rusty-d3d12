@@ -3,7 +3,7 @@ use log::{debug, error, info, trace, warn};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use crate::{DXError, DxResult};
+use crate::{DxError, DxResult};
 
 // ToDo: impl iterators
 
@@ -178,7 +178,7 @@ pub fn compile_shader(
         }
         Err(error) => {
             error!("Cannot compile shader: {}", &error);
-            Err(DXError::new(
+            Err(DxError::new(
                 "compile_hlsl",
                 winapi::shared::winerror::E_FAIL,
             ))

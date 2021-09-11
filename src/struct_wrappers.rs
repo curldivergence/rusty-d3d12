@@ -12,7 +12,7 @@ use widestring::WideCStr;
 use crate::utils::*;
 use crate::{const_wrappers::*, PipelineState};
 use crate::{enum_wrappers::*, RootSignature};
-use crate::{raw_bindings::*, DXError};
+use crate::{raw_bindings::d3d12::*, DxError};
 
 use crate::Resource;
 

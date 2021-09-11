@@ -2,7 +2,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
-use crate::raw_bindings::*;
+use crate::raw_bindings::d3d12::*;
 use crate::utils::*;
 // use crate::{enum_wrappers::*};
 // use crate::{struct_wrappers::*};

@@ -100,7 +100,6 @@ struct HelloTextureSample {
 
 impl HelloTextureSample {
     fn new(hwnd: *mut std::ffi::c_void) -> Self {
-        #[cfg(feature = "pix")]
         PIXSupport::init();
 
         let mut factory_flags = CreateFactoryFlags::None;
@@ -404,7 +403,6 @@ impl HelloTextureSample {
             .reset(&self.command_allocator, Some(&self.pso))
             .expect("Cannot reset command list");
 
-        #[cfg(feature = "pix")]
         PIXSupport::begin_event_cmd_list(&self.command_list, "Frame", 0);
 
         self.command_list
@@ -467,7 +465,6 @@ impl HelloTextureSample {
                     .set_state_after(ResourceStates::CommonOrPresent),
             )]);
 
-        #[cfg(feature = "pix")]
         PIXSupport::end_event_cmd_list(&self.command_list);
 
         self.command_list
@@ -508,7 +505,6 @@ impl HelloTextureSample {
 
 impl Drop for HelloTextureSample {
     fn drop(&mut self) {
-        #[cfg(feature = "pix")]
         PIXSupport::shutdown();
 
         self.debug_device

@@ -3,7 +3,7 @@
 #![allow(non_snake_case)]
 
 use crate::const_wrappers::*;
-use crate::raw_bindings::*;
+use crate::raw_bindings::d3d12::*;
 use crate::struct_wrappers::*;
 use crate::utils::*;
 

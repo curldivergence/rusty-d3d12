@@ -1,10 +1,6 @@
-// ToDo: remove these when finished
-// #![allow(unused_variables)]
-// #![allow(dead_code)]
-
 use log::warn;
 use std::default::Default;
-use std::ffi::c_void;
+use std::ffi::{CString, c_void};
 use std::os::raw::c_char;
 use std::{slice, str};
 use winapi::shared::winerror;
@@ -13,8 +9,7 @@ use winapi::shared::winerror;
 extern crate static_assertions;
 
 mod raw_bindings;
-// When we replace raw D3D12 types with our newtypes, this will be redundant
-pub use raw_bindings::*;
+pub use raw_bindings::d3d12::*;
 
 #[macro_use]
 mod utils;
@@ -28,8 +23,6 @@ pub use struct_wrappers::*;
 
 mod enum_wrappers;
 pub use enum_wrappers::*;
-
-mod pix_wrapper;
 
 // ToDo: operator? instead of .expect
 // ToDo: clean up redundant mut's in signatures
@@ -59,7 +52,7 @@ macro_rules! dx_try {
         let raw_func = (*vtbl).$method_name.unwrap();
         let ret_code =  raw_func($object_ptr, $($args),*);
         if fail!(ret_code) {
-            return Err(DXError::new(
+            return Err(DxError::new(
                 stringify!($method_name),
                 ret_code,
             ));
@@ -68,7 +61,7 @@ macro_rules! dx_try {
     ($fn_name:ident $args:tt) => {{
         let ret_code = $fn_name $args;
         if fail!(ret_code) {
-            return Err(DXError::new(
+            return Err(DxError::new(
                 stringify!($fn_name),
                 ret_code,
             ));
@@ -79,14 +72,14 @@ macro_rules! dx_try {
 const MAX_FUNC_NAME_LEN: usize = 64;
 const MAX_ERROR_MSG_LEN: usize = 512;
 
-pub struct DXError([u8; MAX_FUNC_NAME_LEN], HRESULT);
+pub struct DxError([u8; MAX_FUNC_NAME_LEN], HRESULT);
 
-impl DXError {
+impl DxError {
     pub fn new(func_name: &str, err_code: HRESULT) -> Self {
         use std::io::Write;
         let mut func_name_owned = [0; MAX_FUNC_NAME_LEN];
         write!(&mut func_name_owned[..], "{}", func_name,)
-            .expect("Ironically, DXError creation has failed");
+            .expect("Ironically, DxError creation has failed");
         Self(func_name_owned, err_code)
     }
 
@@ -130,19 +123,19 @@ impl DXError {
     }
 }
 
-impl std::fmt::Display for DXError {
+impl std::fmt::Display for DxError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.write_as_str(f)
     }
 }
 
-impl std::fmt::Debug for DXError {
+impl std::fmt::Debug for DxError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.write_as_str(f)
     }
 }
 
-pub type DxResult<T> = Result<T, DXError>;
+pub type DxResult<T> = Result<T, DxError>;
 
 macro_rules! success {
     ($ret_code:expr) => {
@@ -312,13 +305,13 @@ macro_rules! impl_com_object_set_get_name {
                 }
 
                 widestring::U16CString::from_vec_with_nul(buffer).map_or_else(
-                    |_| Err(DXError::new("U16CString::from_vec_with_nul", -1)),
+                    |_| Err(DxError::new("U16CString::from_vec_with_nul", -1)),
                     |name_wstr| {
                         name_wstr
                             .to_string()
                             .and_then(|name_string| Ok(name_string))
                             .or_else(|_| {
-                                Err(DXError::new("U16CString::to_string", -1))
+                                Err(DxError::new("U16CString::to_string", -1))
                             })
                     },
                 )
@@ -572,7 +565,7 @@ impl Factory {
                 if ret_code == winerror::DXGI_ERROR_NOT_FOUND {
                     break;
                 } else if ret_code != winerror::S_OK {
-                    return Err(DXError::new("EnumAdapters1", ret_code));
+                    return Err(DxError::new("EnumAdapters1", ret_code));
                 }
 
                 let mut real_adapter: *mut IDXGIAdapter3 = std::ptr::null_mut();
@@ -615,7 +608,7 @@ impl Factory {
                 if ret_code == winerror::DXGI_ERROR_NOT_FOUND {
                     break;
                 } else if ret_code != winerror::S_OK {
-                    return Err(DXError::new(
+                    return Err(DxError::new(
                         "EnumAdapterByGpuPreference",
                         ret_code,
                     ));
@@ -1474,7 +1467,11 @@ impl Swapchain {
         unsafe { dx_call!(self.this, GetCurrentBackBufferIndex,) }
     }
 
-    pub fn present(&self, sync_interval: u32, flags: PresentFlags) -> DxResult<()> {
+    pub fn present(
+        &self,
+        sync_interval: u32,
+        flags: PresentFlags,
+    ) -> DxResult<()> {
         unsafe { dx_try!(self.this, Present, sync_interval, flags.bits()) };
         Ok(())
     }
@@ -2528,7 +2525,7 @@ impl RootSignature {
             } else {
                 (
                     Blob { this: error_blob },
-                    Err(DXError::new(
+                    Err(DxError::new(
                         "D3D12SerializeVersionedRootSignature",
                         ret_code,
                     )),
@@ -2578,32 +2575,30 @@ impl_com_object_set_get_name!(Heap);
 impl_com_object_refcount_named!(Heap);
 impl_com_object_clone_drop!(Heap);
 
-#[cfg(feature = "pix")]
 pub struct PIXSupport {}
 
-#[cfg(feature = "pix")]
 impl PIXSupport {
     pub fn init() {
         unsafe {
-            pix_wrapper::pix_init_analysis();
+            raw_bindings::pix::pix_init_analysis();
         }
     }
 
     pub fn shutdown() {
         unsafe {
-            pix_wrapper::pix_shutdown_analysis();
+            raw_bindings::pix::pix_shutdown_analysis();
         }
     }
 
     pub fn begin_capture() {
         unsafe {
-            pix_wrapper::pix_begin_capture();
+            raw_bindings::pix::pix_begin_capture();
         }
     }
 
     pub fn end_capture() {
         unsafe {
-            pix_wrapper::pix_end_capture();
+            raw_bindings::pix::pix_end_capture();
         }
     }
 
@@ -2616,8 +2611,9 @@ impl PIXSupport {
             // ToDo: allocation on every marker call is sad :(
             let marker = CString::new(marker)
                 .expect("Cannot convert marker string to C string");
-            pix_wrapper::pix_begin_event_cmd_list(
-                cmd_list.this as *mut pix_wrapper::ID3D12GraphicsCommandList6,
+            raw_bindings::pix::pix_begin_event_cmd_list(
+                cmd_list.this
+                    as *mut raw_bindings::pix::ID3D12GraphicsCommandList6,
                 color,
                 marker.as_ptr() as *const i8,
             );
@@ -2626,8 +2622,9 @@ impl PIXSupport {
 
     pub fn end_event_cmd_list(cmd_list: &CommandList) {
         unsafe {
-            pix_wrapper::pix_end_event_cmd_list(
-                cmd_list.this as *mut pix_wrapper::ID3D12GraphicsCommandList6,
+            raw_bindings::pix::pix_end_event_cmd_list(
+                cmd_list.this
+                    as *mut raw_bindings::pix::ID3D12GraphicsCommandList6,
             );
         }
     }
@@ -2640,8 +2637,8 @@ impl PIXSupport {
         unsafe {
             let marker = CString::new(marker)
                 .expect("Cannot convert marker string to C string");
-            pix_wrapper::pix_begin_event_cmd_queue(
-                cmd_queue.this as *mut pix_wrapper::ID3D12CommandQueue,
+            raw_bindings::pix::pix_begin_event_cmd_queue(
+                cmd_queue.this as *mut raw_bindings::pix::ID3D12CommandQueue,
                 color,
                 marker.as_ptr() as *const i8,
             );
@@ -2650,8 +2647,8 @@ impl PIXSupport {
 
     pub fn end_event_cmd_queue(cmd_queue: &CommandQueue) {
         unsafe {
-            pix_wrapper::pix_end_event_cmd_queue(
-                cmd_queue.this as *mut pix_wrapper::ID3D12CommandQueue,
+            raw_bindings::pix::pix_end_event_cmd_queue(
+                cmd_queue.this as *mut raw_bindings::pix::ID3D12CommandQueue,
             );
         }
     }

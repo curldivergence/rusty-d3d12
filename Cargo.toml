@@ -11,8 +11,8 @@ repository = "https://github.com/curldivergence/rusty-d3d12"
 
 [features]
 default = []
-pix = []
 log_ref_counting = []
+devel = []
 
 [build-dependencies]
 bindgen = "0.57"
