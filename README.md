@@ -1,5 +1,5 @@
 # rusty-d3d12
-This project provides low-level bindings for D3D12 API. It utilizes rust-bindgen for generating raw bindings (unlike `d3d12-rs` crate), but aims for providing idiomatic APIs (unlike the raw D3D12 wrappers from `winapi` crate).
+This project provides low-level bindings for D3D12 API. It utilizes `rust-bindgen` for generating raw bindings (unlike `d3d12-rs` crate), but aims for providing idiomatic APIs (unlike the raw D3D12 wrappers from `winapi` crate).
 
 ### Features:
 - type-safe wrappers for D3D12 enumerations and bit flags
@@ -25,8 +25,7 @@ Please note their code can be dirty and contains some (non-critical) bugs, so it
 
 The next planned goal for this project is to cover DXR APIs and provide the corresponding samples.
 
-### Contribution
+### Making Changes
 This library is still a work-in-progress and is not ready yet to be used in production, so all contributions, including code reviews, are welcome :)
 
-When used as a cargo dependency, `rusty-d3d12` does not generate bindings during build process since running `rust-bindgen` requires `libclang.dll`, which can be absent on some systems, and cannot be vendored via `crates.io` due to its large size. So as a prerequisite, Cargo should be able to found this dll under the path set in `LIBCLANG_PATH` environment variable. After this requirement is met, Cargo feature `devel` can be activated, and `bindings.rs` file will be generated from scratch.
-Also, to use `pix` Cargo feature you need to set `PIX_RUNTIME_PATH` environment variable that would point to your directory with PIX runtime headers/libraries. If this variable is missing, the library will fail to compile, so this feature is disabled by default.
+When used as a Cargo dependency, `rusty-d3d12` does not generate bindings during build process since running `rust-bindgen` requires `libclang.dll`, which can be absent on some systems, and cannot be vendored via `crates.io` due to its large size. So as a prerequisite, Cargo should be able to find this DLL under the path set in `LIBCLANG_PATH` environment variable. After this requirement is met, Cargo feature `devel` can be activated, and `d3d12_bindings.rs` and `pix_bindings.rs` files will be generated from scratch, and included into `src/raw_bindings/mod.rs` instead of the shipped ones.
