@@ -2,7 +2,7 @@ extern crate bindgen;
 
 use regex::Regex;
 use std::env;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 const D3D12_AGILITY_SDK_INCLUDE_PATH: &str = "D3D12AgilitySDK\\include";
 const D3D12_AGILITY_SDK_LIB_PATH: &str = "D3D12AgilitySDK\\bin";
@@ -92,8 +92,7 @@ fn patch_d3d12_header() -> String {
 }
 
 fn main() {
-    // Tell cargo to tell rustc to link the system d3d12 and dxgi
-    // shared libraries.
+    println!("cargo:rustc-link-search={}", D3D12_AGILITY_SDK_LIB_PATH);
     println!("cargo:rustc-link-lib=d3d12");
     println!("cargo:rustc-link-lib=dxgi");
     // we have no __uuidof, so let's use oldschool way
@@ -102,6 +101,9 @@ fn main() {
     println!("cargo:rerun-if-changed=wrapper.h");
 
     println!("cargo:rustc-link-arg=/DEF:agility.def");
+
+    let manifest_path = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    std::env::set_var("LIBCLANG_PATH", &manifest_path);
 
     // The bindgen::Builder is the main entry point
     // to bindgen, and lets you build up options for
@@ -152,7 +154,6 @@ fn main() {
         .expect("Couldn't write bindings!");
 
     // Copy DX12 Agility SDK libs that are needed by examples
-    let manifest_path = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let copy_source_path = manifest_path.join(D3D12_AGILITY_SDK_LIB_PATH);
     let profile = env::var("PROFILE").unwrap();
     let examples_bin_path =
