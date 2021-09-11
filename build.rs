@@ -138,6 +138,14 @@ fn main() {
         std::fs::copy(copy_source_path.join(file), copy_dest_path.join(file))
             .expect("Cannot copy Agility SDK dlls");
     }
+
+    // Copy PIX runtime DLL since it's needed by examples
+    let pix_dll_name = "WinPixEventRuntime.dll";
+    std::fs::copy(
+        &format!("{}\\{}", PIX_LIB_PATH, pix_dll_name),
+        examples_bin_path.join(pix_dll_name),
+    )
+    .expect("Cannot copy WinPixEventRuntime.dll");
 }
 
 #[cfg(feature = "devel")]
@@ -219,16 +227,4 @@ fn generate_pix_bindings() {
     bindings
         .write_to_file(out_path.join("pix_bindings.rs"))
         .expect("Couldn't write bindings!");
-
-    // Copy PIX runtime DLL since it's needed by examples
-    let profile = env::var("PROFILE").unwrap();
-    let examples_bin_path =
-        workspace_dir.join("target").join(profile).join("examples");
-
-    let dll_name = "WinPixEventRuntime.dll";
-    std::fs::copy(
-        &format!("{}\\{}", PIX_LIB_PATH, dll_name),
-        examples_bin_path.join(dll_name),
-    )
-    .expect("Cannot copy WinPixEventRuntime.dll");
 }
