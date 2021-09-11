@@ -98,14 +98,23 @@ fn patch_d3d12_header() -> String {
 fn main() {
     let workspace_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
 
-    println!("cargo:rustc-link-search={}", D3D12_AGILITY_SDK_LIB_PATH);
+    println!(
+        "cargo:rustc-link-search={}",
+        workspace_dir
+            .join(D3D12_AGILITY_SDK_LIB_PATH)
+            .to_str()
+            .unwrap()
+    );
     println!("cargo:rustc-link-lib=d3d12");
     println!("cargo:rustc-link-lib=dxgi");
     // we have no __uuidof, so let's use oldschool way
     println!("cargo:rustc-link-lib=dxguid");
     println!(
         "cargo:rustc-link-arg=/DEF:{}\\agility.def",
-        D3D12_AGILITY_SDK_LIB_PATH
+        workspace_dir
+            .join(D3D12_AGILITY_SDK_LIB_PATH)
+            .to_str()
+            .unwrap()
     );
 
     #[cfg(feature = "devel")]
@@ -114,7 +123,10 @@ fn main() {
     // Our PIX wrapper has an extra layer - C wrapper around the original C++ interface
     // Since without `devel` feature we cannot run bindgen and build it, we have to ship
     // the pre-built library
-    println!("cargo:rustc-link-search={}", PIX_LIB_PATH);
+    println!(
+        "cargo:rustc-link-search={}",
+        workspace_dir.join(PIX_LIB_PATH).to_str().unwrap()
+    );
     println!("cargo:rustc-link-lib=static=pix_wrapper");
     println!("cargo:rustc-link-lib=WinPixEventRuntime");
 
@@ -201,21 +213,39 @@ fn generate_pix_bindings() {
     // Build C wrapper over C++ PIX header
     cc::Build::new()
         .cpp(true)
-        .include(PIX_INCLUDE_PATH)
+        .include(workspace_dir.join(PIX_INCLUDE_PATH))
         .include(workspace_dir.join(D3D12_AGILITY_SDK_INCLUDE_PATH))
         .include(workspace_dir.join("generation"))
-        .file("generation\\pix_wrapper.cpp")
+        .file(workspace_dir.join("generation").join("pix_wrapper.cpp"))
         .compile("pix_wrapper");
 
     // Generate Rust bindings to C wrapper
-    println!("cargo:rerun-if-changed=generation\\pix_wrapper.h");
-    println!("cargo:rerun-if-changed=generation\\pix_wrapper.cpp");
+    println!(
+        "cargo:rerun-if-changed={}\\generation\\pix_wrapper.h",
+        workspace_dir.to_str().unwrap()
+    );
+    println!(
+        "cargo:rerun-if-changed={}\\generation\\pix_wrapper.cpp",
+        workspace_dir.to_str().unwrap()
+    );
 
     let bindings = bindgen::Builder::default()
         .layout_tests(false)
-        .clang_arg(&format!("-I{}", D3D12_AGILITY_SDK_INCLUDE_PATH))
-        .clang_arg(&format!("-I{}", PIX_INCLUDE_PATH))
-        .header("generation\\pix_wrapper.h")
+        .clang_arg(&format!(
+            "-I{}",
+            workspace_dir
+                .join(D3D12_AGILITY_SDK_INCLUDE_PATH)
+                .to_str()
+                .unwrap()
+        ))
+        .clang_arg(&format!(
+            "-I{}",
+            workspace_dir.join(PIX_INCLUDE_PATH).to_str().unwrap()
+        ))
+        .header(&format!(
+            "{}\\generation\\pix_wrapper.h",
+            workspace_dir.to_str().unwrap()
+        ))
         .whitelist_function("pix_.*")
         .whitelist_type("ID3D12GraphicsCommandList.*")
         .whitelist_type("ID3D12CommandQueue.*")
