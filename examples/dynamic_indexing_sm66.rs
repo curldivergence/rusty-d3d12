@@ -677,12 +677,12 @@ impl DynamicIndexingSample {
 
         self.index_count = (INDEX_DATA_SIZE / size_of::<u32>()).0 as u32;
 
-        self.index_buffer_view = Some(IndexBufferView::new(
-            &index_buffer,
-            // ToDo: we need another constructor that would take Bytes
-            self.index_count,
-            Bytes::from(size_of::<u32>()),
-        ));
+        self.index_buffer_view = Some(
+            IndexBufferView::default()
+                .set_buffer_location(index_buffer.get_gpu_virtual_address())
+                .set_size_in_bytes(self.index_count * Bytes(4))
+                .set_format(Format::R32_UInt),
+        );
 
         self.index_buffer = Some(index_buffer);
         self.index_staging_buffer = Some(index_staging_buffer);

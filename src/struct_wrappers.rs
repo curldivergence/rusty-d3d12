@@ -1052,23 +1052,6 @@ impl<'a> Drop for InputElementDesc<'a> {
 pub struct IndexBufferView(pub D3D12_INDEX_BUFFER_VIEW);
 
 impl IndexBufferView {
-    pub fn new(
-        resource: &Resource,
-        element_count: u32,
-        element_size: Bytes,
-    ) -> Self {
-        let format: Format = match element_size {
-            Bytes(2) => Format::R16_UInt,
-            Bytes(4) => Format::R32_UInt,
-            _ => panic!("Wrong format for index buffer"), // ToDo: DONT PANIC
-        };
-        IndexBufferView(D3D12_INDEX_BUFFER_VIEW {
-            BufferLocation: resource.get_gpu_virtual_address().0,
-            SizeInBytes: (element_size * element_count).0 as u32,
-            Format: format as i32,
-        })
-    }
-
     pub fn set_buffer_location(
         mut self,
         buffer_location: GpuVirtualAddress,

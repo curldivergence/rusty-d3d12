@@ -120,7 +120,15 @@ impl TypedBuffer for IndexBuffer {
         element_size: Bytes,
     ) -> Self {
         let size = element_size * element_count;
-        let view = IndexBufferView::new(&buffer, element_count, element_size);
+        let view = IndexBufferView::default()
+            .set_buffer_location(buffer.get_gpu_virtual_address())
+            .set_size_in_bytes(element_count * element_size)
+            .set_format(match element_size {
+                Bytes(2) => Format::R16_UInt,
+                Bytes(4) => Format::R32_UInt,
+                _ => panic!("wrong index type"),
+            });
+
         IndexBuffer {
             buffer: buffer,
             view: view,
