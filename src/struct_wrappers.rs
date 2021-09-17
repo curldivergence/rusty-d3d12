@@ -2278,13 +2278,6 @@ impl PlacedSubresourceFootprint {
 pub struct ConstantBufferViewDesc(pub D3D12_CONSTANT_BUFFER_VIEW_DESC);
 
 impl ConstantBufferViewDesc {
-    pub fn new(resource: &Resource, size: Bytes) -> Self {
-        Self(D3D12_CONSTANT_BUFFER_VIEW_DESC {
-            BufferLocation: resource.get_gpu_virtual_address().0,
-            SizeInBytes: size.0 as u32,
-        })
-    }
-
     pub fn set_buffer_location(
         mut self,
         buffer_location: GpuVirtualAddress,
