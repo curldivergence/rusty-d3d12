@@ -838,7 +838,7 @@ fn create_vertex_buffer(
             &ResourceDesc::default()
                 .set_dimension(ResourceDimension::Buffer)
                 .set_layout(TextureLayout::RowMajor)
-                .set_width(vertex_buffer_size.0.into()),
+                .set_width(vertex_buffer_size.0),
             ResourceStates::CopyDest,
             None,
         )
