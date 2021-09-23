@@ -512,8 +512,8 @@ impl Pipeline {
         ]);
 
         self.direct_command_list.copy_resource(
-            &self.render_targets[self.frame_index],
             &self.cross_process_resource,
+            &self.render_targets[self.frame_index],
         );
 
         self.direct_command_list.resource_barrier(&[
@@ -573,8 +573,8 @@ impl Pipeline {
         ]);
 
         self.direct_command_list.copy_resource(
-            &self.cross_process_resource,
             &self.render_targets[self.frame_index],
+            &self.cross_process_resource,
         );
 
         self.direct_command_list.resource_barrier(&[

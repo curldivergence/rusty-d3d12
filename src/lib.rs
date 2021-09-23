@@ -1757,7 +1757,7 @@ impl CommandList {
         }
     }
 
-    pub fn copy_resource(&self, source: &Resource, dest: &Resource) {
+    pub fn copy_resource(&self, dest: &Resource, source: &Resource) {
         unsafe { dx_call!(self.this, CopyResource, dest.this, source.this) }
     }
 

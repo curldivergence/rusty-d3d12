@@ -1103,8 +1103,8 @@ impl Pipeline {
             .expect("Cannot reset copy command list on primary adapter");
         if self.cross_adapter_textures_supported {
             self.copy_command_list.copy_resource(
-                &self.cross_adapter_resources[adapter_idx][self.frame_index],
                 &self.render_targets[adapter_idx][self.frame_index],
+                &self.cross_adapter_resources[adapter_idx][self.frame_index],
             );
         } else {
             let render_target_desc =
@@ -2147,14 +2147,13 @@ fn create_psos(
     .expect("Cannot compile blur pixel shader V");
 
     let blur_input_layout = BlurVertex::make_desc();
-    let blur_layout = InputLayoutDesc::default().from_input_elements(&blur_input_layout);
+    let blur_layout =
+        InputLayoutDesc::default().from_input_elements(&blur_input_layout);
     let blur_vs_bytecode = ShaderBytecode::from_bytes(&blur_vertex_shader);
     let blur_ps_bytecode_u = ShaderBytecode::from_bytes(&blur_pixel_shader_u);
     let blur_ps_bytecode_v = ShaderBytecode::from_bytes(&blur_pixel_shader_v);
     let blur_pso_desc_u = GraphicsPipelineStateDesc::default()
-        .set_input_layout(
-            &blur_layout,
-        )
+        .set_input_layout(&blur_layout)
         .set_root_signature(blur_root_signature)
         .set_vs_bytecode(&blur_vs_bytecode)
         .set_ps_bytecode(&blur_ps_bytecode_u)
@@ -2174,9 +2173,7 @@ fn create_psos(
     trace!("Created blur PSO U");
 
     let blur_pso_desc_v = GraphicsPipelineStateDesc::default()
-        .set_input_layout(
-            &blur_layout,
-        )
+        .set_input_layout(&blur_layout)
         .set_root_signature(&blur_root_signature)
         .set_vs_bytecode(&blur_vs_bytecode)
         .set_ps_bytecode(&blur_ps_bytecode_v)
