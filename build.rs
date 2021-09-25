@@ -5,11 +5,11 @@ use std::env;
 use std::path::PathBuf;
 
 const D3D12_AGILITY_SDK_INCLUDE_PATH: &str =
-    "vendored\\D3D12AgilitySDK\\include";
-const D3D12_AGILITY_SDK_LIB_PATH: &str = "vendored\\D3D12AgilitySDK\\bin";
+    "extern\\D3D12AgilitySDK\\include";
+const D3D12_AGILITY_SDK_LIB_PATH: &str = "extern\\D3D12AgilitySDK\\bin";
 
-const PIX_INCLUDE_PATH: &str = "vendored\\WinPixEventRuntime\\include";
-const PIX_LIB_PATH: &str = "vendored\\WinPixEventRuntime\\bin";
+const PIX_INCLUDE_PATH: &str = "extern\\WinPixEventRuntime\\include";
+const PIX_LIB_PATH: &str = "extern\\WinPixEventRuntime\\bin";
 
 fn find_d3d12_header() -> Option<String> {
     let path = PathBuf::from(D3D12_AGILITY_SDK_INCLUDE_PATH)
