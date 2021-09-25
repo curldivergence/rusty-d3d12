@@ -1,6 +1,6 @@
 use log::warn;
 use std::default::Default;
-use std::ffi::{CString, c_void};
+use std::ffi::{c_void, CString};
 use std::os::raw::c_char;
 use std::{slice, str};
 use winapi::shared::winerror;
@@ -339,6 +339,7 @@ pub fn d3d_enable_experimental_shader_models() -> DxResult<()> {
     }
 }
 
+#[derive(Debug)]
 pub struct Debug {
     pub this: *mut ID3D12Debug5,
 }
@@ -373,6 +374,7 @@ impl Debug {
     }
 }
 
+#[derive(Debug)]
 pub struct InfoQueue {
     pub this: *mut ID3D12InfoQueue1,
 }
@@ -488,6 +490,7 @@ impl InfoQueue {
     }
 }
 
+#[derive(Debug)]
 pub struct DebugDevice {
     pub this: *mut ID3D12DebugDevice,
 }
@@ -528,6 +531,7 @@ impl DebugDevice {
     }
 }
 
+#[derive(Debug)]
 pub struct Factory {
     pub this: *mut IDXGIFactory6,
 }
@@ -684,6 +688,7 @@ impl Factory {
     }
 }
 
+#[derive(Debug)]
 pub struct Adapter {
     pub this: *mut IDXGIAdapter3,
 }
@@ -700,6 +705,7 @@ impl Adapter {
     }
 }
 
+#[derive(Debug)]
 pub struct Device {
     pub this: *mut ID3D12Device2,
 }
@@ -1356,6 +1362,7 @@ impl Device {
     }
 }
 
+#[derive(Debug)]
 pub struct DeviceChild {
     pub this: *mut ID3D12DeviceChild,
 }
@@ -1392,6 +1399,7 @@ impl From<Fence> for DeviceChild {
     }
 }
 
+#[derive(Debug)]
 pub struct CommandQueue {
     pub this: *mut ID3D12CommandQueue,
 }
@@ -1432,6 +1440,7 @@ impl CommandQueue {
     }
 }
 
+#[derive(Debug)]
 pub struct Swapchain {
     pub this: *mut IDXGISwapChain4,
 }
@@ -1476,6 +1485,7 @@ impl Swapchain {
     }
 }
 
+#[derive(Debug)]
 pub struct DescriptorHeap {
     pub this: *mut ID3D12DescriptorHeap,
     handle_size: u32, // it could be Bytes, but the latter is 64-bit, and
@@ -1524,10 +1534,10 @@ impl DescriptorHeap {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct CpuDescriptorHandle {
-    hw_handle: D3D12_CPU_DESCRIPTOR_HANDLE,
-    handle_size: u32,
+    pub hw_handle: D3D12_CPU_DESCRIPTOR_HANDLE,
+    pub handle_size: u32,
 }
 
 impl CpuDescriptorHandle {
@@ -1542,10 +1552,10 @@ impl CpuDescriptorHandle {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct GpuDescriptorHandle {
-    hw_handle: D3D12_GPU_DESCRIPTOR_HANDLE,
-    handle_size: u32,
+    pub hw_handle: D3D12_GPU_DESCRIPTOR_HANDLE,
+    pub handle_size: u32,
 }
 
 impl GpuDescriptorHandle {
@@ -1559,6 +1569,7 @@ impl GpuDescriptorHandle {
     }
 }
 
+#[derive(Debug)]
 pub struct Resource {
     pub this: *mut ID3D12Resource,
 }
@@ -1650,6 +1661,7 @@ impl Resource {
     }
 }
 
+#[derive(Debug)]
 pub struct CommandAllocator {
     pub this: *mut ID3D12CommandAllocator,
 }
@@ -1666,6 +1678,7 @@ impl CommandAllocator {
 
 assert_eq_size!(CommandList, *mut ID3D12GraphicsCommandList6);
 
+#[derive(Debug)]
 pub struct CommandList {
     pub this: *mut ID3D12GraphicsCommandList6,
 }
@@ -2413,6 +2426,7 @@ unsafe fn memcpy_subresource(
     }
 }
 
+#[derive(Debug)]
 pub struct Fence {
     pub this: *mut ID3D12Fence,
 }
@@ -2446,8 +2460,9 @@ impl Fence {
     }
 }
 
+#[derive(Debug)]
 pub struct Win32Event {
-    handle: HANDLE,
+    pub handle: HANDLE,
 }
 
 unsafe impl Send for Win32Event {}
@@ -2497,6 +2512,7 @@ impl Handle {
     }
 }
 
+#[derive(Debug)]
 pub struct RootSignature {
     pub this: *mut ID3D12RootSignature,
 }
@@ -2534,6 +2550,7 @@ impl RootSignature {
     }
 }
 
+#[derive(Debug)]
 pub struct PipelineState {
     pub this: *mut ID3D12PipelineState,
 }
@@ -2543,6 +2560,7 @@ impl_com_object_clone_drop!(PipelineState);
 
 unsafe impl Send for PipelineState {}
 
+#[derive(Debug)]
 pub struct Blob {
     pub this: *mut ID3DBlob,
 }
@@ -2560,6 +2578,7 @@ impl Blob {
     }
 }
 
+#[derive(Debug)]
 pub struct QueryHeap {
     pub this: *mut ID3D12QueryHeap,
 }
@@ -2567,6 +2586,7 @@ impl_com_object_set_get_name!(QueryHeap);
 impl_com_object_refcount_named!(QueryHeap);
 impl_com_object_clone_drop!(QueryHeap);
 
+#[derive(Debug)]
 pub struct Heap {
     pub this: *mut ID3D12Heap,
 }
