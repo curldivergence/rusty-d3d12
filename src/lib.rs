@@ -1,4 +1,4 @@
-use log::warn;
+use log::{trace, warn};
 use std::default::Default;
 use std::ffi::{c_void, CString};
 use std::os::raw::c_char;
