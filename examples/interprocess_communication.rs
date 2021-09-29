@@ -334,7 +334,7 @@ impl Pipeline {
                 &shared_heap,
                 texture_size,
                 &cross_adapter_desc,
-                ResourceStates::CommonOrPresent,
+                ResourceStates::Common,
                 None,
             )
             .expect("Cannot create placed resource");
@@ -459,7 +459,7 @@ impl Pipeline {
             &ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
                     .set_resource(&self.render_targets[self.frame_index])
-                    .set_state_before(ResourceStates::CommonOrPresent)
+                    .set_state_before(ResourceStates::Common)
                     .set_state_after(ResourceStates::RenderTarget),
             ),
         ));
@@ -506,7 +506,7 @@ impl Pipeline {
             ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
                     .set_resource(&self.cross_process_resource)
-                    .set_state_before(ResourceStates::CommonOrPresent)
+                    .set_state_before(ResourceStates::Common)
                     .set_state_after(ResourceStates::CopyDest),
             ),
         ]);
@@ -521,13 +521,13 @@ impl Pipeline {
                 &ResourceTransitionBarrier::default()
                     .set_resource(&self.render_targets[self.frame_index])
                     .set_state_before(ResourceStates::CopySource)
-                    .set_state_after(ResourceStates::CommonOrPresent),
+                    .set_state_after(ResourceStates::Common),
             ),
             ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
                     .set_resource(&self.cross_process_resource)
                     .set_state_before(ResourceStates::CopyDest)
-                    .set_state_after(ResourceStates::CommonOrPresent),
+                    .set_state_after(ResourceStates::Common),
             ),
         ]);
 
@@ -561,13 +561,13 @@ impl Pipeline {
             ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
                     .set_resource(&self.render_targets[self.frame_index])
-                    .set_state_before(ResourceStates::CommonOrPresent)
+                    .set_state_before(ResourceStates::Common)
                     .set_state_after(ResourceStates::CopyDest),
             ),
             ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
                     .set_resource(&self.cross_process_resource)
-                    .set_state_before(ResourceStates::CommonOrPresent)
+                    .set_state_before(ResourceStates::Common)
                     .set_state_after(ResourceStates::CopySource),
             ),
         ]);
@@ -588,7 +588,7 @@ impl Pipeline {
                 &ResourceTransitionBarrier::default()
                     .set_resource(&self.cross_process_resource)
                     .set_state_before(ResourceStates::CopySource)
-                    .set_state_after(ResourceStates::CommonOrPresent),
+                    .set_state_after(ResourceStates::Common),
             ),
         ]);
 
@@ -623,7 +623,7 @@ impl Pipeline {
                 &ResourceTransitionBarrier::default()
                     .set_resource(&self.render_targets[self.frame_index])
                     .set_state_before(ResourceStates::RenderTarget)
-                    .set_state_after(ResourceStates::CommonOrPresent),
+                    .set_state_after(ResourceStates::Common),
             ),
         ));
 
@@ -1079,7 +1079,7 @@ fn create_descriptor_heaps(
     let mut rtv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_heap_type(DescriptorHeapType::RTV)
+                .set_heap_type(DescriptorHeapType::Rtv)
                 .set_num_descriptors(num_descriptors),
         )
         .expect("Cannot create RTV heap");
@@ -1090,7 +1090,7 @@ fn create_descriptor_heaps(
     let cbv_srv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_heap_type(DescriptorHeapType::CBV_SRV_UAV)
+                .set_heap_type(DescriptorHeapType::CbvSrvUav)
                 .set_num_descriptors(FRAMES_IN_FLIGHT as u32 + 1)
                 .set_flags(DescriptorHeapFlags::ShaderVisible),
         )

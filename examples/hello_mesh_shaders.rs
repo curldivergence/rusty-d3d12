@@ -383,7 +383,7 @@ impl HelloMeshShadersSample {
         //     .resource_barrier(&[ResourceBarrier::new_transition(
         //         &ResourceTransitionBarrier::default()
         //             .set_resource(&default_buffer)
-        //             .set_state_before(ResourceStates::CommonOrPresent)
+        //             .set_state_before(ResourceStates::Common)
         //             .set_state_after(ResourceStates::CopyDest),
         //     )]);
 
@@ -472,7 +472,7 @@ impl HelloMeshShadersSample {
                     .set_resource(
                         &self.render_targets[self.frame_index as usize],
                     )
-                    .set_state_before(ResourceStates::CommonOrPresent)
+                    .set_state_before(ResourceStates::Common)
                     .set_state_after(ResourceStates::RenderTarget),
             ),
         ]);
@@ -506,7 +506,7 @@ impl HelloMeshShadersSample {
                         &self.render_targets[self.frame_index as usize],
                     )
                     .set_state_before(ResourceStates::RenderTarget)
-                    .set_state_after(ResourceStates::CommonOrPresent),
+                    .set_state_after(ResourceStates::Common),
             )]);
 
         self.command_list
@@ -650,7 +650,8 @@ impl HelloMeshShadersSample {
         let view = make_view_matrix(camera.position, camera.look_at);
         let proj = make_projection_matrix(&camera);
 
-        eprintln!("{:?}", &(proj * view * world));
+        eprintln!("view {:?}", &(view));
+        eprintln!("wvp {:?}", &(proj * view * world));
         let cb_data = MeshletConstantBuffer {
             mvp: proj * view * world,
             padding: [0.; 48],
@@ -754,7 +755,7 @@ fn setup_heaps(
     let rtv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_heap_type(DescriptorHeapType::RTV)
+                .set_heap_type(DescriptorHeapType::Rtv)
                 .set_num_descriptors(u32::from(FRAMES_IN_FLIGHT)),
         )
         .expect("Cannot create RTV heap");
@@ -765,7 +766,7 @@ fn setup_heaps(
     let dsv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_heap_type(DescriptorHeapType::DSV)
+                .set_heap_type(DescriptorHeapType::Dsv)
                 .set_num_descriptors(1),
         )
         .expect("Cannot create RTV heap");

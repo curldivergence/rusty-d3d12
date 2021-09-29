@@ -184,7 +184,7 @@ impl HelloTriangleSample {
             .expect("Cannot create fence");
 
         let rtv_descriptor_size = device
-            .get_descriptor_handle_increment_size(DescriptorHeapType::RTV);
+            .get_descriptor_handle_increment_size(DescriptorHeapType::Rtv);
 
         let command_queue = device
             .create_command_queue(&CommandQueueDesc::default())
@@ -219,7 +219,7 @@ impl HelloTriangleSample {
         let rtv_heap = device
             .create_descriptor_heap(
                 &DescriptorHeapDesc::default()
-                    .set_heap_type(DescriptorHeapType::RTV)
+                    .set_heap_type(DescriptorHeapType::Rtv)
                     .set_num_descriptors(FRAMES_IN_FLIGHT),
             )
             .expect("Cannot create RTV heap");
@@ -392,7 +392,7 @@ float4 PS(VertexOut input) : SV_Target
         HelloTriangleSample::add_transition(
             &self.command_list,
             &current_buffer,
-            ResourceStates::CommonOrPresent,
+            ResourceStates::Common,
             ResourceStates::RenderTarget,
         );
 
@@ -437,7 +437,7 @@ float4 PS(VertexOut input) : SV_Target
             &self.command_list,
             &current_buffer,
             ResourceStates::RenderTarget,
-            ResourceStates::CommonOrPresent,
+            ResourceStates::Common,
         );
 
         self.command_list
@@ -574,7 +574,7 @@ impl HelloTriangleSample {
                 &self.device,
                 size,
                 HeapType::Default,
-                ResourceStates::CommonOrPresent,
+                ResourceStates::Common,
             )
             .expect("Cannot create default buffer");
 
@@ -587,7 +587,7 @@ impl HelloTriangleSample {
         HelloTriangleSample::add_transition(
             &self.command_list,
             &default_buffer,
-            ResourceStates::CommonOrPresent,
+            ResourceStates::Common,
             ResourceStates::CopyDest,
         );
 

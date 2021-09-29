@@ -612,7 +612,7 @@ impl Pipeline {
                             .set_width(WINDOW_WIDTH.into())
                             .set_height(WINDOW_HEIGHT.into())
                             .set_flags(ResourceFlags::AllowRenderTarget),
-                        ResourceStates::CommonOrPresent,
+                        ResourceStates::Common,
                         None,
                     )
                     .expect("Cannot create render target on secondary adapter");
@@ -643,7 +643,7 @@ impl Pipeline {
                     &HeapProperties::default().set_heap_type(HeapType::Default),
                     HeapFlags::None,
                     &intermediate_render_target_desc,
-                    ResourceStates::CommonOrPresent,
+                    ResourceStates::Common,
                     None,
                 )
                 .expect("Cannot create intermediate render target on secondary adapter");
@@ -1029,7 +1029,7 @@ impl Pipeline {
                         .set_resource(
                             &self.render_targets[adapter_idx][self.frame_index],
                         )
-                        .set_state_before(ResourceStates::CommonOrPresent)
+                        .set_state_before(ResourceStates::Common)
                         .set_state_after(ResourceStates::RenderTarget),
                 ),
                 ResourceBarrier::new_transition(
@@ -1069,7 +1069,7 @@ impl Pipeline {
                         &self.render_targets[adapter_idx][self.frame_index],
                     )
                     .set_state_before(ResourceStates::RenderTarget)
-                    .set_state_after(ResourceStates::CommonOrPresent),
+                    .set_state_after(ResourceStates::Common),
             )),
         );
 
@@ -1178,7 +1178,7 @@ impl Pipeline {
                     .set_resource(
                         &self.render_targets[adapter_idx][self.frame_index],
                     )
-                    .set_state_before(ResourceStates::CommonOrPresent)
+                    .set_state_before(ResourceStates::Common)
                     .set_state_after(ResourceStates::RenderTarget),
             )),
         );
@@ -1251,7 +1251,7 @@ impl Pipeline {
                         &self.render_targets[adapter_idx][self.frame_index],
                     )
                     .set_state_before(ResourceStates::RenderTarget)
-                    .set_state_after(ResourceStates::CommonOrPresent),
+                    .set_state_after(ResourceStates::Common),
             )),
         );
 
@@ -2416,7 +2416,7 @@ fn create_frame_resources(
                                 .set_heap_type(HeapType::Default),
                             HeapFlags::None,
                             &render_target_desc,
-                            ResourceStates::CommonOrPresent,
+                            ResourceStates::Common,
                             Some(&clear_value),
                         )
                         .expect("Cannot create render target"),
@@ -2543,7 +2543,7 @@ fn create_descriptor_heaps(
         let current_heap = devices[device_idx]
             .create_descriptor_heap(
                 &DescriptorHeapDesc::default()
-                    .set_heap_type(DescriptorHeapType::RTV)
+                    .set_heap_type(DescriptorHeapType::Rtv)
                     .set_num_descriptors(num_descriptors as u32),
             )
             .expect("Cannot create RTV heap");
@@ -2559,7 +2559,7 @@ fn create_descriptor_heaps(
     let dsv_heap = devices[0]
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_heap_type(DescriptorHeapType::DSV)
+                .set_heap_type(DescriptorHeapType::Dsv)
                 .set_num_descriptors(1),
         )
         .expect("Cannot create DSV heap");
@@ -2570,7 +2570,7 @@ fn create_descriptor_heaps(
     let cbv_srv_heap = devices[1]
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_heap_type(DescriptorHeapType::CBV_SRV_UAV)
+                .set_heap_type(DescriptorHeapType::CbvSrvUav)
                 .set_num_descriptors(FRAMES_IN_FLIGHT as u32 + 1)
                 .set_flags(DescriptorHeapFlags::ShaderVisible),
         )

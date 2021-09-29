@@ -825,7 +825,7 @@ impl Device {
                 &heap_props.0,
                 heap_flags.bits(),
                 &resource_desc.0,
-                initial_state as i32,
+                initial_state.bits(),
                 match optimized_clear_value {
                     Some(clear_value) => {
                         &clear_value.0
@@ -1009,7 +1009,7 @@ impl Device {
                 heap.this,
                 heap_offset.0,
                 &resource_desc.0,
-                initial_state as i32,
+                initial_state.bits(),
                 match optimized_clear_value {
                     Some(clear_value) => {
                         &clear_value.0
@@ -1074,7 +1074,7 @@ impl Device {
                 self.this,
                 CreateReservedResource,
                 &resource_desc.0,
-                initial_state as i32,
+                initial_state.bits(),
                 match optimized_clear_value {
                     Some(clear_value) => {
                         &clear_value.0

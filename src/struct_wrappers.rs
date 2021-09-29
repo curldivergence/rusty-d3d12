@@ -594,16 +594,17 @@ impl ResourceTransitionBarrier {
     }
 
     pub fn set_state_before(mut self, state_before: ResourceStates) -> Self {
-        self.0.StateBefore = state_before as i32;
+        self.0.StateBefore = state_before.bits();
         self
     }
 
     pub fn state_before(&self) -> ResourceStates {
+        // ToDo: get rid of transmute
         unsafe { std::mem::transmute(self.0.StateBefore) }
     }
 
     pub fn set_state_after(mut self, state_after: ResourceStates) -> Self {
-        self.0.StateAfter = state_after as i32;
+        self.0.StateAfter = state_after.bits();
         self
     }
 
@@ -2307,7 +2308,7 @@ pub struct DescriptorHeapDesc(pub D3D12_DESCRIPTOR_HEAP_DESC);
 impl Default for DescriptorHeapDesc {
     fn default() -> Self {
         Self(D3D12_DESCRIPTOR_HEAP_DESC {
-            Type: DescriptorHeapType::CBV_SRV_UAV as i32,
+            Type: DescriptorHeapType::CbvSrvUav as i32,
             NumDescriptors: 0,
             Flags: DescriptorHeapFlags::None.bits(),
             NodeMask: 0,

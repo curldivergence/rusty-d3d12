@@ -507,7 +507,7 @@ impl GraphicsContext {
                                     &context.render_targets[frame_idx],
                                 )
                                 .set_state_before(
-                                    ResourceStates::CommonOrPresent,
+                                    ResourceStates::Common,
                                 )
                                 .set_state_after(ResourceStates::RenderTarget),
                         )),
@@ -560,7 +560,7 @@ impl GraphicsContext {
                                 )
                                 .set_state_before(ResourceStates::RenderTarget)
                                 .set_state_after(
-                                    ResourceStates::CommonOrPresent,
+                                    ResourceStates::Common,
                                 ),
                         )),
                     );
@@ -1925,7 +1925,7 @@ fn create_descriptor_heaps(
     let rtv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_heap_type(DescriptorHeapType::RTV)
+                .set_heap_type(DescriptorHeapType::Rtv)
                 .set_num_descriptors(FRAMES_IN_FLIGHT as u32),
         )
         .expect("Cannot create RTV heap");
@@ -1936,7 +1936,7 @@ fn create_descriptor_heaps(
     let srv_uav_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_heap_type(DescriptorHeapType::CBV_SRV_UAV)
+                .set_heap_type(DescriptorHeapType::CbvSrvUav)
                 .set_num_descriptors(DESCRIPTOR_COUNT)
                 .set_flags(DescriptorHeapFlags::ShaderVisible),
         )

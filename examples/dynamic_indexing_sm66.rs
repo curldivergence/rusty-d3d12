@@ -1016,7 +1016,7 @@ impl DynamicIndexingSample {
                     .set_resource(
                         &self.render_targets[self.frame_index as usize],
                     )
-                    .set_state_before(ResourceStates::CommonOrPresent)
+                    .set_state_before(ResourceStates::Common)
                     .set_state_after(ResourceStates::RenderTarget),
             )]);
 
@@ -1083,7 +1083,7 @@ impl DynamicIndexingSample {
                         &self.render_targets[self.frame_index as usize],
                     )
                     .set_state_before(ResourceStates::RenderTarget)
-                    .set_state_after(ResourceStates::CommonOrPresent),
+                    .set_state_after(ResourceStates::Common),
             )]);
 
         self.command_list
@@ -1375,7 +1375,7 @@ fn setup_heaps(
     let rtv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_heap_type(DescriptorHeapType::RTV)
+                .set_heap_type(DescriptorHeapType::Rtv)
                 .set_num_descriptors(FRAMES_IN_FLIGHT.into()),
         )
         .expect("Cannot create RTV heap");
@@ -1386,7 +1386,7 @@ fn setup_heaps(
     let dsv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_heap_type(DescriptorHeapType::DSV)
+                .set_heap_type(DescriptorHeapType::Dsv)
                 .set_num_descriptors(1),
         )
         .expect("Cannot create RTV heap");
@@ -1397,7 +1397,7 @@ fn setup_heaps(
     let cbv_srv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_heap_type(DescriptorHeapType::CBV_SRV_UAV)
+                .set_heap_type(DescriptorHeapType::CbvSrvUav)
                 .set_flags(DescriptorHeapFlags::ShaderVisible)
                 .set_num_descriptors(u32::from(
                     FRAMES_IN_FLIGHT * CITY_ROW_COUNT * CITY_COLUMN_COUNT
