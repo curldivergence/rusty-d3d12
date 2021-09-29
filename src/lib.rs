@@ -2224,6 +2224,7 @@ impl CommandList {
             hw_descriptors[i] = descriptors[i].hw_handle.ptr;
         }
 
+        
         unsafe {
             dx_call!(
                 self.this,
@@ -2235,7 +2236,7 @@ impl CommandList {
                     false => 0,
                 },
                 match depth_stencil {
-                    Some(depth_desc) => &depth_desc.hw_handle,
+                    Some(ref depth_desc) => &depth_desc.hw_handle,
                     None => std::ptr::null_mut(),
                 }
             )
