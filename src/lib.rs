@@ -1776,11 +1776,11 @@ impl CommandList {
 
     pub fn copy_texture_region(
         &self,
-        dest_location: &TextureCopyLocation,
-        dest_x: u32, // ToDo: is it really u32?
+        dest_location: TextureCopyLocation,
+        dest_x: u32,
         dest_y: u32,
         dest_z: u32,
-        source_location: &TextureCopyLocation,
+        source_location: TextureCopyLocation,
         source_box: Option<&Box>,
     ) {
         unsafe {
@@ -1793,6 +1793,7 @@ impl CommandList {
                 dest_z,
                 &source_location.0,
                 match source_box {
+                    // ToDo: fix dangling pointer!
                     Some(&b) => &b.0,
                     None => std::ptr::null_mut(),
                 }
@@ -2337,15 +2338,15 @@ impl CommandList {
                 );
                 let source_location = TextureCopyLocation::new_placed_footprint(
                     intermediate_resource,
-                    &layouts[i],
+                    layouts[i],
                 );
 
                 self.copy_texture_region(
-                    &dest_location,
+                    dest_location,
                     0,
                     0,
                     0,
-                    &source_location,
+                    source_location,
                     None,
                 );
             }

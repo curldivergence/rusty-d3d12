@@ -790,13 +790,15 @@ impl Rect {
     }
 }
 
+// ToDo: add lifetime since we're taking `this` from a Resource?
+#[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct TextureCopyLocation(pub D3D12_TEXTURE_COPY_LOCATION);
 
 impl TextureCopyLocation {
     pub fn new_placed_footprint(
         resource: &Resource,
-        footprint: &PlacedSubresourceFootprint,
+        footprint: PlacedSubresourceFootprint,
     ) -> Self {
         Self(D3D12_TEXTURE_COPY_LOCATION {
             pResource: resource.this,

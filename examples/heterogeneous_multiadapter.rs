@@ -911,7 +911,7 @@ impl Pipeline {
 
             let src = TextureCopyLocation::new_placed_footprint(
                 &self.cross_adapter_resources[adapter_idx][self.frame_index],
-                &texture_layout[0],
+                texture_layout[0],
             );
 
             let resource_box = Box::default()
@@ -921,11 +921,11 @@ impl Pipeline {
                 .set_bottom(u32::from(WINDOW_HEIGHT));
 
             self.direct_command_lists[adapter_idx].copy_texture_region(
-                &dest,
+                dest,
                 0,
                 0,
                 0,
-                &src,
+                src,
                 Some(&resource_box),
             );
 
@@ -1114,7 +1114,7 @@ impl Pipeline {
 
             let dest = TextureCopyLocation::new_placed_footprint(
                 &self.cross_adapter_resources[adapter_idx][self.frame_index],
-                &render_target_layout[0],
+                render_target_layout[0],
             );
 
             let src = TextureCopyLocation::new_subresource_index(
@@ -1129,11 +1129,11 @@ impl Pipeline {
                 .set_bottom(u32::from(WINDOW_HEIGHT));
 
             self.copy_command_list.copy_texture_region(
-                &dest,
+                dest,
                 0,
                 0,
                 0,
-                &src,
+                src,
                 Some(&resource_box),
             );
         }

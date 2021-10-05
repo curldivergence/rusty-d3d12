@@ -502,6 +502,8 @@ pub enum StencilOp {
     Dec = D3D12_STENCIL_OP_D3D12_STENCIL_OP_DECR,
 }
 
+// ToDo: do we need it?
+#[derive(Clone, Copy)]
 #[repr(i32)]
 pub enum TextureCopyType {
     SubresourceIndex =
