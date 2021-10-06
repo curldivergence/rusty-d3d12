@@ -4,8 +4,7 @@ use regex::Regex;
 use std::env;
 use std::path::PathBuf;
 
-const D3D12_AGILITY_SDK_INCLUDE_PATH: &str =
-    "extern\\D3D12AgilitySDK\\include";
+const D3D12_AGILITY_SDK_INCLUDE_PATH: &str = "extern\\D3D12AgilitySDK\\include";
 const D3D12_AGILITY_SDK_LIB_PATH: &str = "extern\\D3D12AgilitySDK\\bin";
 
 const PIX_INCLUDE_PATH: &str = "extern\\WinPixEventRuntime\\include";
@@ -178,6 +177,11 @@ fn generate_bindings() {
         .derive_debug(true)
         .impl_debug(true)
         .derive_default(true)
+        .derive_eq(true)
+        .derive_partialeq(true)
+        .impl_partialeq(true)
+        .derive_hash(true)
+        .derive_ord(true)
         // DXGI and D3D types, vars and functions
         .whitelist_type(".*DXGI.*")
         .whitelist_type(".*D3D12.*")

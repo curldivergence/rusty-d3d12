@@ -15,7 +15,7 @@ log_ref_counting = []
 devel = []
 
 [build-dependencies]
-bindgen = "0.57"
+bindgen = "0.59"
 regex = "1"
 cc = "1.0"
 

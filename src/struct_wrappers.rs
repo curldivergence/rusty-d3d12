@@ -24,10 +24,12 @@ use crate::Resource;
 // ToDo: make namespaces for DXGI types and D3D12 since currently they're
 // mixed up
 
+#[derive(Debug)]
 pub struct GpuVirtualAddress(pub D3D12_GPU_VIRTUAL_ADDRESS);
 
 // ToDo: such fields should not be public?
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct SwapchainDesc(pub DXGI_SWAP_CHAIN_DESC1);
 
 impl Default for SwapchainDesc {
@@ -213,6 +215,7 @@ impl std::fmt::Debug for AdapterDesc {
 }
 
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct SampleDesc(pub DXGI_SAMPLE_DESC);
 
 impl Default for SampleDesc {
@@ -245,6 +248,7 @@ impl SampleDesc {
 }
 
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct ResourceDesc(pub D3D12_RESOURCE_DESC);
 
 impl Default for ResourceDesc {
@@ -357,6 +361,7 @@ impl ResourceDesc {
 }
 
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct Message(pub D3D12_MESSAGE);
 
 impl Default for Message {
@@ -373,6 +378,7 @@ impl Default for Message {
 }
 
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct HeapProperties(pub D3D12_HEAP_PROPERTIES);
 
 impl Default for HeapProperties {
@@ -442,6 +448,7 @@ impl HeapProperties {
 
 #[derive(Default, Copy, Clone)]
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct Range(pub D3D12_RANGE);
 
 impl Range {
@@ -465,6 +472,7 @@ impl Range {
 }
 
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct ResourceBarrier(pub D3D12_RESOURCE_BARRIER);
 
 impl ResourceBarrier {
@@ -615,6 +623,7 @@ impl ResourceTransitionBarrier {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct ResourceAliasingBarrier(pub D3D12_RESOURCE_ALIASING_BARRIER);
 
 impl ResourceAliasingBarrier {
@@ -647,6 +656,7 @@ impl ResourceAliasingBarrier {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct ResourceUavBarrier(pub D3D12_RESOURCE_UAV_BARRIER);
 
 impl ResourceUavBarrier {
@@ -666,6 +676,7 @@ impl ResourceUavBarrier {
 
 #[derive(Clone, Copy)]
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct Viewport(pub D3D12_VIEWPORT);
 
 impl Default for Viewport {
@@ -739,6 +750,7 @@ impl Viewport {
 
 #[derive(Clone, Copy)]
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct Rect(pub D3D12_RECT);
 
 impl Default for Rect {
@@ -793,6 +805,7 @@ impl Rect {
 // ToDo: add lifetime since we're taking `this` from a Resource?
 #[derive(Clone, Copy)]
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct TextureCopyLocation(pub D3D12_TEXTURE_COPY_LOCATION);
 
 impl TextureCopyLocation {
@@ -834,6 +847,7 @@ impl TextureCopyLocation {
 
 #[derive(Copy, Clone)]
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct Box(pub D3D12_BOX);
 
 impl Default for Box {
@@ -907,6 +921,7 @@ impl Box {
 
 #[derive(Copy, Clone, Default)]
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct VertexBufferView(pub D3D12_VERTEX_BUFFER_VIEW);
 
 impl VertexBufferView {
@@ -942,6 +957,7 @@ impl VertexBufferView {
 }
 
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct InputElementDesc<'a>(
     pub D3D12_INPUT_ELEMENT_DESC,
     PhantomData<&'a CStr>,
@@ -1052,6 +1068,7 @@ impl<'a> Drop for InputElementDesc<'a> {
 
 #[derive(Copy, Clone, Default)]
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct IndexBufferView(pub D3D12_INDEX_BUFFER_VIEW);
 
 impl IndexBufferView {
@@ -1087,6 +1104,7 @@ impl IndexBufferView {
 }
 
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct ShaderBytecode<'a>(pub D3D12_SHADER_BYTECODE, PhantomData<&'a [u8]>);
 
 impl<'a> Default for ShaderBytecode<'a> {
@@ -1113,6 +1131,7 @@ impl<'a> ShaderBytecode<'a> {
     }
 }
 
+#[derive(Debug)]
 pub struct SoDeclarationEntry<'a>(
     pub D3D12_SO_DECLARATION_ENTRY,
     PhantomData<&'a str>,
@@ -1194,6 +1213,7 @@ impl<'a> Drop for SoDeclarationEntry<'a> {
 }
 
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct StreamOutputDesc<'a>(
     pub D3D12_STREAM_OUTPUT_DESC,
     PhantomData<&'a [SoDeclarationEntry<'a>]>,
@@ -1261,6 +1281,7 @@ impl<'a> StreamOutputDesc<'a> {
 
 #[derive(Copy, Clone)]
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct RenderTargetBlendDesc(pub D3D12_RENDER_TARGET_BLEND_DESC);
 
 impl Default for RenderTargetBlendDesc {
@@ -1377,6 +1398,7 @@ impl RenderTargetBlendDesc {
 }
 
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct BlendDesc(pub D3D12_BLEND_DESC);
 impl Default for BlendDesc {
     fn default() -> Self {
@@ -1434,6 +1456,7 @@ impl BlendDesc {
 }
 
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct RasterizerDesc(pub D3D12_RASTERIZER_DESC);
 
 impl Default for RasterizerDesc {
@@ -1568,6 +1591,7 @@ impl RasterizerDesc {
 }
 
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct DepthStencilOpDesc(pub D3D12_DEPTH_STENCILOP_DESC);
 
 impl Default for DepthStencilOpDesc {
@@ -1623,6 +1647,7 @@ impl DepthStencilOpDesc {
 }
 
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct DepthStencilDesc(pub D3D12_DEPTH_STENCIL_DESC);
 
 impl Default for DepthStencilDesc {
@@ -1718,6 +1743,7 @@ impl DepthStencilDesc {
 }
 
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct InputLayoutDesc<'a>(
     pub D3D12_INPUT_LAYOUT_DESC,
     PhantomData<&'a [InputElementDesc<'a>]>,
@@ -1749,6 +1775,7 @@ impl<'a> InputLayoutDesc<'a> {
 }
 
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct CachedPipelineState<'a>(
     pub D3D12_CACHED_PIPELINE_STATE,
     PhantomData<&'a [u8]>,
@@ -1786,6 +1813,7 @@ impl<'a> CachedPipelineState<'a> {
 
 // ToDo: different lifetimes for all shaders?
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il>(
     pub D3D12_GRAPHICS_PIPELINE_STATE_DESC,
     PhantomData<&'rs RootSignature>,
@@ -2103,6 +2131,7 @@ impl<'rs, 'sh, 'so, 'il> GraphicsPipelineStateDesc<'rs, 'sh, 'so, 'il> {
 
 #[derive(Default)]
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct ComputePipelineStateDesc<'rs, 'sh>(
     pub D3D12_COMPUTE_PIPELINE_STATE_DESC,
     PhantomData<&'rs RootSignature>,
@@ -2184,6 +2213,7 @@ impl<'rs, 'sh> ComputePipelineStateDesc<'rs, 'sh> {
 }
 
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct SubresourceFootprint(pub D3D12_SUBRESOURCE_FOOTPRINT);
 
 impl Default for SubresourceFootprint {
@@ -2245,6 +2275,7 @@ impl SubresourceFootprint {
 
 #[derive(Copy, Clone)]
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct PlacedSubresourceFootprint(pub D3D12_PLACED_SUBRESOURCE_FOOTPRINT);
 
 impl Default for PlacedSubresourceFootprint {
@@ -2278,6 +2309,7 @@ impl PlacedSubresourceFootprint {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct ConstantBufferViewDesc(pub D3D12_CONSTANT_BUFFER_VIEW_DESC);
 
 impl ConstantBufferViewDesc {
@@ -2305,6 +2337,7 @@ impl ConstantBufferViewDesc {
 
 // ToDo: rethink the 'pub's in such wrappers
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct DescriptorHeapDesc(pub D3D12_DESCRIPTOR_HEAP_DESC);
 
 impl Default for DescriptorHeapDesc {
@@ -2357,6 +2390,7 @@ impl DescriptorHeapDesc {
 }
 
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct CommandQueueDesc(pub D3D12_COMMAND_QUEUE_DESC);
 
 impl Default for CommandQueueDesc {
@@ -2412,6 +2446,7 @@ impl CommandQueueDesc {
 }
 
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct FeatureDataRootSignature(pub D3D12_FEATURE_DATA_ROOT_SIGNATURE);
 
 impl FeatureDataRootSignature {
@@ -2434,6 +2469,7 @@ impl FeatureDataRootSignature {
     }
 }
 
+#[derive(Debug)]
 pub struct DescriptorRangeOffset(u32);
 
 impl From<u32> for DescriptorRangeOffset {
@@ -2450,6 +2486,7 @@ impl DescriptorRangeOffset {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct DescriptorRange(pub D3D12_DESCRIPTOR_RANGE1);
 
 impl DescriptorRange {
@@ -2519,6 +2556,7 @@ impl DescriptorRange {
 
 #[derive(Debug, Default)]
 #[repr(transparent)]
+
 pub struct RootParameter(pub D3D12_ROOT_PARAMETER1);
 
 impl RootParameter {
@@ -2632,6 +2670,7 @@ impl RootParameter {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct RootDescriptorTable<'a>(
     pub D3D12_ROOT_DESCRIPTOR_TABLE1,
     PhantomData<&'a DescriptorRange>,
@@ -2662,6 +2701,7 @@ impl<'a> RootDescriptorTable<'a> {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct RootConstants(pub D3D12_ROOT_CONSTANTS);
 
 impl RootConstants {
@@ -2694,6 +2734,7 @@ impl RootConstants {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct RootDescriptor(pub D3D12_ROOT_DESCRIPTOR1);
 
 impl RootDescriptor {
@@ -2728,6 +2769,7 @@ impl RootDescriptor {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct SamplerDesc(pub D3D12_SAMPLER_DESC);
 
 impl SamplerDesc {
@@ -2826,8 +2868,8 @@ impl SamplerDesc {
     }
 }
 
-#[derive(Debug)]
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct StaticSamplerDesc(pub D3D12_STATIC_SAMPLER_DESC);
 
 // based on the first constructor of CD3DX12_STATIC_SAMPLER_DESC
@@ -2985,6 +3027,7 @@ impl StaticSamplerDesc {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct VersionedRootSignatureDesc(pub D3D12_VERSIONED_ROOT_SIGNATURE_DESC);
 
 impl VersionedRootSignatureDesc {
@@ -3013,6 +3056,7 @@ impl VersionedRootSignatureDesc {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct RootSignatureDesc<'a, 'b>(
     pub D3D12_ROOT_SIGNATURE_DESC1,
     PhantomData<&'a RootParameter>,
@@ -3071,6 +3115,7 @@ impl<'a, 'b> RootSignatureDesc<'a, 'b> {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct SubresourceData<'a>(
     pub D3D12_SUBRESOURCE_DATA,
     PhantomData<&'a [()]>,
@@ -3104,6 +3149,7 @@ impl<'a> SubresourceData<'a> {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct ShaderResourceViewDesc(pub D3D12_SHADER_RESOURCE_VIEW_DESC);
 
 impl ShaderResourceViewDesc {
@@ -3345,6 +3391,7 @@ impl ShaderResourceViewDesc {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct BufferSrv(pub D3D12_BUFFER_SRV);
 
 impl BufferSrv {
@@ -3391,6 +3438,7 @@ impl BufferSrv {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct Tex1DSrv(pub D3D12_TEX1D_SRV);
 
 impl Tex1DSrv {
@@ -3427,6 +3475,7 @@ impl Tex1DSrv {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct Tex1DArraySrv(pub D3D12_TEX1D_ARRAY_SRV);
 
 impl Tex1DArraySrv {
@@ -3481,6 +3530,7 @@ impl Tex1DArraySrv {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct Tex2DSrv(pub D3D12_TEX2D_SRV);
 
 impl Tex2DSrv {
@@ -3526,6 +3576,7 @@ impl Tex2DSrv {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct Tex2DArraySrv(pub D3D12_TEX2D_ARRAY_SRV);
 
 impl Tex2DArraySrv {
@@ -3589,10 +3640,12 @@ impl Tex2DArraySrv {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct Tex2DMsSrv(pub D3D12_TEX2DMS_SRV);
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct Tex2DMsArraySrv(pub D3D12_TEX2DMS_ARRAY_SRV);
 
 impl Tex2DMsArraySrv {
@@ -3653,6 +3706,7 @@ impl Tex3DSrv {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct TexcubeSrv(pub D3D12_TEXCUBE_SRV);
 
 impl TexcubeSrv {
@@ -3689,6 +3743,7 @@ impl TexcubeSrv {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct TexcubeArraySrv(pub D3D12_TEXCUBE_ARRAY_SRV);
 
 impl TexcubeArraySrv {
@@ -3743,6 +3798,7 @@ impl TexcubeArraySrv {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct RaytracingAccelerationStructureSrv(
     pub D3D12_RAYTRACING_ACCELERATION_STRUCTURE_SRV,
 );
@@ -3760,6 +3816,7 @@ impl RaytracingAccelerationStructureSrv {
 
 #[derive(Default)]
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct UnorderedAccessViewDesc(pub D3D12_UNORDERED_ACCESS_VIEW_DESC);
 
 impl UnorderedAccessViewDesc {
@@ -3889,6 +3946,7 @@ impl UnorderedAccessViewDesc {
 
 #[derive(Default)]
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct BufferUav(pub D3D12_BUFFER_UAV);
 
 impl BufferUav {
@@ -3946,6 +4004,7 @@ impl BufferUav {
 
 #[derive(Default)]
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct Tex1DUav(pub D3D12_TEX1D_UAV);
 
 impl Tex1DUav {
@@ -3961,6 +4020,7 @@ impl Tex1DUav {
 
 #[derive(Default)]
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct Tex1DArrayUav(pub D3D12_TEX1D_ARRAY_UAV);
 
 impl Tex1DArrayUav {
@@ -3994,6 +4054,7 @@ impl Tex1DArrayUav {
 
 #[derive(Default)]
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct Tex2DUav(pub D3D12_TEX2D_UAV);
 
 impl Tex2DUav {
@@ -4018,6 +4079,7 @@ impl Tex2DUav {
 
 #[derive(Default)]
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct Tex2DArrayUav(pub D3D12_TEX2D_ARRAY_UAV);
 
 impl Tex2DArrayUav {
@@ -4060,6 +4122,7 @@ impl Tex2DArrayUav {
 
 #[derive(Default)]
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct Tex3DUav(pub D3D12_TEX3D_UAV);
 
 impl Tex3DUav {
@@ -4093,6 +4156,7 @@ impl Tex3DUav {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct ClearValue(pub D3D12_CLEAR_VALUE);
 
 impl ClearValue {
@@ -4135,6 +4199,7 @@ impl ClearValue {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct DepthStencilValue(pub D3D12_DEPTH_STENCIL_VALUE);
 
 impl DepthStencilValue {
@@ -4159,6 +4224,7 @@ impl DepthStencilValue {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct DepthStencilViewDesc(pub D3D12_DEPTH_STENCIL_VIEW_DESC);
 
 // ToDo: encode the union variant in wrapper's type?
@@ -4304,6 +4370,7 @@ impl DepthStencilViewDesc {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct Tex1DDsv(pub D3D12_TEX1D_DSV);
 
 impl Tex1DDsv {
@@ -4319,6 +4386,7 @@ impl Tex1DDsv {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct Tex1DArrayDsv(pub D3D12_TEX1D_ARRAY_DSV);
 
 impl Tex1DArrayDsv {
@@ -4352,6 +4420,7 @@ impl Tex1DArrayDsv {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct Tex2DDsv(pub D3D12_TEX2D_DSV);
 
 impl Tex2DDsv {
@@ -4367,6 +4436,7 @@ impl Tex2DDsv {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct Tex2DArrayDsv(pub D3D12_TEX2D_ARRAY_DSV);
 
 impl Tex2DArrayDsv {
@@ -4404,6 +4474,7 @@ pub struct Tex2DmsDsv(pub D3D12_TEX2DMS_DSV);
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct Tex2DmsArrayDsv(pub D3D12_TEX2DMS_ARRAY_DSV);
 
 impl Tex2DmsArrayDsv {
@@ -4429,6 +4500,7 @@ impl Tex2DmsArrayDsv {
 // ToDo: more ::new() constructors for one-field structs?
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct FeatureDataShaderModel(pub D3D12_FEATURE_DATA_SHADER_MODEL);
 
 impl FeatureDataShaderModel {
@@ -4455,6 +4527,7 @@ impl FeatureDataShaderModel {
 // should be cleaned up (in favor of Builder pattern?)
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct PipelineStateStreamDesc<'a>(
     pub D3D12_PIPELINE_STATE_STREAM_DESC,
     PhantomData<&'a [u8]>,
@@ -4489,6 +4562,7 @@ impl<'a> PipelineStateStreamDesc<'a> {
 
 #[derive(Default, Debug)]
 #[repr(C, align(8))]
+
 pub struct PipelineStateSubobject<T> {
     ty: PipelineStateSubobjectType,
     subobject: T,
@@ -4509,6 +4583,7 @@ impl<T> PipelineStateSubobject<T> {
 // they have one, and also one more for compute PSO's
 // ToDo: do we realistically need getters here?
 #[repr(C)]
+#[derive(Debug)]
 pub struct MeshShaderPipelineStateDesc<'rs, 'sh> {
     // We don't use wrapper types here since i) these members are private
     // and don't leak into the public API, and ii) if we want to implement
@@ -4643,10 +4718,7 @@ impl<'rs, 'sh> MeshShaderPipelineStateDesc<'rs, 'sh> {
         self
     }
 
-    pub fn set_ps_bytecode(
-        mut self,
-        bytecode: &'sh ShaderBytecode,
-    ) -> Self {
+    pub fn set_ps_bytecode(mut self, bytecode: &'sh ShaderBytecode) -> Self {
         self.pixel_shader = PipelineStateSubobject::new(
             PipelineStateSubobjectType::PS,
             bytecode.0,
@@ -4738,6 +4810,7 @@ impl<'rs, 'sh> MeshShaderPipelineStateDesc<'rs, 'sh> {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct RtFormatArray(pub D3D12_RT_FORMAT_ARRAY);
 
 impl RtFormatArray {
@@ -4760,6 +4833,7 @@ impl RtFormatArray {
 }
 
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct QueryHeapDesc(pub D3D12_QUERY_HEAP_DESC);
 
 impl Default for QueryHeapDesc {
@@ -4803,6 +4877,7 @@ impl QueryHeapDesc {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct FeatureDataD3DOptions(pub D3D12_FEATURE_DATA_D3D12_OPTIONS);
 
 impl FeatureDataD3DOptions {
@@ -4993,6 +5068,7 @@ impl FeatureDataD3DOptions {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
+
 pub struct ResourceAllocationInfo(pub D3D12_RESOURCE_ALLOCATION_INFO);
 
 impl ResourceAllocationInfo {
@@ -5017,6 +5093,7 @@ impl ResourceAllocationInfo {
 
 #[derive(Default)]
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct HeapDesc(pub D3D12_HEAP_DESC);
 
 impl HeapDesc {
