@@ -1797,8 +1797,7 @@ impl CommandList {
                 dest_z,
                 &source_location.0,
                 match source_box {
-                    // ToDo: fix dangling pointer!
-                    Some(&b) => &b.0,
+                    Some(b) => &b.0,
                     None => std::ptr::null_mut(),
                 }
             )
