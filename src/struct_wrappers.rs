@@ -2557,42 +2557,23 @@ impl DescriptorRange {
 #[derive(Debug, Default)]
 #[repr(transparent)]
 
-pub struct RootParameter(pub D3D12_ROOT_PARAMETER1);
+pub struct RootParameter<'a>(
+    pub D3D12_ROOT_PARAMETER1,
+    PhantomData<&'a RootDescriptorTable<'a>>,
+);
 
-impl RootParameter {
+impl<'a> RootParameter<'a> {
     pub fn parameter_type(&self) -> RootParameterType {
         unsafe { std::mem::transmute(self.0.ParameterType) }
     }
 
-    // pub fn new_transition(desc: &ResourceTransitionBarrier) -> Self {
-    //     Self(D3D12_RESOURCE_BARRIER {
-    //         Type: ResourceBarrierType::Transition as i32,
-    //         Flags: ResourceBarrierFlags::None.bits(),
-    //         __bindgen_anon_1: D3D12_RESOURCE_BARRIER__bindgen_ty_1 {
-    //             Transition: desc.0,
-    //         },
-    //     })
-    // }
-
-    // pub fn transition(&self) -> Option<ResourceTransitionBarrier> {
-    //     unsafe {
-    //         match self.barrier_type() {
-    //             ResourceBarrierType::Transition => {
-    //                 Some(ResourceTransitionBarrier(
-    //                     self.0.__bindgen_anon_1.Transition,
-    //                 ))
-    //             }
-    //             _ => None,
-    //         }
-    //     }
-    // }
-
     pub fn new_descriptor_table(
         mut self,
-        descriptor_table: &RootDescriptorTable,
+        descriptor_table: &'a RootDescriptorTable<'a>,
     ) -> Self {
         self.0.ParameterType = RootParameterType::DescriptorTable as i32;
         self.0.__bindgen_anon_1.DescriptorTable = descriptor_table.0;
+        self.1 = PhantomData;
         self
     }
 
@@ -3059,7 +3040,7 @@ impl VersionedRootSignatureDesc {
 
 pub struct RootSignatureDesc<'a, 'b>(
     pub D3D12_ROOT_SIGNATURE_DESC1,
-    PhantomData<&'a RootParameter>,
+    PhantomData<&'a RootParameter<'a>>,
     PhantomData<&'b StaticSamplerDesc>,
 );
 

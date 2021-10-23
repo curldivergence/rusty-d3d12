@@ -1192,11 +1192,10 @@ fn create_pipeline_state(
     let vs_bytecode = ShaderBytecode::from_bytes(&vertex_shader);
     let ps_bytecode = ShaderBytecode::from_bytes(&pixel_shader);
 
-    let input_layout = InputLayoutDesc::default().from_input_elements(&input_layout);
+    let input_layout =
+        InputLayoutDesc::default().from_input_elements(&input_layout);
     let pso_desc = GraphicsPipelineStateDesc::default()
-        .set_input_layout(
-            &input_layout,
-        )
+        .set_input_layout(&input_layout)
         .set_root_signature(root_signature)
         .set_vs_bytecode(&vs_bytecode)
         .set_ps_bytecode(&ps_bytecode)
@@ -1239,10 +1238,10 @@ cbuffer cb0 : register(b0)
 PSInput VSMain(VSInput input)
 {
     PSInput result;
-    
+
     result.position = mul(float4(input.position, 1.0f), g_mWorldViewProj);
     result.uv = input.uv;
-    
+
     return result;
 }
 #",
@@ -1333,24 +1332,23 @@ d3dx12.h as a dependency to have X12SerializeVersionedRootSignature"
             .set_flags(DescriptorRangeFlags::DataStatic),
     ];
 
+    let srv_table = RootDescriptorTable::default()
+        .set_descriptor_ranges(slice::from_ref(&ranges[0]));
+    let sampler_table = RootDescriptorTable::default()
+        .set_descriptor_ranges(slice::from_ref(&ranges[1]));
+
+    let cbv_table = RootDescriptorTable::default()
+        .set_descriptor_ranges(slice::from_ref(&ranges[2]));
+
     let root_parameters = vec![
         RootParameter::default()
-            .new_descriptor_table(
-                &RootDescriptorTable::default()
-                    .set_descriptor_ranges(slice::from_ref(&ranges[0])),
-            )
+            .new_descriptor_table(&srv_table)
             .set_shader_visibility(ShaderVisibility::Pixel),
         RootParameter::default()
-            .new_descriptor_table(
-                &RootDescriptorTable::default()
-                    .set_descriptor_ranges(slice::from_ref(&ranges[1])),
-            )
+            .new_descriptor_table(&sampler_table)
             .set_shader_visibility(ShaderVisibility::Pixel),
         RootParameter::default()
-            .new_descriptor_table(
-                &RootDescriptorTable::default()
-                    .set_descriptor_ranges(slice::from_ref(&ranges[2])),
-            )
+            .new_descriptor_table(&cbv_table)
             .set_shader_visibility(ShaderVisibility::Vertex),
         RootParameter::default()
             .set_shader_visibility(ShaderVisibility::Pixel)

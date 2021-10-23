@@ -617,10 +617,10 @@ d3dx12.h as a dependency to have X12SerializeVersionedRootSignature"
         .set_num_descriptors(1)
         .set_flags(DescriptorRangeFlags::DataStatic)];
 
+    let descriptor_table =
+        RootDescriptorTable::default().set_descriptor_ranges(&ranges);
     let root_parameters = vec![RootParameter::default()
-        .new_descriptor_table(
-            &RootDescriptorTable::default().set_descriptor_ranges(&ranges),
-        )
+        .new_descriptor_table(&descriptor_table)
         .set_shader_visibility(ShaderVisibility::Pixel)];
 
     let sampler_desc = StaticSamplerDesc::default()
@@ -636,7 +636,7 @@ d3dx12.h as a dependency to have X12SerializeVersionedRootSignature"
         .set_desc_1_1(
             &RootSignatureDesc::default()
                 .set_parameters(&root_parameters)
-                .set_static_samplers(&vec![sampler_desc])
+                .set_static_samplers(std::slice::from_ref(&sampler_desc))
                 .set_flags(RootSignatureFlags::AllowInputAssemblerInputLayout),
         );
 

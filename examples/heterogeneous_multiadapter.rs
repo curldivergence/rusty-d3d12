@@ -2245,6 +2245,8 @@ fn create_root_signatures(
                 DescriptorRangeOffset::append(),
             );
 
+        let descriptor_table = RootDescriptorTable::default()
+            .set_descriptor_ranges(slice::from_ref(&range));
         let blur_root_parameters = [
             RootParameter::default()
                 .new_descriptor(
@@ -2255,10 +2257,7 @@ fn create_root_signatures(
                 )
                 .set_shader_visibility(ShaderVisibility::Pixel),
             RootParameter::default()
-                .new_descriptor_table(
-                    &RootDescriptorTable::default()
-                        .set_descriptor_ranges(slice::from_ref(&range)),
-                )
+                .new_descriptor_table(&descriptor_table)
                 .set_shader_visibility(ShaderVisibility::Pixel),
             RootParameter::default()
                 .new_descriptor(

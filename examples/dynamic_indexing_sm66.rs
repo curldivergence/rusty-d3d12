@@ -1317,18 +1317,17 @@ d3dx12.h as a dependency to have DX12SerializeVersionedRootSignature"
             .set_flags(DescriptorRangeFlags::DataStatic),
     ];
 
+    let srv_table = RootDescriptorTable::default()
+        .set_descriptor_ranges(slice::from_ref(&ranges[0]));
+
+    let cbv_table = RootDescriptorTable::default()
+        .set_descriptor_ranges(slice::from_ref(&ranges[1]));
     let root_parameters = vec![
         RootParameter::default()
-            .new_descriptor_table(
-                &RootDescriptorTable::default()
-                    .set_descriptor_ranges(slice::from_ref(&ranges[0])),
-            )
+            .new_descriptor_table(&srv_table)
             .set_shader_visibility(ShaderVisibility::Pixel),
         RootParameter::default()
-            .new_descriptor_table(
-                &RootDescriptorTable::default()
-                    .set_descriptor_ranges(slice::from_ref(&ranges[1])),
-            )
+            .new_descriptor_table(&cbv_table)
             .set_shader_visibility(ShaderVisibility::Vertex),
         RootParameter::default()
             .set_shader_visibility(ShaderVisibility::Pixel)

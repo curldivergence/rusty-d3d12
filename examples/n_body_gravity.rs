@@ -116,7 +116,7 @@ const THREAD_COUNT: u32 = 1;
 const PARTICLE_COUNT: u32 = 10000;
 const PARTICLE_SPREAD: f32 = 400.;
 
-const USE_DEBUG: bool = false;
+const USE_DEBUG: bool = true;
 const USE_WARP_ADAPTER: bool = false;
 
 const CLEAR_COLOR: [f32; 4] = [0.0, 0.2, 0.3, 1.0];
@@ -506,9 +506,7 @@ impl GraphicsContext {
                                 .set_resource(
                                     &context.render_targets[frame_idx],
                                 )
-                                .set_state_before(
-                                    ResourceStates::Common,
-                                )
+                                .set_state_before(ResourceStates::Common)
                                 .set_state_after(ResourceStates::RenderTarget),
                         )),
                     );
@@ -559,9 +557,7 @@ impl GraphicsContext {
                                     &context.render_targets[frame_idx],
                                 )
                                 .set_state_before(ResourceStates::RenderTarget)
-                                .set_state_after(
-                                    ResourceStates::Common,
-                                ),
+                                .set_state_after(ResourceStates::Common),
                         )),
                     );
 
@@ -811,6 +807,23 @@ impl ComputeContext {
 }
 
 fn create_compute_root_signature(device: &Device) -> RootSignature {
+    let srv_range = DescriptorRange::default()
+        .set_range_type(DescriptorRangeType::Srv)
+        .set_num_descriptors(1)
+        .set_base_shader_register(0)
+        .set_flags(DescriptorRangeFlags::DescriptorsVolatile);
+
+    let srv_table = RootDescriptorTable::default()
+        .set_descriptor_ranges(slice::from_ref(&srv_range));
+
+    let uav_range = DescriptorRange::default()
+        .set_range_type(DescriptorRangeType::Uav)
+        .set_num_descriptors(1)
+        .set_base_shader_register(0)
+        .set_flags(DescriptorRangeFlags::DataVolatile);
+
+    let uav_table = RootDescriptorTable::default()
+        .set_descriptor_ranges(slice::from_ref(&uav_range));
     let root_parameters = [
         RootParameter::default()
             .new_descriptor(
@@ -820,28 +833,8 @@ fn create_compute_root_signature(device: &Device) -> RootSignature {
                 RootParameterType::Cbv,
             )
             .set_shader_visibility(ShaderVisibility::All),
-        RootParameter::default().new_descriptor_table(
-            &RootDescriptorTable::default().set_descriptor_ranges(
-                slice::from_ref(
-                    &DescriptorRange::default()
-                        .set_range_type(DescriptorRangeType::Srv)
-                        .set_num_descriptors(1)
-                        .set_base_shader_register(0)
-                        .set_flags(DescriptorRangeFlags::DescriptorsVolatile),
-                ),
-            ),
-        ),
-        RootParameter::default().new_descriptor_table(
-            &RootDescriptorTable::default().set_descriptor_ranges(
-                slice::from_ref(
-                    &DescriptorRange::default()
-                        .set_range_type(DescriptorRangeType::Uav)
-                        .set_num_descriptors(1)
-                        .set_base_shader_register(0)
-                        .set_flags(DescriptorRangeFlags::DataVolatile),
-                ),
-            ),
-        ),
+        RootParameter::default().new_descriptor_table(&srv_table),
+        RootParameter::default().new_descriptor_table(&uav_table),
     ];
     let root_signature_desc = VersionedRootSignatureDesc::default()
         .set_desc_1_1(
@@ -1151,7 +1144,11 @@ impl Pipeline {
 
         self.swapchain
             .present(0, PresentFlags::None)
-            .expect("Cannot present");
+            .unwrap_or_else(|err| {
+                error!("{}", err);
+                let real_error = self.device.get_device_removed_reason();
+                error!("Device removed reason: {}", real_error);
+            });
 
         // cpu wait for command allocators
 
@@ -1828,6 +1825,14 @@ fn create_compute_pso(
 
 fn create_graphics_root_signature(device: &Device) -> RootSignature {
     let graphics_root_signature = {
+        let ranges = [DescriptorRange::default()
+            .set_range_type(DescriptorRangeType::Srv)
+            .set_num_descriptors(1)
+            .set_base_shader_register(0)
+            .set_flags(DescriptorRangeFlags::DataStatic)];
+
+        let table =
+            RootDescriptorTable::default().set_descriptor_ranges(&ranges);
         let root_parameters = [
             RootParameter::default()
                 .new_descriptor(
@@ -1837,17 +1842,7 @@ fn create_graphics_root_signature(device: &Device) -> RootSignature {
                     RootParameterType::Cbv,
                 )
                 .set_shader_visibility(ShaderVisibility::All),
-            RootParameter::default().new_descriptor_table(
-                &RootDescriptorTable::default().set_descriptor_ranges(
-                    slice::from_ref(
-                        &DescriptorRange::default()
-                            .set_range_type(DescriptorRangeType::Srv)
-                            .set_num_descriptors(1)
-                            .set_base_shader_register(0)
-                            .set_flags(DescriptorRangeFlags::DataStatic),
-                    ),
-                ),
-            ),
+            RootParameter::default().new_descriptor_table(&table),
         ];
 
         let root_signature_desc = VersionedRootSignatureDesc::default()
@@ -1875,6 +1870,8 @@ fn create_graphics_root_signature(device: &Device) -> RootSignature {
             .expect("Cannot create root signature on device 0");
         root_signature
     };
+
+    info!("created graphics root signature");
 
     graphics_root_signature
 }

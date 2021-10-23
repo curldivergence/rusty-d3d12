@@ -24,9 +24,6 @@ pub use struct_wrappers::*;
 mod enum_wrappers;
 pub use enum_wrappers::*;
 
-// ToDo: operator? instead of .expect
-// ToDo: clean up redundant mut's in signatures
-
 // ToDo: macro?
 fn cast_to_ppv<T>(pointer: &mut *mut T) -> *mut *mut std::ffi::c_void {
     pointer as *mut *mut T as *mut *mut std::ffi::c_void
@@ -1256,6 +1253,13 @@ impl Device {
         }
     }
 
+    pub fn get_device_removed_reason(&self) -> DxError {
+        unsafe {
+            let result = dx_call!(self.this, GetDeviceRemovedReason,);
+            DxError::new("GetDeviceRemovedReason", result)
+        }
+    }
+
     pub fn get_resource_allocation_info(
         &self,
         visible_mask: u32,
@@ -2225,7 +2229,6 @@ impl CommandList {
             hw_descriptors[i] = descriptors[i].hw_handle.ptr;
         }
 
-        
         unsafe {
             dx_call!(
                 self.this,
