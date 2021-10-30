@@ -1451,7 +1451,7 @@ impl BlendDesc {
 
     pub fn render_targets(
         &self,
-    ) -> [RenderTargetBlendDesc; SIMULTANEOUS_RENDER_TARGET_COUNT] {
+    ) -> [RenderTargetBlendDesc; SIMULTANEOUS_RENDER_TARGET_COUNT as usize] {
         // transmute is okay due to repr::transparent
         unsafe { std::mem::transmute(self.0.RenderTarget) }
     }
@@ -1846,7 +1846,7 @@ impl<'rs, 'sh, 'so, 'il> Default
                 PrimitiveTopologyType: PrimitiveTopologyType::Undefined as i32,
                 NumRenderTargets: SIMULTANEOUS_RENDER_TARGET_COUNT as u32,
                 RTVFormats: [Format::Unknown as i32;
-                    SIMULTANEOUS_RENDER_TARGET_COUNT],
+                    SIMULTANEOUS_RENDER_TARGET_COUNT as usize],
                 DSVFormat: Format::Unknown as i32,
                 SampleDesc: SampleDesc::default().0,
                 NodeMask: 0,
