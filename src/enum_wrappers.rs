@@ -2589,3 +2589,13 @@ bitflags! {
         const AllowTearing = DXGI_PRESENT_ALLOW_TEARING;
     }
 }
+
+bitflags! {
+    pub struct ColorWriteEnable: i32 {
+        const EnableRed = D3D12_COLOR_WRITE_ENABLE_D3D12_COLOR_WRITE_ENABLE_RED;
+        const EnableGreen = D3D12_COLOR_WRITE_ENABLE_D3D12_COLOR_WRITE_ENABLE_GREEN;
+        const EnableBlue = D3D12_COLOR_WRITE_ENABLE_D3D12_COLOR_WRITE_ENABLE_BLUE;
+        const EnableAlpha = D3D12_COLOR_WRITE_ENABLE_D3D12_COLOR_WRITE_ENABLE_ALPHA;
+        const EnableAll = D3D12_COLOR_WRITE_ENABLE_D3D12_COLOR_WRITE_ENABLE_ALL;
+    }
+}
