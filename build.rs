@@ -157,6 +157,16 @@ fn main() {
         examples_bin_path.join(pix_dll_name),
     )
     .expect("Cannot copy WinPixEventRuntime.dll");
+
+    {
+        let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
+
+        std::fs::copy(
+            &format!("{}\\{}", PIX_LIB_PATH, pix_dll_name),
+            out_path.join(pix_dll_name),
+        )
+        .expect("Cannot copy WinPixEventRuntime.dll");
+    }
 }
 
 #[cfg(feature = "devel")]
