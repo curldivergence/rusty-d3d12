@@ -119,6 +119,8 @@ impl DxError {
     }
 }
 
+impl std::error::Error for DxError {}
+
 impl std::fmt::Display for DxError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.write_as_str(f)
