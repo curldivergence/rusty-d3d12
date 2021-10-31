@@ -1366,12 +1366,12 @@ impl RenderTargetBlendDesc {
         unsafe { std::mem::transmute(self.0.DestBlendAlpha) }
     }
 
-    pub fn set_blend_op_alpha(mut self, blend_op_alpha: Blend) -> Self {
+    pub fn set_blend_op_alpha(mut self, blend_op_alpha: BlendOp) -> Self {
         self.0.BlendOpAlpha = blend_op_alpha as i32;
         self
     }
 
-    pub fn blend_op_alpha(&self) -> Blend {
+    pub fn blend_op_alpha(&self) -> BlendOp {
         unsafe { std::mem::transmute(self.0.BlendOpAlpha) }
     }
 
