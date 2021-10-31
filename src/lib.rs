@@ -2526,7 +2526,9 @@ impl Handle {
 pub struct RootSignature {
     pub this: *mut ID3D12RootSignature,
 }
-impl_com_object_refcount_unnamed!(RootSignature);
+
+impl_com_object_set_get_name!(RootSignature);
+impl_com_object_refcount_named!(RootSignature);
 impl_com_object_clone_drop!(RootSignature);
 
 unsafe impl Send for RootSignature {}
