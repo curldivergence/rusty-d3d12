@@ -1961,6 +1961,10 @@ impl CommandList {
         }
     }
 
+    pub fn set_blend_factor(&self, blend_factor: [f32; 4]) {
+        unsafe { dx_call!(self.this, OMSetBlendFactor, blend_factor.as_ptr()) }
+    }
+
     pub fn set_compute_root_32bit_constant(
         &self,
         root_parameter_index: u32,
