@@ -2610,24 +2610,28 @@ pub struct PIXSupport {}
 
 impl PIXSupport {
     pub fn init() {
+        #[cfg(feature = "pix")]
         unsafe {
             raw_bindings::pix::pix_init_analysis();
         }
     }
 
     pub fn shutdown() {
+        #[cfg(feature = "pix")]
         unsafe {
             raw_bindings::pix::pix_shutdown_analysis();
         }
     }
 
     pub fn begin_capture() {
+        #[cfg(feature = "pix")]
         unsafe {
             raw_bindings::pix::pix_begin_capture();
         }
     }
 
     pub fn end_capture() {
+        #[cfg(feature = "pix")]
         unsafe {
             raw_bindings::pix::pix_end_capture();
         }
@@ -2638,6 +2642,7 @@ impl PIXSupport {
         marker: &str,
         color: u64,
     ) {
+        #[cfg(feature = "pix")]
         unsafe {
             // ToDo: allocation on every marker call is sad :(
             let marker = CString::new(marker)
@@ -2652,6 +2657,7 @@ impl PIXSupport {
     }
 
     pub fn end_event_cmd_list(cmd_list: &CommandList) {
+        #[cfg(feature = "pix")]
         unsafe {
             raw_bindings::pix::pix_end_event_cmd_list(
                 cmd_list.this
@@ -2665,6 +2671,7 @@ impl PIXSupport {
         marker: &str,
         color: u64,
     ) {
+        #[cfg(feature = "pix")]
         unsafe {
             let marker = CString::new(marker)
                 .expect("Cannot convert marker string to C string");
@@ -2677,6 +2684,7 @@ impl PIXSupport {
     }
 
     pub fn end_event_cmd_queue(cmd_queue: &CommandQueue) {
+        #[cfg(feature = "pix")]
         unsafe {
             raw_bindings::pix::pix_end_event_cmd_queue(
                 cmd_queue.this as *mut raw_bindings::pix::ID3D12CommandQueue,

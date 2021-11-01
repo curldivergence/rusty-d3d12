@@ -7,7 +7,9 @@ use std::path::PathBuf;
 const D3D12_AGILITY_SDK_INCLUDE_PATH: &str = "extern\\D3D12AgilitySDK\\include";
 const D3D12_AGILITY_SDK_LIB_PATH: &str = "extern\\D3D12AgilitySDK\\bin";
 
+#[cfg(feature = "pix")]
 const PIX_INCLUDE_PATH: &str = "extern\\WinPixEventRuntime\\include";
+#[cfg(feature = "pix")]
 const PIX_LIB_PATH: &str = "extern\\WinPixEventRuntime\\bin";
 
 fn find_d3d12_header() -> Option<String> {
@@ -119,15 +121,19 @@ fn main() {
     #[cfg(feature = "devel")]
     generate_bindings();
 
-    // Our PIX wrapper has an extra layer - C wrapper around the original C++ interface
-    // Since without `devel` feature we cannot run bindgen and build it, we have to ship
-    // the pre-built library
-    println!(
-        "cargo:rustc-link-search={}",
-        workspace_dir.join(PIX_LIB_PATH).to_str().unwrap()
-    );
-    println!("cargo:rustc-link-lib=static=pix_wrapper");
-    println!("cargo:rustc-link-lib=WinPixEventRuntime");
+    // PIX support is disabled by default not to introduce a dependency for WinPixEventRuntime.dll
+    #[cfg(feature = "pix")]
+    {
+        // Our PIX wrapper has an extra layer - C wrapper around the original C++ interface
+        // Since without `devel` feature we cannot run bindgen and build it, we have to ship
+        // the pre-built library
+        println!(
+            "cargo:rustc-link-search={}",
+            workspace_dir.join(PIX_LIB_PATH).to_str().unwrap()
+        );
+        println!("cargo:rustc-link-lib=static=pix_wrapper");
+        println!("cargo:rustc-link-lib=WinPixEventRuntime");
+    }
 
     // Copy DX12 Agility SDK libs that are needed by examples
     let copy_source_path = workspace_dir.join(D3D12_AGILITY_SDK_LIB_PATH);
@@ -150,15 +156,15 @@ fn main() {
             .expect("Cannot copy Agility SDK dlls");
     }
 
-    // Copy PIX runtime DLL since it's needed by examples
-    let pix_dll_name = "WinPixEventRuntime.dll";
-    std::fs::copy(
-        &format!("{}\\{}", PIX_LIB_PATH, pix_dll_name),
-        examples_bin_path.join(pix_dll_name),
-    )
-    .expect("Cannot copy WinPixEventRuntime.dll");
-
+    #[cfg(feature = "pix")]
     {
+        // Copy PIX runtime DLL since it's needed by examples
+        let pix_dll_name = "WinPixEventRuntime.dll";
+        std::fs::copy(
+            &format!("{}\\{}", PIX_LIB_PATH, pix_dll_name),
+            examples_bin_path.join(pix_dll_name),
+        )
+        .expect("Cannot copy WinPixEventRuntime.dll");
         let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
 
         std::fs::copy(
