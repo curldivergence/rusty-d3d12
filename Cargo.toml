@@ -21,7 +21,7 @@ regex = "1"
 cc = "1.0"
 
 [dependencies]
-winapi = { version = "0.3", features = ["winuser", "debugapi"] }
+winapi = { version = "0.3", features = ["winuser", "debugapi", "winbase"] }
 bitflags = "1.2.1"
 log = "0.4.8"
 static_assertions = "1.1.0"
