@@ -150,7 +150,7 @@ def parse_enum():
     # print(enum_variants)
 
     enum_definition_begin = f"""
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 #[repr(i32)]
 pub enum {enum_name} {{"""
     print(enum_definition_begin)

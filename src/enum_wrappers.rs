@@ -321,7 +321,8 @@ pub enum MemoryPool {
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum InputClassification {
     PerVertex =
         D3D12_INPUT_CLASSIFICATION_D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
@@ -330,7 +331,8 @@ pub enum InputClassification {
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum PrimitiveTopology {
     Undefined = D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_UNDEFINED,
     PointList = D3D_PRIMITIVE_TOPOLOGY_D3D_PRIMITIVE_TOPOLOGY_POINTLIST,
@@ -388,7 +390,8 @@ pub enum PrimitiveTopology {
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum IndexBufferStripCut {
     Disabled = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED,
     c16Bits = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFF,
@@ -396,7 +399,8 @@ pub enum IndexBufferStripCut {
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum PrimitiveTopologyType {
     Undefined =
         D3D12_PRIMITIVE_TOPOLOGY_TYPE_D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED,
@@ -415,7 +419,8 @@ bitflags! {
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum Blend {
     Zero = D3D12_BLEND_D3D12_BLEND_ZERO,
     One = D3D12_BLEND_D3D12_BLEND_ONE,
@@ -437,7 +442,8 @@ pub enum Blend {
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum BlendOp {
     Add = D3D12_BLEND_OP_D3D12_BLEND_OP_ADD,
     Subtract = D3D12_BLEND_OP_D3D12_BLEND_OP_SUBTRACT,
@@ -447,7 +453,8 @@ pub enum BlendOp {
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum LogicOp {
     Clear = D3D12_LOGIC_OP_D3D12_LOGIC_OP_CLEAR,
     Set = D3D12_LOGIC_OP_D3D12_LOGIC_OP_SET,
@@ -468,14 +475,16 @@ pub enum LogicOp {
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum FillMode {
     Wireframe = D3D12_FILL_MODE_D3D12_FILL_MODE_WIREFRAME,
     Solid = D3D12_FILL_MODE_D3D12_FILL_MODE_SOLID,
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum CullMode {
     None = D3D12_CULL_MODE_D3D12_CULL_MODE_NONE,
     Front = D3D12_CULL_MODE_D3D12_CULL_MODE_FRONT,
@@ -483,21 +492,24 @@ pub enum CullMode {
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum ConservativeRasterizationMode {
     Off = D3D12_CONSERVATIVE_RASTERIZATION_MODE_D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF,
     On = D3D12_CONSERVATIVE_RASTERIZATION_MODE_D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON,
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum DepthWriteMask {
     Zero = D3D12_DEPTH_WRITE_MASK_D3D12_DEPTH_WRITE_MASK_ZERO,
     All = D3D12_DEPTH_WRITE_MASK_D3D12_DEPTH_WRITE_MASK_ALL,
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum ComparisonFunc {
     Never = D3D12_COMPARISON_FUNC_D3D12_COMPARISON_FUNC_NEVER,
     Less = D3D12_COMPARISON_FUNC_D3D12_COMPARISON_FUNC_LESS,
@@ -510,7 +522,8 @@ pub enum ComparisonFunc {
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum StencilOp {
     Keep = D3D12_STENCIL_OP_D3D12_STENCIL_OP_KEEP,
     Zero = D3D12_STENCIL_OP_D3D12_STENCIL_OP_ZERO,
@@ -522,10 +535,8 @@ pub enum StencilOp {
     Dec = D3D12_STENCIL_OP_D3D12_STENCIL_OP_DECR,
 }
 
-// ToDo: do we need it?
-#[derive(Clone, Copy)]
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum TextureCopyType {
     SubresourceIndex =
         D3D12_TEXTURE_COPY_TYPE_D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
@@ -555,7 +566,8 @@ bitflags! {
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum CommandListType {
     Direct = D3D12_COMMAND_LIST_TYPE_D3D12_COMMAND_LIST_TYPE_DIRECT,
     Bundle = D3D12_COMMAND_LIST_TYPE_D3D12_COMMAND_LIST_TYPE_BUNDLE,
@@ -568,7 +580,8 @@ pub enum CommandListType {
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum CommandQueuePriority {
     Normal = D3D12_COMMAND_QUEUE_PRIORITY_D3D12_COMMAND_QUEUE_PRIORITY_NORMAL,
     High = D3D12_COMMAND_QUEUE_PRIORITY_D3D12_COMMAND_QUEUE_PRIORITY_HIGH,
@@ -585,7 +598,8 @@ bitflags! {
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum RootSignatureVersion {
     // V1 = D3D_ROOT_SIGNATURE_VERSION_D3D_ROOT_SIGNATURE_VERSION_1,
     V1_0 = D3D_ROOT_SIGNATURE_VERSION_D3D_ROOT_SIGNATURE_VERSION_1,
@@ -593,7 +607,8 @@ pub enum RootSignatureVersion {
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum Feature {
     D3D12Options = D3D12_FEATURE_D3D12_FEATURE_D3D12_OPTIONS,
     Architecture = D3D12_FEATURE_D3D12_FEATURE_ARCHITECTURE,
@@ -629,7 +644,8 @@ pub enum Feature {
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum DescriptorRangeType {
     Srv = D3D12_DESCRIPTOR_RANGE_TYPE_D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
     Uav = D3D12_DESCRIPTOR_RANGE_TYPE_D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
@@ -649,7 +665,8 @@ bitflags! {
 
 #[derive(PartialEq)]
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum RootParameterType {
     DescriptorTable =
         D3D12_ROOT_PARAMETER_TYPE_D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
@@ -669,7 +686,8 @@ bitflags! {
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum ShaderVisibility {
     All = D3D12_SHADER_VISIBILITY_D3D12_SHADER_VISIBILITY_ALL,
     Vertex = D3D12_SHADER_VISIBILITY_D3D12_SHADER_VISIBILITY_VERTEX,
@@ -683,7 +701,8 @@ pub enum ShaderVisibility {
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum Filter {
     MinMagMipPoint = D3D12_FILTER_D3D12_FILTER_MIN_MAG_MIP_POINT,
     MinMagPointMipLinear = D3D12_FILTER_D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR,
@@ -748,7 +767,8 @@ pub enum Filter {
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum TextureAddressMode {
     Wrap = D3D12_TEXTURE_ADDRESS_MODE_D3D12_TEXTURE_ADDRESS_MODE_WRAP,
     Mirror = D3D12_TEXTURE_ADDRESS_MODE_D3D12_TEXTURE_ADDRESS_MODE_MIRROR,
@@ -759,7 +779,8 @@ pub enum TextureAddressMode {
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum StaticBorderColor {
     TransparentBlack =
         D3D12_STATIC_BORDER_COLOR_D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK,
@@ -816,7 +837,8 @@ bitflags! {
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum SrvDimension {
     Unknown = D3D12_SRV_DIMENSION_D3D12_SRV_DIMENSION_UNKNOWN,
     Buffer = D3D12_SRV_DIMENSION_D3D12_SRV_DIMENSION_BUFFER,
@@ -833,7 +855,8 @@ pub enum SrvDimension {
 }
 
 #[repr(u32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum ShaderComponentMappingOptions {
     FromMemoryComponent0 = D3D12_SHADER_COMPONENT_MAPPING_D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_0 as u32,
     FromMemoryComponent1 = D3D12_SHADER_COMPONENT_MAPPING_D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_1 as u32,
@@ -889,7 +912,8 @@ impl ShaderComponentMapping {
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum ResourceBarrierType {
     Transition =
         D3D12_RESOURCE_BARRIER_TYPE_D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
@@ -906,7 +930,8 @@ bitflags! {
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum DsvDimension {
     Unknown = D3D12_DSV_DIMENSION_D3D12_DSV_DIMENSION_UNKNOWN,
     Texture1D = D3D12_DSV_DIMENSION_D3D12_DSV_DIMENSION_TEXTURE1D,
@@ -933,7 +958,8 @@ bitflags! {
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum ShaderModel {
     SM_5_1 = D3D_SHADER_MODEL_D3D_SHADER_MODEL_5_1,
     SM_6_0 = D3D_SHADER_MODEL_D3D_SHADER_MODEL_6_0,
@@ -946,7 +972,8 @@ pub enum ShaderModel {
 }
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum PipelineStateSubobjectType {
     RootSignature = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE,
     VS = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_VS,
@@ -982,18 +1009,16 @@ impl Default for PipelineStateSubobjectType {
     }
 }
 
-#[derive(Copy, Clone)]
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum GpuPreference {
     Unspecified = DXGI_GPU_PREFERENCE_DXGI_GPU_PREFERENCE_UNSPECIFIED,
     MinimumPower = DXGI_GPU_PREFERENCE_DXGI_GPU_PREFERENCE_MINIMUM_POWER,
     HighPerformance = DXGI_GPU_PREFERENCE_DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
 }
 
-#[derive(Copy, Clone)]
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum MessageCategory {
     ApplicationDefined =
         D3D12_MESSAGE_CATEGORY_D3D12_MESSAGE_CATEGORY_APPLICATION_DEFINED,
@@ -1031,9 +1056,8 @@ impl std::fmt::Display for MessageCategory {
     }
 }
 
-#[derive(Copy, Clone)]
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum MessageSeverity {
     Corruption = D3D12_MESSAGE_SEVERITY_D3D12_MESSAGE_SEVERITY_CORRUPTION,
     Error = D3D12_MESSAGE_SEVERITY_D3D12_MESSAGE_SEVERITY_ERROR,
@@ -1055,9 +1079,8 @@ impl std::fmt::Display for MessageSeverity {
 }
 
 // ToDo: fix capital letters
-#[derive(Copy, Clone)]
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum MessageId {
     Unknown = D3D12_MESSAGE_ID_D3D12_MESSAGE_ID_UNKNOWN,
     StringFromApplication =
