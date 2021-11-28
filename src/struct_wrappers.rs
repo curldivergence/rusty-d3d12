@@ -389,7 +389,7 @@ impl Default for HeapProperties {
     fn default() -> Self {
         HeapProperties(D3D12_HEAP_PROPERTIES {
             Type: HeapType::Default as i32,
-            CPUPageProperty: CPUPageProperty::Unknown as i32,
+            CPUPageProperty: CpuPageProperty::Unknown as i32,
             MemoryPoolPreference: MemoryPool::Unknown as i32,
             CreationNodeMask: 0,
             VisibleNodeMask: 0,
@@ -409,13 +409,13 @@ impl HeapProperties {
 
     pub fn set_cpu_page_property(
         mut self,
-        cpu_page_property: CPUPageProperty,
+        cpu_page_property: CpuPageProperty,
     ) -> Self {
         self.0.CPUPageProperty = cpu_page_property as i32;
         self
     }
 
-    pub fn cpu_page_property(&self) -> CPUPageProperty {
+    pub fn cpu_page_property(&self) -> CpuPageProperty {
         unsafe { std::mem::transmute(self.0.CPUPageProperty) }
     }
 
@@ -1289,6 +1289,7 @@ impl<'a> StreamOutputDesc<'a> {
 #[derive(Debug)]
 pub struct RenderTargetBlendDesc(pub D3D12_RENDER_TARGET_BLEND_DESC);
 
+// defaults from d3dx12.h
 impl Default for RenderTargetBlendDesc {
     fn default() -> Self {
         Self(D3D12_RENDER_TARGET_BLEND_DESC {
@@ -1406,6 +1407,8 @@ impl RenderTargetBlendDesc {
 #[repr(transparent)]
 #[derive(Debug)]
 pub struct BlendDesc(pub D3D12_BLEND_DESC);
+
+// defaults from d3dx12.h
 impl Default for BlendDesc {
     fn default() -> Self {
         Self(D3D12_BLEND_DESC {
@@ -1466,16 +1469,17 @@ impl BlendDesc {
 #[derive(Copy, Clone, Debug)]
 pub struct RasterizerDesc(pub D3D12_RASTERIZER_DESC);
 
+// defaults from d3dx12.h
 impl Default for RasterizerDesc {
     fn default() -> Self {
         Self(D3D12_RASTERIZER_DESC {
             FillMode: FillMode::Solid as i32,
-            CullMode: CullMode::None as i32,
+            CullMode: CullMode::Back as i32,
             FrontCounterClockwise: 0,
-            DepthBias: 0,
-            DepthBiasClamp: 0.,
-            SlopeScaledDepthBias: 0.,
-            DepthClipEnable: 0,
+            DepthBias: DEFAULT_DEPTH_BIAS as i32,
+            DepthBiasClamp: DEFAULT_DEPTH_BIAS_CLAMP as f32,
+            SlopeScaledDepthBias: DEFAULT_SLOPE_SCALED_DEPTH_BIAS as f32,
+            DepthClipEnable: 1,
             MultisampleEnable: 0,
             AntialiasedLineEnable: 0,
             ForcedSampleCount: 0,
@@ -1601,13 +1605,14 @@ impl RasterizerDesc {
 #[derive(Debug)]
 pub struct DepthStencilOpDesc(pub D3D12_DEPTH_STENCILOP_DESC);
 
+// defaults from d3dx12.h
 impl Default for DepthStencilOpDesc {
     fn default() -> Self {
         Self(D3D12_DEPTH_STENCILOP_DESC {
-            StencilFailOp: StencilOp::Zero as i32,
-            StencilDepthFailOp: StencilOp::Zero as i32,
-            StencilPassOp: StencilOp::Zero as i32,
-            StencilFunc: ComparisonFunc::Never as i32,
+            StencilFailOp: StencilOp::Keep as i32,
+            StencilDepthFailOp: StencilOp::Keep as i32,
+            StencilPassOp: StencilOp::Keep as i32,
+            StencilFunc: ComparisonFunc::Always as i32,
         })
     }
 }
@@ -1657,15 +1662,16 @@ impl DepthStencilOpDesc {
 #[derive(Debug)]
 pub struct DepthStencilDesc(pub D3D12_DEPTH_STENCIL_DESC);
 
+// defaults from d3dx12.h: less depth test with writes; no stencil
 impl Default for DepthStencilDesc {
     fn default() -> Self {
         Self(D3D12_DEPTH_STENCIL_DESC {
-            DepthEnable: 0,
-            DepthWriteMask: DepthWriteMask::Zero as i32,
-            DepthFunc: ComparisonFunc::Never as i32,
+            DepthEnable: 1,
+            DepthWriteMask: DepthWriteMask::All as i32,
+            DepthFunc: ComparisonFunc::Less as i32,
             StencilEnable: 0,
-            StencilReadMask: 0,
-            StencilWriteMask: 0,
+            StencilReadMask: DEFAULT_STENCIL_READ_MASK as u8,
+            StencilWriteMask: DEFAULT_STENCIL_WRITE_MASK as u8,
             FrontFace: DepthStencilOpDesc::default().0,
             BackFace: DepthStencilOpDesc::default().0,
         })
@@ -4681,10 +4687,7 @@ impl<'rs, 'sh> MeshShaderPipelineStateDesc<'rs, 'sh> {
         self
     }
 
-    pub fn set_amplification_shader_bytecode(
-        mut self,
-        bytecode: &'sh ShaderBytecode,
-    ) -> Self {
+    pub fn set_as_bytecode(mut self, bytecode: &'sh ShaderBytecode) -> Self {
         self.amplification_shader = PipelineStateSubobject::new(
             PipelineStateSubobjectType::AS,
             bytecode.0,
@@ -4693,10 +4696,7 @@ impl<'rs, 'sh> MeshShaderPipelineStateDesc<'rs, 'sh> {
         self
     }
 
-    pub fn set_mesh_shader_bytecode(
-        mut self,
-        bytecode: &'sh ShaderBytecode,
-    ) -> Self {
+    pub fn set_ms_bytecode(mut self, bytecode: &'sh ShaderBytecode) -> Self {
         self.mesh_shader = PipelineStateSubobject::new(
             PipelineStateSubobjectType::MS,
             bytecode.0,
@@ -4785,7 +4785,7 @@ impl<'rs, 'sh> MeshShaderPipelineStateDesc<'rs, 'sh> {
         self
     }
 
-    pub fn make_byte_stream(&self) -> &[u8] {
+    pub fn as_byte_stream(&self) -> &[u8] {
         unsafe {
             std::slice::from_raw_parts(
                 self as *const Self as *const u8,

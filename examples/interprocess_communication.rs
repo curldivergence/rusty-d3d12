@@ -952,7 +952,9 @@ fn create_pso(
         .set_ps_bytecode(&ps_bytecode)
         .set_rasterizer_state(&RasterizerDesc::default())
         .set_blend_state(&BlendDesc::default())
-        .set_depth_stencil_state(&DepthStencilDesc::default())
+        .set_depth_stencil_state(
+            &DepthStencilDesc::default().set_depth_enable(false),
+        )
         .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
         .set_rtv_formats(&[Format::R8G8B8A8_UNorm])
         .set_dsv_format(Format::D32_Float);

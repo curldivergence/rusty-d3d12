@@ -258,7 +258,7 @@ pub enum HeapType {
 #[derive(Debug, Clone, Copy)]
 #[repr(i32)]
 
-pub enum CPUPageProperty {
+pub enum CpuPageProperty{
     Unknown = D3D12_CPU_PAGE_PROPERTY_D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
     NotAvailable =
         D3D12_CPU_PAGE_PROPERTY_D3D12_CPU_PAGE_PROPERTY_NOT_AVAILABLE,

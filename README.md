@@ -17,8 +17,7 @@ Please note their code can be dirty and contains some (non-critical) bugs, so th
 
 - hello_triangle
 - hello_texture (based on Microsoft sample)
-- dynamic_indexing (based on Microsoft sample)
-- dynamic_indexing_sm66 (basically a clone of the previous example with changes related to using SM6.6 dynamic resources and Agility SDK exports)
+- dynamic_indexing_sm66 (based on Microsoft sample with changes related to using SM6.6 dynamic resources and Agility SDK exports)
 - hello_mesh_shaders (loosely based on Microsoft sample)
 - heterogeneous_multiadapter (closely follows Microsoft sample, so currently it is the most recommended sample to start exploring these bindings if you want to compare them to C++ code line-by-line)
 - interprocess_communication (demonstrates usage of a shared heap by two processes - producer and consumer)

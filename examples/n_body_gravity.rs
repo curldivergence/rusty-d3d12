@@ -1768,7 +1768,9 @@ fn create_graphics_pso(
         .set_vs_bytecode(&vs_bytecode)
         .set_gs_bytecode(&gs_bytecode)
         .set_ps_bytecode(&ps_bytecode)
-        .set_rasterizer_state(&RasterizerDesc::default())
+        .set_rasterizer_state(
+            &RasterizerDesc::default().set_depth_clip_enable(false),
+        )
         .set_blend_state(
             &BlendDesc::default().set_render_targets(slice::from_ref(
                 &RenderTargetBlendDesc::default()
@@ -1780,8 +1782,7 @@ fn create_graphics_pso(
             )),
         )
         .set_depth_stencil_state(
-            &DepthStencilDesc::default()
-                .set_depth_write_mask(DepthWriteMask::Zero),
+            &DepthStencilDesc::default().set_depth_enable(false),
         )
         .set_primitive_topology_type(PrimitiveTopologyType::Point)
         .set_rtv_formats(&[Format::R8G8B8A8_UNorm])

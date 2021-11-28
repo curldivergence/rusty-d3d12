@@ -381,9 +381,8 @@ impl HelloTextureSample {
 
         self.command_list
             .update_subresources_heap_alloc(
-                &self.texture.as_ref().expect("No texture has been created"),
-                &self
-                    .texture_upload_heap
+                self.texture.as_ref().expect("No texture has been created"),
+                self.texture_upload_heap
                     .as_ref()
                     .expect("No texture staging buffer has been created"),
                 Bytes(0),
@@ -532,7 +531,9 @@ fn create_pipeline_state(
         .set_ps_bytecode(&ps_bytecode)
         .set_rasterizer_state(&RasterizerDesc::default())
         .set_blend_state(&BlendDesc::default())
-        .set_depth_stencil_state(&DepthStencilDesc::default())
+        .set_depth_stencil_state(
+            &DepthStencilDesc::default().set_depth_enable(false),
+        )
         .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
         .set_rtv_formats(&[Format::R8G8B8A8_UNorm]);
 

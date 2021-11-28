@@ -2102,9 +2102,13 @@ fn create_psos(
         .set_root_signature(root_signature)
         .set_vs_bytecode(&vs_bytecode)
         .set_ps_bytecode(&ps_bytecode)
-        .set_rasterizer_state(&RasterizerDesc::default())
+        .set_rasterizer_state(
+            &RasterizerDesc::default().set_depth_clip_enable(false),
+        )
         .set_blend_state(&BlendDesc::default())
-        .set_depth_stencil_state(&DepthStencilDesc::default())
+        .set_depth_stencil_state(
+            &DepthStencilDesc::default().set_depth_enable(false),
+        )
         .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
         .set_rtv_formats(&[Format::R8G8B8A8_UNorm])
         .set_dsv_format(Format::D32_Float);

@@ -462,20 +462,18 @@ impl HelloMeshShadersSample {
                 .get_gpu_virtual_address(),
         );
 
-        self.command_list.set_viewports(&vec![self.viewport_desc]);
-        self.command_list
-            .set_scissor_rects(&vec![self.scissor_desc]);
+        self.command_list.set_viewports(&[self.viewport_desc]);
+        self.command_list.set_scissor_rects(&[self.scissor_desc]);
 
-        self.command_list.resource_barrier(&vec![
-            ResourceBarrier::new_transition(
+        self.command_list
+            .resource_barrier(&[ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
                     .set_resource(
                         &self.render_targets[self.frame_index as usize],
                     )
                     .set_state_before(ResourceStates::Common)
                     .set_state_after(ResourceStates::RenderTarget),
-            ),
-        ]);
+            )]);
 
         let rtv_handle = self
             .rtv_heap
@@ -689,19 +687,21 @@ fn create_pipeline_state(
 
     let pso_subobjects_desc = MeshShaderPipelineStateDesc::default()
         .set_root_signature(root_signature)
-        .set_mesh_shader_bytecode(&ms_bytecode)
+        .set_ms_bytecode(&ms_bytecode)
         .set_ps_bytecode(&ps_bytecode)
         .set_rasterizer_state(
-            &RasterizerDesc::default().set_cull_mode(CullMode::Back),
+            &RasterizerDesc::default().set_depth_clip_enable(false),
         )
         .set_blend_state(&BlendDesc::default())
-        .set_depth_stencil_state(&DepthStencilDesc::default())
+        .set_depth_stencil_state(
+            &DepthStencilDesc::default().set_depth_enable(false),
+        )
         .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
         .set_rtv_formats(&[Format::R8G8B8A8_UNorm]);
 
     let pso_desc = PipelineStateStreamDesc::default()
         .set_pipeline_state_subobject_stream(
-            pso_subobjects_desc.make_byte_stream(),
+            pso_subobjects_desc.as_byte_stream(),
         );
 
     let pso = device
@@ -832,7 +832,7 @@ fn insert_unique(coll: &mut Vec<u32>, value: u32) -> u32 {
         pos as u32
     } else {
         coll.push(value);
-        return (coll.len() - 1) as u32;
+        (coll.len() - 1) as u32
     }
 }
 

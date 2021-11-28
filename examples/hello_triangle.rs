@@ -348,7 +348,9 @@ float4 PS(VertexOut input) : SV_Target
             .set_ps_bytecode(&pixel_bytecode)
             .set_blend_state(&BlendDesc::default())
             .set_rasterizer_state(&RasterizerDesc::default())
-            .set_depth_stencil_state(&DepthStencilDesc::default())
+            .set_depth_stencil_state(
+                &DepthStencilDesc::default().set_depth_enable(false),
+            )
             .set_input_layout(&input_layout)
             .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
             .set_rtv_formats(&[Format::R8G8B8A8_UNorm])
