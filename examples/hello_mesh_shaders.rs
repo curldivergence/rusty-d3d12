@@ -120,6 +120,7 @@ struct HelloMeshShadersSample {
     scissor_desc: Rect,
     render_targets: Vec<Resource>,
     rtv_heap: DescriptorHeap,
+    rtv_descriptor_handle_size: Bytes,
     dsv_heap: DescriptorHeap,
     command_allocators: Vec<CommandAllocator>,
     command_list: CommandList,
@@ -199,8 +200,11 @@ impl HelloMeshShadersSample {
             .set_right(WINDOW_WIDTH as i32)
             .set_bottom(WINDOW_HEIGHT as i32);
 
+        let rtv_descriptor_handle_size = device
+            .get_descriptor_handle_increment_size(DescriptorHeapType::Rtv);
+
         let (render_targets, rtv_heap, dsv_heap) =
-            setup_heaps(&device, &swapchain);
+            setup_heaps(&device, &swapchain, rtv_descriptor_handle_size);
 
         trace!("Created heaps and render targets");
 
@@ -255,6 +259,7 @@ impl HelloMeshShadersSample {
             scissor_desc,
             render_targets,
             rtv_heap,
+            rtv_descriptor_handle_size,
             dsv_heap,
             command_allocators,
             root_signature,
@@ -478,7 +483,10 @@ impl HelloMeshShadersSample {
         let rtv_handle = self
             .rtv_heap
             .get_cpu_descriptor_handle_for_heap_start()
-            .advance(self.swapchain.get_current_back_buffer_index());
+            .advance(
+                self.swapchain.get_current_back_buffer_index(),
+                self.rtv_descriptor_handle_size,
+            );
 
         self.command_list.set_render_targets(
             &mut [rtv_handle],
@@ -751,6 +759,7 @@ fn setup_root_signature(
 fn setup_heaps(
     device: &Device,
     swapchain: &Swapchain,
+    rtv_descriptor_handle_size: Bytes,
 ) -> (Vec<Resource>, DescriptorHeap, DescriptorHeap) {
     let rtv_heap = device
         .create_descriptor_heap(
@@ -785,7 +794,7 @@ fn setup_heaps(
         device.create_render_target_view(&render_target, rtv_handle);
         render_targets.push(render_target);
 
-        rtv_handle = rtv_handle.advance(1);
+        rtv_handle = rtv_handle.advance(1, rtv_descriptor_handle_size);
     }
 
     (render_targets, rtv_heap, dsv_heap)

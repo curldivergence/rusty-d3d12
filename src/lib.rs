@@ -67,7 +67,6 @@ macro_rules! dx_try {
 
 const MAX_FUNC_NAME_LEN: usize = 64;
 const MAX_ERROR_MSG_LEN: usize = 512;
-
 pub struct DxError([u8; MAX_FUNC_NAME_LEN], HRESULT);
 
 impl DxError {
@@ -339,6 +338,7 @@ pub fn d3d_enable_experimental_shader_models() -> DxResult<()> {
 }
 
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct Debug {
     pub this: *mut ID3D12Debug5,
 }
@@ -374,6 +374,7 @@ impl Debug {
 }
 
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct InfoQueue {
     pub this: *mut ID3D12InfoQueue1,
 }
@@ -490,6 +491,7 @@ impl InfoQueue {
 }
 
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct DebugDevice {
     pub this: *mut ID3D12DebugDevice,
 }
@@ -531,6 +533,7 @@ impl DebugDevice {
 }
 
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct Factory {
     pub this: *mut IDXGIFactory6,
 }
@@ -688,6 +691,7 @@ impl Factory {
 }
 
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct Adapter {
     pub this: *mut IDXGIAdapter3,
 }
@@ -705,6 +709,7 @@ impl Adapter {
 }
 
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct Device {
     pub this: *mut ID3D12Device2,
 }
@@ -908,9 +913,6 @@ impl Device {
         }
         Ok(DescriptorHeap {
             this: hw_descriptor_heap,
-            handle_size: self.get_descriptor_handle_increment_size(unsafe {
-                std::mem::transmute(desc.0.Type)
-            }),
         })
     }
 
@@ -1245,14 +1247,14 @@ impl Device {
     pub fn get_descriptor_handle_increment_size(
         &self,
         heap_type: DescriptorHeapType,
-    ) -> u32 {
-        unsafe {
+    ) -> Bytes {
+        Bytes::from(unsafe {
             dx_call!(
                 self.this,
                 GetDescriptorHandleIncrementSize,
                 heap_type as i32
             )
-        }
+        })
     }
 
     pub fn get_device_removed_reason(&self) -> DxError {
@@ -1369,6 +1371,7 @@ impl Device {
 }
 
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct DeviceChild {
     pub this: *mut ID3D12DeviceChild,
 }
@@ -1406,6 +1409,7 @@ impl From<Fence> for DeviceChild {
 }
 
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct CommandQueue {
     pub this: *mut ID3D12CommandQueue,
 }
@@ -1447,6 +1451,7 @@ impl CommandQueue {
 }
 
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct Swapchain {
     pub this: *mut IDXGISwapChain4,
 }
@@ -1492,15 +1497,14 @@ impl Swapchain {
 }
 
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct DescriptorHeap {
     pub this: *mut ID3D12DescriptorHeap,
-    handle_size: u32, // it could be Bytes, but the latter is 64-bit, and
-                      // since it doesn't leak into public interface, there isn't much sense in it
 }
 
-impl_com_object_set_get_name!(DescriptorHeap, handle_size);
-impl_com_object_refcount_unnamed!(DescriptorHeap, handle_size);
-impl_com_object_clone_drop!(DescriptorHeap, handle_size);
+impl_com_object_set_get_name!(DescriptorHeap);
+impl_com_object_refcount_unnamed!(DescriptorHeap);
+impl_com_object_clone_drop!(DescriptorHeap);
 
 unsafe impl Send for DescriptorHeap {}
 
@@ -1516,10 +1520,7 @@ impl DescriptorHeap {
                 &mut hw_handle
             );
         }
-        CpuDescriptorHandle {
-            hw_handle,
-            handle_size: self.handle_size,
-        }
+        CpuDescriptorHandle { hw_handle }
     }
 
     pub fn get_gpu_descriptor_handle_for_heap_start(
@@ -1533,49 +1534,47 @@ impl DescriptorHeap {
                 &mut hw_handle
             );
         }
-        GpuDescriptorHandle {
-            hw_handle,
-            handle_size: self.handle_size,
-        }
+        GpuDescriptorHandle { hw_handle }
     }
 }
 
 #[derive(Copy, Clone, Debug)]
+#[repr(transparent)]
 pub struct CpuDescriptorHandle {
     pub hw_handle: D3D12_CPU_DESCRIPTOR_HANDLE,
-    pub handle_size: u32,
 }
 
 impl CpuDescriptorHandle {
     #[must_use]
-    pub fn advance(self, distance: u32) -> Self {
+    pub fn advance(self, distance: u32, handle_size: Bytes) -> Self {
         CpuDescriptorHandle {
             hw_handle: D3D12_CPU_DESCRIPTOR_HANDLE {
-                ptr: self.hw_handle.ptr + (distance * self.handle_size) as u64,
+                ptr: self.hw_handle.ptr
+                    + (distance * handle_size.0 as u32) as u64,
             },
-            handle_size: self.handle_size,
         }
     }
 }
 
 #[derive(Debug, Copy, Clone)]
+#[repr(transparent)]
 pub struct GpuDescriptorHandle {
     pub hw_handle: D3D12_GPU_DESCRIPTOR_HANDLE,
-    pub handle_size: u32,
 }
 
 impl GpuDescriptorHandle {
-    pub fn advance(self, distance: u32) -> Self {
+    pub fn advance(self, distance: u32, handle_size: Bytes) -> Self {
         GpuDescriptorHandle {
             hw_handle: D3D12_GPU_DESCRIPTOR_HANDLE {
-                ptr: self.hw_handle.ptr + (distance * self.handle_size) as u64,
+                ptr: self.hw_handle.ptr
+                    + (distance * handle_size.0 as u32) as u64,
             },
-            handle_size: self.handle_size,
         }
     }
 }
 
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct Resource {
     pub this: *mut ID3D12Resource,
 }
@@ -1668,6 +1667,7 @@ impl Resource {
 }
 
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct CommandAllocator {
     pub this: *mut ID3D12CommandAllocator,
 }
@@ -1685,6 +1685,7 @@ impl CommandAllocator {
 assert_eq_size!(CommandList, *mut ID3D12GraphicsCommandList6);
 
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct CommandList {
     pub this: *mut ID3D12GraphicsCommandList6,
 }
@@ -2067,30 +2068,12 @@ impl CommandList {
     }
 
     pub fn set_descriptor_heaps(&self, heaps: &[DescriptorHeap]) {
-        // since DescriptorHeap object is not just a wrapper around
-        // the correspondent COM pointer but also contains another member,
-        // we cannot just pass an array of DescriptorHeap's where
-        // an array of ID3D12DescriptorHeap's is required
-        // one could argue this smells, but it is really convenient
-        // to store descriptor size inside descriptor heap object
-
-        const MAX_HEAP_COUNT: usize = 2;
-        assert!(
-            heaps.len() <= MAX_HEAP_COUNT,
-            "Cannot set more than 2 descriptor heaps"
-        );
-
-        let mut hw_heaps = [std::ptr::null_mut(); MAX_HEAP_COUNT];
-        for i in 0..heaps.len() {
-            hw_heaps[i] = heaps[i].this;
-        }
-
         unsafe {
             dx_call!(
                 self.this,
                 SetDescriptorHeaps,
                 heaps.len() as std::os::raw::c_uint,
-                hw_heaps.as_mut_ptr() as *const *mut ID3D12DescriptorHeap
+                heaps.as_ptr() as *const *mut ID3D12DescriptorHeap
             )
         }
     }
@@ -2437,6 +2420,7 @@ unsafe fn memcpy_subresource(
 }
 
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct Fence {
     pub this: *mut ID3D12Fence,
 }
@@ -2471,6 +2455,7 @@ impl Fence {
 }
 
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct Win32Event {
     pub handle: HANDLE,
 }
@@ -2523,6 +2508,7 @@ impl Handle {
 }
 
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct RootSignature {
     pub this: *mut ID3D12RootSignature,
 }
@@ -2563,6 +2549,7 @@ impl RootSignature {
 }
 
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct PipelineState {
     pub this: *mut ID3D12PipelineState,
 }
@@ -2573,6 +2560,7 @@ impl_com_object_clone_drop!(PipelineState);
 unsafe impl Send for PipelineState {}
 
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct Blob {
     pub this: *mut ID3DBlob,
 }
@@ -2591,6 +2579,7 @@ impl Blob {
 }
 
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct QueryHeap {
     pub this: *mut ID3D12QueryHeap,
 }
@@ -2599,13 +2588,13 @@ impl_com_object_refcount_named!(QueryHeap);
 impl_com_object_clone_drop!(QueryHeap);
 
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct Heap {
     pub this: *mut ID3D12Heap,
 }
 impl_com_object_set_get_name!(Heap);
 impl_com_object_refcount_named!(Heap);
 impl_com_object_clone_drop!(Heap);
-
 pub struct PIXSupport {}
 
 impl PIXSupport {

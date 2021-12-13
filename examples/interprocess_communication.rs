@@ -185,7 +185,9 @@ struct Pipeline {
     viewport: Viewport,
     scissor_rect: Rect,
     rtv_heap: DescriptorHeap,
+    rtv_descriptor_handle_size: Bytes,
     cbv_srv_heap: DescriptorHeap,
+    cbv_srv_descriptor_handle_size: Bytes,
     render_targets: Vec<Resource>,
     direct_command_allocators: Vec<CommandAllocator>,
     shared_heap: Heap,
@@ -292,7 +294,14 @@ impl Pipeline {
             create_descriptor_heaps(&device, &swapchain);
 
         let (render_targets, direct_command_allocators) =
-            create_frame_resources(&device, &rtv_heap, &swapchain);
+            create_frame_resources(
+                &device,
+                &rtv_heap,
+                &swapchain,
+                device.get_descriptor_handle_increment_size(
+                    DescriptorHeapType::Rtv,
+                ),
+            );
 
         let (texture_size, cross_adapter_desc) =
             create_shared_resource_desc(&device);
@@ -399,6 +408,14 @@ impl Pipeline {
 
         trace!("Executed command lists");
 
+        let rtv_descriptor_handle_size = device
+            .get_descriptor_handle_increment_size(DescriptorHeapType::Rtv);
+
+        let cbv_srv_descriptor_handle_size = device
+            .get_descriptor_handle_increment_size(
+                DescriptorHeapType::CbvSrvUav,
+            );
+
         Self {
             is_producer_process,
             device,
@@ -410,7 +427,9 @@ impl Pipeline {
             viewport,
             scissor_rect,
             rtv_heap,
+            rtv_descriptor_handle_size,
             cbv_srv_heap,
+            cbv_srv_descriptor_handle_size,
             render_targets,
             direct_command_allocators,
             shared_heap,
@@ -467,7 +486,7 @@ impl Pipeline {
         let rtv_handle = self
             .rtv_heap
             .get_cpu_descriptor_handle_for_heap_start()
-            .advance(self.frame_index as u32);
+            .advance(self.frame_index as u32, self.rtv_descriptor_handle_size);
 
         self.direct_command_list.set_render_targets(
             slice::from_ref(&rtv_handle),
@@ -595,7 +614,7 @@ impl Pipeline {
         let rtv_handle = self
             .rtv_heap
             .get_cpu_descriptor_handle_for_heap_start()
-            .advance(self.frame_index as u32);
+            .advance(self.frame_index as u32, self.rtv_descriptor_handle_size);
 
         self.direct_command_list.set_render_targets(
             slice::from_ref(&rtv_handle),
@@ -1020,7 +1039,7 @@ fn create_shared_resource_desc(device: &Device) -> (Bytes, ResourceDesc) {
 
     texture_size = align_to_multiple(
         (layout[0].0.Footprint.RowPitch * layout[0].0.Footprint.Height) as u64,
-        DEFAULT_RESOURCE_ALIGNMENT.0,
+        DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT.0,
     )
     .into();
 
@@ -1031,6 +1050,7 @@ fn create_frame_resources(
     device: &Device,
     rtv_heap: &DescriptorHeap,
     swapchain: &Swapchain,
+    rtv_descriptor_handle_size: Bytes,
 ) -> (Vec<Resource>, Vec<CommandAllocator>) {
     let clear_value = ClearValue::default()
         .set_format(Format::R8G8B8A8_UNorm)
@@ -1059,7 +1079,7 @@ fn create_frame_resources(
         device
             .create_render_target_view(&render_targets[frame_idx], rtv_handle);
 
-        rtv_handle = rtv_handle.advance(1);
+        rtv_handle = rtv_handle.advance(1, rtv_descriptor_handle_size);
 
         direct_command_allocators.push(
             device

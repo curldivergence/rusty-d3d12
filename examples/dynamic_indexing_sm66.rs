@@ -206,6 +206,8 @@ struct DynamicIndexingSample {
     rtv_heap: DescriptorHeap,
     dsv_heap: DescriptorHeap,
     cbv_srv_heap: DescriptorHeap,
+    cbv_srv_descriptor_handle_size: Bytes,
+    rtv_descriptor_handle_size: Bytes,
     sampler_heap: DescriptorHeap,
     command_allocator: CommandAllocator,
     command_list: CommandList,
@@ -293,8 +295,16 @@ impl DynamicIndexingSample {
             .set_right(WINDOW_WIDTH as i32)
             .set_bottom(WINDOW_HEIGHT as i32);
 
+        let cbv_srv_descriptor_handle_size = device
+            .get_descriptor_handle_increment_size(
+                DescriptorHeapType::CbvSrvUav,
+            );
+
+        let rtv_descriptor_handle_size = device
+            .get_descriptor_handle_increment_size(DescriptorHeapType::Rtv);
+
         let (render_targets, rtv_heap, dsv_heap, cbv_srv_heap, sampler_heap) =
-            setup_heaps(&device, &swapchain);
+            setup_heaps(&device, &swapchain, rtv_descriptor_handle_size);
 
         let command_allocator = device
             .create_command_allocator(CommandListType::Direct)
@@ -349,6 +359,8 @@ impl DynamicIndexingSample {
             rtv_heap,
             dsv_heap,
             cbv_srv_heap,
+            cbv_srv_descriptor_handle_size,
+            rtv_descriptor_handle_size,
             sampler_heap,
             command_allocator,
             root_signature,
@@ -425,7 +437,10 @@ impl DynamicIndexingSample {
         let mut cbv_srv_handle = self
             .cbv_srv_heap
             .get_cpu_descriptor_handle_for_heap_start()
-            .advance((CITY_MATERIAL_COUNT + 1).into());
+            .advance(
+                (CITY_MATERIAL_COUNT + 1).into(),
+                self.cbv_srv_descriptor_handle_size,
+            );
 
         for frame_idx in 0..FRAMES_IN_FLIGHT {
             let mut frame_resource = FrameResource::new(&self.device);
@@ -450,7 +465,8 @@ impl DynamicIndexingSample {
                     self.device
                         .create_constant_buffer_view(&cbv_desc, cbv_srv_handle);
 
-                    cbv_srv_handle = cbv_srv_handle.advance(1);
+                    cbv_srv_handle = cbv_srv_handle
+                        .advance(1, self.cbv_srv_descriptor_handle_size);
                 }
             }
 
@@ -468,6 +484,7 @@ impl DynamicIndexingSample {
                 &self.cbv_srv_heap,
                 &self.sampler_heap,
                 &self.root_signature,
+                self.cbv_srv_descriptor_handle_size,
             );
 
             self.frame_resources.push(frame_resource);
@@ -740,7 +757,7 @@ impl DynamicIndexingSample {
             self.cbv_srv_heap.get_cpu_descriptor_handle_for_heap_start(),
         );
 
-        srv_handle = srv_handle.advance(1);
+        srv_handle = srv_handle.advance(1, self.cbv_srv_descriptor_handle_size);
 
         for mat_idx in 0..CITY_MATERIAL_COUNT as usize {
             let mat_srv_desc =
@@ -757,7 +774,8 @@ impl DynamicIndexingSample {
                 srv_handle,
             );
 
-            srv_handle = srv_handle.advance(1);
+            srv_handle =
+                srv_handle.advance(1, self.cbv_srv_descriptor_handle_size);
         }
     }
 
@@ -1023,7 +1041,10 @@ impl DynamicIndexingSample {
         let mut rtv_handle = self
             .rtv_heap
             .get_cpu_descriptor_handle_for_heap_start()
-            .advance(self.frame_index.into());
+            .advance(
+                self.frame_index.into(),
+                self.cbv_srv_descriptor_handle_size,
+            );
 
         let dsv_handle =
             self.dsv_heap.get_cpu_descriptor_handle_for_heap_start();
@@ -1073,6 +1094,7 @@ impl DynamicIndexingSample {
                     &self.cbv_srv_heap,
                     &self.sampler_heap,
                     &self.root_signature,
+                    self.cbv_srv_descriptor_handle_size,
                 );
         }
 
@@ -1205,7 +1227,9 @@ fn create_pipeline_state(
         .set_root_signature(root_signature)
         .set_vs_bytecode(&vs_bytecode)
         .set_ps_bytecode(&ps_bytecode)
-        .set_rasterizer_state(&RasterizerDesc::default())
+        .set_rasterizer_state(
+            &RasterizerDesc::default().set_cull_mode(CullMode::None),
+        )
         .set_blend_state(&BlendDesc::default())
         .set_depth_stencil_state(&DepthStencilDesc::default())
         .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
@@ -1364,6 +1388,7 @@ d3dx12.h as a dependency to have DX12SerializeVersionedRootSignature"
 fn setup_heaps(
     device: &Device,
     swapchain: &Swapchain,
+    rtv_descriptor_handle_size: Bytes,
 ) -> (
     Vec<Resource>,
     DescriptorHeap,
@@ -1432,7 +1457,7 @@ fn setup_heaps(
         device.create_render_target_view(&render_target, rtv_handle);
         render_targets.push(render_target);
 
-        rtv_handle = rtv_handle.advance(1);
+        rtv_handle = rtv_handle.advance(1, rtv_descriptor_handle_size);
     }
 
     (
@@ -1577,6 +1602,7 @@ impl FrameResource {
         cbv_srv_descriptor_heap: &DescriptorHeap,
         sampler_descriptor_heap: &DescriptorHeap,
         root_signature: &RootSignature,
+        cbv_srv_descriptor_handle_size: Bytes,
     ) {
         let bundle = device
             .create_command_list(
@@ -1599,6 +1625,7 @@ impl FrameResource {
             cbv_srv_descriptor_heap,
             sampler_descriptor_heap,
             root_signature,
+            cbv_srv_descriptor_handle_size,
         );
 
         bundle.close().expect("Cannot close bundle");
@@ -1616,6 +1643,7 @@ impl FrameResource {
         cbv_srv_descriptor_heap: &DescriptorHeap,
         sampler_descriptor_heap: &DescriptorHeap,
         root_signature: &RootSignature,
+        cbv_srv_descriptor_handle_size: Bytes,
     ) {
         let mut heaps = [
             cbv_srv_descriptor_heap.clone(),
@@ -1641,7 +1669,10 @@ impl FrameResource {
 
         let mut cbv_srv_handle = cbv_srv_descriptor_heap
             .get_gpu_descriptor_handle_for_heap_start()
-            .advance(u32::from(frame_resource_descriptor_offset));
+            .advance(
+                u32::from(frame_resource_descriptor_offset),
+                cbv_srv_descriptor_handle_size,
+            );
 
         for i in 0..CITY_ROW_COUNT {
             for j in 0..CITY_COLUMN_COUNT {
@@ -1654,7 +1685,8 @@ impl FrameResource {
                 command_list
                     .set_graphics_root_descriptor_table(1, cbv_srv_handle);
 
-                cbv_srv_handle = cbv_srv_handle.advance(1);
+                cbv_srv_handle =
+                    cbv_srv_handle.advance(1, cbv_srv_descriptor_handle_size);
 
                 command_list.draw_indexed_instanced(num_indices, 1, 0, 0, 0);
             }

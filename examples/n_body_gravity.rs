@@ -361,6 +361,9 @@ impl GraphicsContext {
         consumer_fence: Fence,
         frame_fence: Fence,
         frame_fence_value: Arc<AtomicU64>,
+
+        rtv_descriptor_handle_size: Bytes,
+        cbv_srv_descriptor_handle_size: Bytes,
     ) -> JoinHandle<()> {
         thread::spawn(move || {
             let constant_buffer_gs_mapped_data =
@@ -513,7 +516,7 @@ impl GraphicsContext {
 
                     let rtv_handle = heaps[0]
                         .get_cpu_descriptor_handle_for_heap_start()
-                        .advance(frame_idx as u32);
+                        .advance(frame_idx as u32, rtv_descriptor_handle_size);
                     context.direct_command_list.set_render_targets(
                         slice::from_ref(&rtv_handle),
                         false,
@@ -534,7 +537,7 @@ impl GraphicsContext {
 
                     let srv_handle = heaps[1]
                         .get_gpu_descriptor_handle_for_heap_start()
-                        .advance(srv_index);
+                        .advance(srv_index, cbv_srv_descriptor_handle_size);
 
                     context
                         .direct_command_list
@@ -664,6 +667,7 @@ impl ComputeContext {
         consumer_fence: Fence,
         frame_fence: Fence,
         frame_fence_value: Arc<AtomicU64>,
+        cbv_srv_descriptor_handle_size: Bytes,
     ) -> JoinHandle<()> {
         thread::spawn(move || {
             let compute_command_queue = device
@@ -743,6 +747,7 @@ impl ComputeContext {
                         &context.compute_root_signature,
                         &srv_uav_heap,
                         &cs_cbuffer,
+                        cbv_srv_descriptor_handle_size,
                     );
 
                     context
@@ -866,7 +871,10 @@ struct Pipeline {
     swapchain_event: Win32Event,
     frame_index: usize,
     rtv_heap: DescriptorHeap,
+    rtv_descriptor_handle_size: Bytes,
+
     srv_uav_heap: DescriptorHeap,
+    cbv_srv_descriptor_handle_size: Bytes,
 
     graphics_thread: Option<JoinHandle<()>>,
     graphics_tx: Sender<Option<usize>>,
@@ -968,8 +976,19 @@ impl Pipeline {
         let (rtv_heap, srv_uav_heap) =
             create_descriptor_heaps(&device, &swapchain);
 
-        let render_targets =
-            create_render_targets(&device, &rtv_heap, &swapchain);
+        let rtv_descriptor_handle_size = device
+            .get_descriptor_handle_increment_size(DescriptorHeapType::Rtv);
+        let cbv_srv_descriptor_handle_size = device
+            .get_descriptor_handle_increment_size(
+                DescriptorHeapType::CbvSrvUav,
+            );
+
+        let render_targets = create_render_targets(
+            &device,
+            &rtv_heap,
+            &swapchain,
+            rtv_descriptor_handle_size,
+        );
 
         let (
             producer_fence,
@@ -997,7 +1016,13 @@ impl Pipeline {
             particle_buffer_0_upload,
             particle_buffer_1,
             particle_buffer_1_upload,
-        ) = create_particle_buffers(&device, &temp_command_list, &srv_uav_heap);
+        ) = create_particle_buffers(
+            &device,
+            &temp_command_list,
+            &srv_uav_heap,
+            rtv_descriptor_handle_size,
+            cbv_srv_descriptor_handle_size,
+        );
 
         trace!("Created partice buffers");
 
@@ -1058,6 +1083,8 @@ impl Pipeline {
             consumer_fence.clone(),
             frame_fence.clone(),
             frame_fence_value.clone(),
+            rtv_descriptor_handle_size,
+            cbv_srv_descriptor_handle_size,
         );
 
         info!("Created graphics context");
@@ -1075,6 +1102,7 @@ impl Pipeline {
             consumer_fence.clone(),
             frame_fence.clone(),
             frame_fence_value.clone(),
+            cbv_srv_descriptor_handle_size,
         );
 
         info!("Created compute context");
@@ -1118,6 +1146,8 @@ impl Pipeline {
             frame_fence_value,
             last_frame_fence_value: 0,
             frame_fence_event,
+            rtv_descriptor_handle_size,
+            cbv_srv_descriptor_handle_size,
         }
     }
 
@@ -1202,6 +1232,7 @@ fn simulate(
     root_sig: &RootSignature,
     srv_uav_heap: &DescriptorHeap,
     constant_buffer: &Resource,
+    cbv_srv_descriptor_handle_size: Bytes,
 ) {
     let curr_srv_index;
     let curr_uav_index;
@@ -1228,10 +1259,10 @@ fn simulate(
     compute_command_list.set_descriptor_heaps(slice::from_ref(srv_uav_heap));
     let srv_handle = srv_uav_heap
         .get_gpu_descriptor_handle_for_heap_start()
-        .advance(curr_srv_index);
+        .advance(curr_srv_index, cbv_srv_descriptor_handle_size);
     let uav_handle = srv_uav_heap
         .get_gpu_descriptor_handle_for_heap_start()
-        .advance(curr_uav_index);
+        .advance(curr_uav_index, cbv_srv_descriptor_handle_size);
     compute_command_list.set_compute_root_constant_buffer_view(
         COMPUTE_ROOT_CBV,
         constant_buffer.get_gpu_virtual_address(),
@@ -1411,6 +1442,8 @@ fn create_particle_buffers(
     device: &Device,
     direct_command_list: &CommandList,
     srv_uav_heap: &DescriptorHeap,
+    rtv_descriptor_handle_size: Bytes,
+    cbv_uav_descriptor_handle_size: Bytes,
 ) -> (Resource, Resource, Resource, Resource) {
     let center_spread = PARTICLE_SPREAD / 2.;
 
@@ -1579,14 +1612,14 @@ fn create_particle_buffers(
         Some(&srv_desc),
         srv_uav_heap
             .get_cpu_descriptor_handle_for_heap_start()
-            .advance(SRV_PARTICLE_POS_VEL_0),
+            .advance(SRV_PARTICLE_POS_VEL_0, cbv_uav_descriptor_handle_size),
     );
     device.create_shader_resource_view(
         &particle_buffer_1,
         Some(&srv_desc),
         srv_uav_heap
             .get_cpu_descriptor_handle_for_heap_start()
-            .advance(SRV_PARTICLE_POS_VEL_1),
+            .advance(SRV_PARTICLE_POS_VEL_1, cbv_uav_descriptor_handle_size),
     );
 
     let uav_desc = UnorderedAccessViewDesc::default().new_buffer(
@@ -1603,7 +1636,7 @@ fn create_particle_buffers(
         Some(&uav_desc),
         srv_uav_heap
             .get_cpu_descriptor_handle_for_heap_start()
-            .advance(UAV_PARTICLE_POS_VEL_0),
+            .advance(UAV_PARTICLE_POS_VEL_0, cbv_uav_descriptor_handle_size),
     );
 
     device.create_unordered_access_view(
@@ -1612,7 +1645,7 @@ fn create_particle_buffers(
         Some(&uav_desc),
         srv_uav_heap
             .get_cpu_descriptor_handle_for_heap_start()
-            .advance(UAV_PARTICLE_POS_VEL_1),
+            .advance(UAV_PARTICLE_POS_VEL_1, cbv_uav_descriptor_handle_size),
     );
 
     (
@@ -1881,6 +1914,7 @@ fn create_render_targets(
     device: &Device,
     rtv_heap: &DescriptorHeap,
     swapchain: &Swapchain,
+    rtv_uav_descriptor_handle_size: Bytes,
 ) -> Vec<Resource> {
     let clear_value = ClearValue::default()
         .set_format(Format::R8G8B8A8_UNorm)
@@ -1908,7 +1942,7 @@ fn create_render_targets(
         device
             .create_render_target_view(&render_targets[frame_idx], rtv_handle);
 
-        rtv_handle = rtv_handle.advance(1);
+        rtv_handle = rtv_handle.advance(1, rtv_uav_descriptor_handle_size);
     }
 
     trace!("created command allocators");

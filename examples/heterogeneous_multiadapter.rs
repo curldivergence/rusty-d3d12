@@ -327,8 +327,10 @@ struct Pipeline {
     scissor_rect: Rect,
     triangle_count: u32,
     rtv_heaps: [DescriptorHeap; DEVICE_COUNT],
+    rtv_descriptor_handle_sizes: [Bytes; DEVICE_COUNT],
     dsv_heap: DescriptorHeap,
     cbv_srv_heap: DescriptorHeap,
+    cbv_srv_descriptor_handle_sizes: [Bytes; DEVICE_COUNT],
     timestamp_result_buffers: [Resource; DEVICE_COUNT],
     current_times_index: usize,
     query_heaps: [QueryHeap; DEVICE_COUNT],
@@ -516,11 +518,32 @@ impl Pipeline {
         let (rtv_heaps, dsv_heap, cbv_srv_heap) =
             create_descriptor_heaps(&devices, &swapchain);
 
+        let rtv_descriptor_handle_sizes = [
+            devices[0]
+                .get_descriptor_handle_increment_size(DescriptorHeapType::Rtv),
+            devices[1]
+                .get_descriptor_handle_increment_size(DescriptorHeapType::Rtv),
+        ];
+
+        let cbv_srv_descriptor_handle_sizes = [
+            devices[0].get_descriptor_handle_increment_size(
+                DescriptorHeapType::CbvSrvUav,
+            ),
+            devices[1].get_descriptor_handle_increment_size(
+                DescriptorHeapType::CbvSrvUav,
+            ),
+        ];
+
         let (timestamp_result_buffers, query_heaps) =
             create_query_heaps(&devices);
 
         let (render_targets, direct_command_allocators, copy_allocators) =
-            create_frame_resources(&devices, &rtv_heaps, &swapchain);
+            create_frame_resources(
+                &devices,
+                &rtv_heaps,
+                &swapchain,
+                rtv_descriptor_handle_sizes,
+            );
 
         let (
             cross_adapter_textures_supported,
@@ -653,7 +676,10 @@ impl Pipeline {
 
             let rtv_handle = rtv_heaps[1]
                 .get_cpu_descriptor_handle_for_heap_start()
-                .advance(FRAMES_IN_FLIGHT as u32);
+                .advance(
+                    FRAMES_IN_FLIGHT as u32,
+                    rtv_descriptor_handle_sizes[1],
+                );
 
             devices[1].create_render_target_view(
                 &intermediate_blur_render_target,
@@ -672,7 +698,8 @@ impl Pipeline {
                 devices[1]
                     .create_shader_resource_view(resource, None, srv_handle);
 
-                srv_handle = srv_handle.advance(1);
+                srv_handle =
+                    srv_handle.advance(1, cbv_srv_descriptor_handle_sizes[1]);
             }
 
             devices[1].create_shader_resource_view(
@@ -848,6 +875,8 @@ impl Pipeline {
             blur_times: [0; MOVING_AVERAGE_FRAME_COUNT],
             draw_time_moving_average: 0,
             blur_time_moving_average: 0,
+            rtv_descriptor_handle_sizes,
+            cbv_srv_descriptor_handle_sizes,
         }
     }
 
@@ -1000,14 +1029,20 @@ impl Pipeline {
             let srv_handle = self
                 .cbv_srv_heap
                 .get_gpu_descriptor_handle_for_heap_start()
-                .advance(self.frame_index as u32);
+                .advance(
+                    self.frame_index as u32,
+                    self.cbv_srv_descriptor_handle_sizes[adapter_idx],
+                );
 
             self.direct_command_lists[adapter_idx]
                 .set_graphics_root_descriptor_table(1, srv_handle);
 
             let rtv_handle = self.rtv_heaps[adapter_idx]
                 .get_cpu_descriptor_handle_for_heap_start()
-                .advance(FRAMES_IN_FLIGHT as u32);
+                .advance(
+                    FRAMES_IN_FLIGHT as u32,
+                    self.rtv_descriptor_handle_sizes[adapter_idx],
+                );
 
             self.direct_command_lists[adapter_idx].set_render_targets(
                 slice::from_ref(&rtv_handle),
@@ -1044,14 +1079,20 @@ impl Pipeline {
             let srv_handle = self
                 .cbv_srv_heap
                 .get_gpu_descriptor_handle_for_heap_start()
-                .advance(FRAMES_IN_FLIGHT as u32);
+                .advance(
+                    FRAMES_IN_FLIGHT as u32,
+                    self.cbv_srv_descriptor_handle_sizes[adapter_idx],
+                );
 
             self.direct_command_lists[adapter_idx]
                 .set_graphics_root_descriptor_table(1, srv_handle);
 
             let rtv_handle = self.rtv_heaps[adapter_idx]
                 .get_cpu_descriptor_handle_for_heap_start()
-                .advance(self.frame_index as u32);
+                .advance(
+                    self.frame_index as u32,
+                    self.rtv_descriptor_handle_sizes[adapter_idx],
+                );
 
             self.direct_command_lists[adapter_idx].set_render_targets(
                 slice::from_ref(&rtv_handle),
@@ -1185,7 +1226,10 @@ impl Pipeline {
 
         let rtv_handle = self.rtv_heaps[adapter_idx]
             .get_cpu_descriptor_handle_for_heap_start()
-            .advance(self.frame_index as u32);
+            .advance(
+                self.frame_index as u32,
+                self.rtv_descriptor_handle_sizes[adapter_idx],
+            );
 
         let dsv_handle =
             self.dsv_heap.get_cpu_descriptor_handle_for_heap_start();
@@ -2362,7 +2406,7 @@ fn create_shared_resource_descs(
         texture_size = align_to_multiple(
             (layout[0].0.Footprint.RowPitch * layout[0].0.Footprint.Height)
                 as u64,
-            DEFAULT_RESOURCE_ALIGNMENT.0,
+            DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT.0,
         )
         .into();
 
@@ -2384,6 +2428,7 @@ fn create_frame_resources(
     devices: &[Device; DEVICE_COUNT],
     rtv_heaps: &[DescriptorHeap; DEVICE_COUNT],
     swapchain: &Swapchain,
+    rtv_descriptor_handle_sizes: [Bytes; DEVICE_COUNT],
 ) -> (
     [[Resource; FRAMES_IN_FLIGHT]; DEVICE_COUNT],
     [[CommandAllocator; FRAMES_IN_FLIGHT]; DEVICE_COUNT],
@@ -2449,7 +2494,8 @@ fn create_frame_resources(
                 rtv_handle,
             );
 
-            rtv_handle = rtv_handle.advance(1);
+            rtv_handle =
+                rtv_handle.advance(1, rtv_descriptor_handle_sizes[device_idx]);
 
             direct_command_allocators[device_idx][frame_idx] = MaybeUninit::new(
                 devices[device_idx]

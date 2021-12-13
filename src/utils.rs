@@ -188,8 +188,8 @@ pub fn compile_shader(
 }
 
 ///
-pub fn align_to_multiple(location: u64, alignment: u64) -> u64 {
-    (location + (alignment - 1)) & (!(alignment - 1))
+pub fn align_to_multiple(value: u64, alignment: u64) -> u64 {
+    (value + (alignment - 1)) & (!(alignment - 1))
 }
 
 ///

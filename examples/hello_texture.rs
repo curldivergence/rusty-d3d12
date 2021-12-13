@@ -155,8 +155,12 @@ impl HelloTextureSample {
             .set_right(WINDOW_WIDTH as i32)
             .set_bottom(WINDOW_HEIGHT as i32);
 
-        let (render_targets, rtv_heap, srv_heap) =
-            setup_heaps(&device, &swapchain);
+        let (render_targets, rtv_heap, srv_heap) = setup_heaps(
+            &device,
+            &swapchain,
+            device
+                .get_descriptor_handle_increment_size(DescriptorHeapType::Rtv),
+        );
 
         let command_allocator = device
             .create_command_allocator(CommandListType::Direct)
@@ -433,7 +437,12 @@ impl HelloTextureSample {
         let rtv_handle = self
             .rtv_heap
             .get_cpu_descriptor_handle_for_heap_start()
-            .advance(self.frame_index);
+            .advance(
+                self.frame_index,
+                self.device.get_descriptor_handle_increment_size(
+                    DescriptorHeapType::Rtv,
+                ),
+            );
 
         self.command_list
             .set_render_targets(&mut [rtv_handle], false, None);
@@ -661,6 +670,7 @@ d3dx12.h as a dependency to have X12SerializeVersionedRootSignature"
 fn setup_heaps(
     device: &Device,
     swapchain: &Swapchain,
+    descriptor_size: Bytes,
 ) -> (Vec<Resource>, DescriptorHeap, DescriptorHeap) {
     let rtv_heap = device
         .create_descriptor_heap(
@@ -696,7 +706,7 @@ fn setup_heaps(
         device.create_render_target_view(&render_target, rtv_handle);
         render_targets.push(render_target);
 
-        rtv_handle = rtv_handle.advance(1);
+        rtv_handle = rtv_handle.advance(1, descriptor_size);
     }
     (render_targets, rtv_heap, srv_heap)
 }

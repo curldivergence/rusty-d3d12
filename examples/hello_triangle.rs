@@ -144,7 +144,7 @@ struct HelloTriangleSample {
     vertex_buffers: Vec<VertexBuffer>,
     current_frame: u64,
     current_fence_value: u64,
-    rtv_descriptor_size: u32,
+    rtv_descriptor_size: Bytes,
     rtv_heap: DescriptorHeap,
     swapchain: Swapchain,
     command_list: CommandList,
@@ -237,7 +237,7 @@ impl HelloTriangleSample {
             device: device,
             info_queue: info_queue,
             fence: fence,
-            rtv_descriptor_size: rtv_descriptor_size,
+            rtv_descriptor_size,
             command_queue: command_queue,
             command_allocator: command_allocator,
             command_list: command_list,
@@ -389,7 +389,7 @@ float4 PS(VertexOut input) : SV_Target
         let rtv_handle = self
             .rtv_heap
             .get_cpu_descriptor_handle_for_heap_start()
-            .advance(current_buffer_index);
+            .advance(current_buffer_index, self.rtv_descriptor_size);
 
         HelloTriangleSample::add_transition(
             &self.command_list,
@@ -483,7 +483,7 @@ impl HelloTriangleSample {
             let rtv_handle = self
                 .rtv_heap
                 .get_cpu_descriptor_handle_for_heap_start()
-                .advance(buffer_index);
+                .advance(buffer_index, self.rtv_descriptor_size);
             let buffer = self
                 .swapchain
                 .get_buffer(buffer_index)

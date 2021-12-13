@@ -5024,7 +5024,7 @@ impl FeatureDataD3DOptions {
     }
 
     pub fn cross_adapter_row_major_texture_supported(&self) -> bool {
-        self.0.VPAndRTArrayIndexFromAnyShaderFeedingRasterizerSupportedWithoutGSEmulation != 0
+        self.0.CrossAdapterRowMajorTextureSupported != 0
     }
 
     pub fn set_vp_and_rt_array_index_from_any_shader_feeding_rasterizer_supported_without_gs_emulation(
