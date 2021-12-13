@@ -62,13 +62,13 @@ impl Vertex {
                 .unwrap()
                 .set_format(Format::R32G32B32_Float)
                 .set_input_slot(0)
-                .set_offset(Bytes(offset_of!(Self, position) as u64)),
+                .set_offset(ByteCount(offset_of!(Self, position) as u64)),
             InputElementDesc::default()
                 .set_name("TEXCOORD")
                 .unwrap()
                 .set_format(Format::R32G32_Float)
                 .set_input_slot(0)
-                .set_offset(Bytes(offset_of!(Self, uv) as u64)),
+                .set_offset(ByteCount(offset_of!(Self, uv) as u64)),
         ]
     }
 }
@@ -236,7 +236,7 @@ impl HelloTextureSample {
                 uv: Vector2::new(0., 1.),
             },
         ];
-        let vertex_buffer_size = Bytes::from(
+        let vertex_buffer_size = ByteCount::from(
             triangle_vertices.len() * std::mem::size_of::<Vertex>(),
         );
         let vertex_buffer = self
@@ -271,11 +271,11 @@ impl HelloTextureSample {
         self.vertex_buffer_view = Some(
             VertexBufferView::default()
                 .set_buffer_location(vertex_buffer.get_gpu_virtual_address())
-                .set_size_in_bytes(Bytes::from(
+                .set_size_in_bytes(ByteCount::from(
                     3 * std::mem::size_of::<Vertex>(),
                 ))
                 .set_stride_in_bytes(
-                    Bytes::from(std::mem::size_of::<Vertex>()),
+                    ByteCount::from(std::mem::size_of::<Vertex>()),
                 ),
         );
 
@@ -289,7 +289,7 @@ impl HelloTextureSample {
     fn setup_texture(&mut self) {
         let texture_width = TEXTURE_WIDTH;
         let texture_height = TEXTURE_HEIGHT;
-        let pixel_size = Bytes(4);
+        let pixel_size = ByteCount(4);
         self.texture = Some(
             self.device
                 .create_committed_resource(
@@ -348,7 +348,7 @@ impl HelloTextureSample {
 
     fn upload_texture(
         &mut self,
-        (texture_width, texture_height, pixel_size): (u32, u32, Bytes),
+        (texture_width, texture_height, pixel_size): (u32, u32, ByteCount),
     ) {
         let upload_buffer_size = self
             .texture
@@ -378,8 +378,8 @@ impl HelloTextureSample {
         let texture_subresource_data = SubresourceData::default()
             .set_data(&texture_data)
             // ToDo: clean up these conversions
-            .set_row_pitch(Bytes((pixel_size * texture_width).0 as u64))
-            .set_slice_pitch(Bytes(
+            .set_row_pitch(ByteCount((pixel_size * texture_width).0 as u64))
+            .set_slice_pitch(ByteCount(
                 (pixel_size * texture_width * texture_height).0 as u64,
             ));
 
@@ -389,7 +389,7 @@ impl HelloTextureSample {
                 self.texture_upload_heap
                     .as_ref()
                     .expect("No texture staging buffer has been created"),
-                Bytes(0),
+                ByteCount(0),
                 0,
                 1,
                 &vec![texture_subresource_data],
@@ -670,7 +670,7 @@ d3dx12.h as a dependency to have X12SerializeVersionedRootSignature"
 fn setup_heaps(
     device: &Device,
     swapchain: &Swapchain,
-    descriptor_size: Bytes,
+    descriptor_size: ByteCount,
 ) -> (Vec<Resource>, DescriptorHeap, DescriptorHeap) {
     let rtv_heap = device
         .create_descriptor_heap(
@@ -750,7 +750,7 @@ fn create_device(factory: &Factory) -> Device {
 fn generate_texture_data(
     width: u32,
     height: u32,
-    pixel_size: Bytes,
+    pixel_size: ByteCount,
 ) -> Vec<u8> {
     let row_pitch = width as u32 * pixel_size.0 as u32;
     let cell_pitch = row_pitch >> 3;

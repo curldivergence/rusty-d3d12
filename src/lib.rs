@@ -996,7 +996,7 @@ impl Device {
     pub fn create_placed_resource(
         &self,
         heap: &Heap,
-        heap_offset: Bytes,
+        heap_offset: ByteCount,
         resource_desc: &ResourceDesc,
         initial_state: ResourceStates,
         optimized_clear_value: Option<&ClearValue>,
@@ -1202,8 +1202,8 @@ impl Device {
         resource_desc: &ResourceDesc,
         first_subresouce: u32,
         num_subresources: u32,
-        base_offset: Bytes,
-    ) -> (Vec<PlacedSubresourceFootprint>, Vec<u32>, Vec<Bytes>, Bytes) {
+        base_offset: ByteCount,
+    ) -> (Vec<PlacedSubresourceFootprint>, Vec<u32>, Vec<ByteCount>, ByteCount) {
         let mut placed_subresource_footprints: Vec<PlacedSubresourceFootprint> =
             Vec::with_capacity(num_subresources as usize);
         unsafe {
@@ -1214,7 +1214,7 @@ impl Device {
             Vec::with_capacity(num_subresources as usize);
         unsafe { num_rows.set_len(num_subresources as usize) }
 
-        let mut row_sizes: Vec<Bytes> =
+        let mut row_sizes: Vec<ByteCount> =
             Vec::with_capacity(num_subresources as usize);
         unsafe { row_sizes.set_len(num_subresources as usize) }
 
@@ -1240,15 +1240,15 @@ impl Device {
             placed_subresource_footprints,
             num_rows,
             row_sizes,
-            Bytes(total_bytes),
+            ByteCount(total_bytes),
         )
     }
 
     pub fn get_descriptor_handle_increment_size(
         &self,
         heap_type: DescriptorHeapType,
-    ) -> Bytes {
-        Bytes::from(unsafe {
+    ) -> ByteCount {
+        ByteCount::from(unsafe {
             dx_call!(
                 self.this,
                 GetDescriptorHandleIncrementSize,
@@ -1546,7 +1546,7 @@ pub struct CpuDescriptorHandle {
 
 impl CpuDescriptorHandle {
     #[must_use]
-    pub fn advance(self, distance: u32, handle_size: Bytes) -> Self {
+    pub fn advance(self, distance: u32, handle_size: ByteCount) -> Self {
         CpuDescriptorHandle {
             hw_handle: D3D12_CPU_DESCRIPTOR_HANDLE {
                 ptr: self.hw_handle.ptr
@@ -1563,7 +1563,7 @@ pub struct GpuDescriptorHandle {
 }
 
 impl GpuDescriptorHandle {
-    pub fn advance(self, distance: u32, handle_size: Bytes) -> Self {
+    pub fn advance(self, distance: u32, handle_size: ByteCount) -> Self {
         GpuDescriptorHandle {
             hw_handle: D3D12_GPU_DESCRIPTOR_HANDLE {
                 ptr: self.hw_handle.ptr
@@ -1615,7 +1615,7 @@ impl Resource {
         &self,
         first_subresouce: u32,
         num_subresources: u32,
-    ) -> DxResult<Bytes> {
+    ) -> DxResult<ByteCount> {
         let resource_desc = self.get_desc();
 
         let device = self.get_device()?;
@@ -1623,7 +1623,7 @@ impl Resource {
             &resource_desc,
             first_subresouce,
             num_subresources,
-            Bytes(0),
+            ByteCount(0),
         );
         device.release();
 
@@ -1759,10 +1759,10 @@ impl CommandList {
     pub fn copy_buffer_region(
         &self,
         dest: &Resource,
-        dest_offset: Bytes,
+        dest_offset: ByteCount,
         source: &Resource,
-        source_offset: Bytes,
-        span: Bytes,
+        source_offset: ByteCount,
+        span: ByteCount,
     ) {
         unsafe {
             dx_call!(
@@ -1935,7 +1935,7 @@ impl CommandList {
         start_index: u32,
         num_queries: u32,
         destination_buffer: &Resource,
-        aligned_destination_buffer_offset: Bytes,
+        aligned_destination_buffer_offset: ByteCount,
     ) {
         unsafe {
             dx_call!(
@@ -2281,12 +2281,12 @@ impl CommandList {
         intermediate_resource: &Resource,
         first_subresouce: u32,
         num_subresources: u32,
-        required_size: Bytes,
+        required_size: ByteCount,
         layouts: &[PlacedSubresourceFootprint],
         num_rows: &[u32],
-        row_sizes_in_bytes: &[Bytes],
+        row_sizes_in_bytes: &[ByteCount],
         source_data: &[SubresourceData],
-    ) -> DxResult<Bytes> {
+    ) -> DxResult<ByteCount> {
         // ToDo: implement validation as in the original function
 
         let data = intermediate_resource.map(0, None)?;
@@ -2316,10 +2316,10 @@ impl CommandList {
         if destination_desc.0.Dimension == ResourceDimension::Buffer as i32 {
             self.copy_buffer_region(
                 destination_resource,
-                Bytes(0),
+                ByteCount(0),
                 intermediate_resource,
-                Bytes(layouts[0].0.Offset),
-                Bytes(layouts[0].0.Footprint.Width as u64),
+                ByteCount(layouts[0].0.Offset),
+                ByteCount(layouts[0].0.Footprint.Width as u64),
             );
         } else {
             for i in 0..num_subresources as usize {
@@ -2352,12 +2352,12 @@ impl CommandList {
         &self,
         destination_resource: &Resource,
         intermediate_resource: &Resource,
-        intermediate_offset: Bytes,
+        intermediate_offset: ByteCount,
         first_subresouce: u32,
         num_subresources: u32,
         source_data: &[SubresourceData],
-    ) -> DxResult<Bytes> {
-        let allocation_size = Bytes::from(
+    ) -> DxResult<ByteCount> {
+        let allocation_size = ByteCount::from(
             std::mem::size_of::<PlacedSubresourceFootprint>()
                 + std::mem::size_of::<u32>()
                 + std::mem::size_of::<u64>(),
@@ -2400,7 +2400,7 @@ impl CommandList {
 unsafe fn memcpy_subresource(
     dest: &D3D12_MEMCPY_DEST,
     src: &D3D12_SUBRESOURCE_DATA,
-    row_sizes_in_bytes: Bytes,
+    row_sizes_in_bytes: ByteCount,
     num_rows: u32,
     num_slices: u32,
 ) {
@@ -2572,7 +2572,7 @@ impl Blob {
         unsafe {
             let buffer_pointer: *mut u8 =
                 dx_call!(self.this, GetBufferPointer,) as *mut u8;
-            let buffer_size: Bytes = Bytes(dx_call!(self.this, GetBufferSize,));
+            let buffer_size: ByteCount = ByteCount(dx_call!(self.this, GetBufferSize,));
             std::slice::from_raw_parts(buffer_pointer, buffer_size.0 as usize)
         }
     }

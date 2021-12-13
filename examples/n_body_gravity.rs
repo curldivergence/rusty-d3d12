@@ -225,7 +225,7 @@ impl Vertex {
             .unwrap()
             .set_format(Format::R32G32B32A32_Float)
             .set_input_slot(0)
-            .set_offset(Bytes::from(offset_of!(Self, color)))]
+            .set_offset(ByteCount::from(offset_of!(Self, color)))]
     }
 }
 
@@ -362,8 +362,8 @@ impl GraphicsContext {
         frame_fence: Fence,
         frame_fence_value: Arc<AtomicU64>,
 
-        rtv_descriptor_handle_size: Bytes,
-        cbv_srv_descriptor_handle_size: Bytes,
+        rtv_descriptor_handle_size: ByteCount,
+        cbv_srv_descriptor_handle_size: ByteCount,
     ) -> JoinHandle<()> {
         thread::spawn(move || {
             let constant_buffer_gs_mapped_data =
@@ -667,7 +667,7 @@ impl ComputeContext {
         consumer_fence: Fence,
         frame_fence: Fence,
         frame_fence_value: Arc<AtomicU64>,
-        cbv_srv_descriptor_handle_size: Bytes,
+        cbv_srv_descriptor_handle_size: ByteCount,
     ) -> JoinHandle<()> {
         thread::spawn(move || {
             let compute_command_queue = device
@@ -871,10 +871,10 @@ struct Pipeline {
     swapchain_event: Win32Event,
     frame_index: usize,
     rtv_heap: DescriptorHeap,
-    rtv_descriptor_handle_size: Bytes,
+    rtv_descriptor_handle_size: ByteCount,
 
     srv_uav_heap: DescriptorHeap,
-    cbv_srv_descriptor_handle_size: Bytes,
+    cbv_srv_descriptor_handle_size: ByteCount,
 
     graphics_thread: Option<JoinHandle<()>>,
     graphics_tx: Sender<Option<usize>>,
@@ -1232,7 +1232,7 @@ fn simulate(
     root_sig: &RootSignature,
     srv_uav_heap: &DescriptorHeap,
     constant_buffer: &Resource,
-    cbv_srv_descriptor_handle_size: Bytes,
+    cbv_srv_descriptor_handle_size: ByteCount,
 ) {
     let curr_srv_index;
     let curr_uav_index;
@@ -1416,7 +1416,7 @@ fn create_cs_constant_buffer(
         .update_subresources_heap_alloc(
             &constant_buffer_cs,
             &constant_buffer_cs_upload,
-            Bytes(0),
+            ByteCount(0),
             0,
             1,
             slice::from_ref(&subresource_data),
@@ -1442,8 +1442,8 @@ fn create_particle_buffers(
     device: &Device,
     direct_command_list: &CommandList,
     srv_uav_heap: &DescriptorHeap,
-    rtv_descriptor_handle_size: Bytes,
-    cbv_uav_descriptor_handle_size: Bytes,
+    rtv_descriptor_handle_size: ByteCount,
+    cbv_uav_descriptor_handle_size: ByteCount,
 ) -> (Resource, Resource, Resource, Resource) {
     let center_spread = PARTICLE_SPREAD / 2.;
 
@@ -1561,7 +1561,7 @@ fn create_particle_buffers(
         .update_subresources_heap_alloc(
             &particle_buffer_0,
             &particle_buffer_0_upload,
-            Bytes(0),
+            ByteCount(0),
             0,
             1,
             slice::from_ref(&particle_data),
@@ -1572,7 +1572,7 @@ fn create_particle_buffers(
         .update_subresources_heap_alloc(
             &particle_buffer_1,
             &particle_buffer_1_upload,
-            Bytes(0),
+            ByteCount(0),
             0,
             1,
             slice::from_ref(&particle_data),
@@ -1627,7 +1627,7 @@ fn create_particle_buffers(
             .set_first_element(0)
             .set_num_elements(PARTICLE_COUNT)
             .set_structure_byte_stride(size_of!(Particle))
-            .set_counter_offset_in_bytes(Bytes(0)),
+            .set_counter_offset_in_bytes(ByteCount(0)),
     );
 
     device.create_unordered_access_view(
@@ -1710,7 +1710,7 @@ fn create_vertex_buffer(
         .update_subresources_heap_alloc(
             &vertex_buffer,
             &vertex_buffer_upload,
-            Bytes(0),
+            ByteCount(0),
             0,
             1,
             slice::from_ref(&vertex_data),
@@ -1914,7 +1914,7 @@ fn create_render_targets(
     device: &Device,
     rtv_heap: &DescriptorHeap,
     swapchain: &Swapchain,
-    rtv_uav_descriptor_handle_size: Bytes,
+    rtv_uav_descriptor_handle_size: ByteCount,
 ) -> Vec<Resource> {
     let clear_value = ClearValue::default()
         .set_format(Format::R8G8B8A8_UNorm)

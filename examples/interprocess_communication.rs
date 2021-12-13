@@ -125,13 +125,13 @@ impl Vertex {
                 .unwrap()
                 .set_format(Format::R32G32B32A32_Float)
                 .set_input_slot(0)
-                .set_offset(Bytes::from(offset_of!(Self, position))),
+                .set_offset(ByteCount::from(offset_of!(Self, position))),
             InputElementDesc::default()
                 .set_name("COLOR")
                 .unwrap()
                 .set_format(Format::R32G32B32A32_Float)
                 .set_input_slot(0)
-                .set_offset(Bytes::from(offset_of!(Self, color))),
+                .set_offset(ByteCount::from(offset_of!(Self, color))),
         ]
     }
 }
@@ -185,9 +185,9 @@ struct Pipeline {
     viewport: Viewport,
     scissor_rect: Rect,
     rtv_heap: DescriptorHeap,
-    rtv_descriptor_handle_size: Bytes,
+    rtv_descriptor_handle_size: ByteCount,
     cbv_srv_heap: DescriptorHeap,
-    cbv_srv_descriptor_handle_size: Bytes,
+    cbv_srv_descriptor_handle_size: ByteCount,
     render_targets: Vec<Resource>,
     direct_command_allocators: Vec<CommandAllocator>,
     shared_heap: Heap,
@@ -787,7 +787,7 @@ fn create_scene_constant_buffer(
     is_producer_process: bool,
 ) -> Resource {
     let constant_buffer_size =
-        Bytes::from(size_of::<SceneConstantBuffer>() as u32);
+        ByteCount::from(size_of::<SceneConstantBuffer>() as u32);
 
     let constant_buffer = device
         .create_committed_resource(
@@ -848,7 +848,7 @@ fn create_vertex_buffer(
     ];
 
     let vertex_buffer_size =
-        Bytes::from(triangle_vertices.len() * size_of::<Vertex>());
+        ByteCount::from(triangle_vertices.len() * size_of::<Vertex>());
 
     let vertex_buffer = device
         .create_committed_resource(
@@ -891,7 +891,7 @@ fn create_vertex_buffer(
         .update_subresources_heap_alloc(
             &vertex_buffer,
             &vertex_buffer_upload,
-            Bytes(0),
+            ByteCount(0),
             0,
             1,
             slice::from_ref(&vertex_data),
@@ -910,7 +910,7 @@ fn create_vertex_buffer(
 
     let vertex_buffer_view = VertexBufferView::default()
         .set_buffer_location(vertex_buffer.get_gpu_virtual_address())
-        .set_stride_in_bytes(Bytes::from(std::mem::size_of::<Vertex>()))
+        .set_stride_in_bytes(ByteCount::from(std::mem::size_of::<Vertex>()))
         .set_size_in_bytes(vertex_buffer_size);
     trace!("Created primary adapter vertex buffer");
 
@@ -1024,8 +1024,8 @@ fn create_root_signature(device: &Device) -> RootSignature {
     root_signature
 }
 
-fn create_shared_resource_desc(device: &Device) -> (Bytes, ResourceDesc) {
-    let texture_size: Bytes;
+fn create_shared_resource_desc(device: &Device) -> (ByteCount, ResourceDesc) {
+    let texture_size: ByteCount;
     let cross_adapter_desc = ResourceDesc::default()
         .set_dimension(ResourceDimension::Texture2D)
         .set_layout(TextureLayout::RowMajor)
@@ -1050,7 +1050,7 @@ fn create_frame_resources(
     device: &Device,
     rtv_heap: &DescriptorHeap,
     swapchain: &Swapchain,
-    rtv_descriptor_handle_size: Bytes,
+    rtv_descriptor_handle_size: ByteCount,
 ) -> (Vec<Resource>, Vec<CommandAllocator>) {
     let clear_value = ClearValue::default()
         .set_format(Format::R8G8B8A8_UNorm)

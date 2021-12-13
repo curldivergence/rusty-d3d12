@@ -280,13 +280,13 @@ impl ResourceDesc {
         unsafe { std::mem::transmute(self.0.Dimension) }
     }
 
-    pub fn set_alignment(mut self, alignment: Bytes) -> Self {
+    pub fn set_alignment(mut self, alignment: ByteCount) -> Self {
         self.0.Alignment = alignment.0;
         self
     }
 
-    pub fn alignment(&self) -> Bytes {
-        Bytes(self.0.Alignment)
+    pub fn alignment(&self) -> ByteCount {
+        ByteCount(self.0.Alignment)
     }
 
     pub fn set_width(mut self, width: u64) -> Self {
@@ -456,22 +456,22 @@ impl HeapProperties {
 pub struct Range(pub D3D12_RANGE);
 
 impl Range {
-    pub fn set_begin(mut self, begin: Bytes) -> Self {
+    pub fn set_begin(mut self, begin: ByteCount) -> Self {
         self.0.Begin = begin.0;
         self
     }
 
-    pub fn begin(&self) -> Bytes {
-        Bytes(self.0.Begin)
+    pub fn begin(&self) -> ByteCount {
+        ByteCount(self.0.Begin)
     }
 
-    pub fn set_end(mut self, end: Bytes) -> Self {
+    pub fn set_end(mut self, end: ByteCount) -> Self {
         self.0.End = end.0;
         self
     }
 
-    pub fn end(&self) -> Bytes {
-        Bytes(self.0.End)
+    pub fn end(&self) -> ByteCount {
+        ByteCount(self.0.End)
     }
 }
 
@@ -942,22 +942,22 @@ impl VertexBufferView {
         GpuVirtualAddress(self.0.BufferLocation)
     }
 
-    pub fn set_size_in_bytes(mut self, size_in_bytes: Bytes) -> Self {
+    pub fn set_size_in_bytes(mut self, size_in_bytes: ByteCount) -> Self {
         self.0.SizeInBytes = size_in_bytes.0 as u32;
         self
     }
 
-    pub fn size_in_bytes(&self) -> Bytes {
-        Bytes::from(self.0.SizeInBytes)
+    pub fn size_in_bytes(&self) -> ByteCount {
+        ByteCount::from(self.0.SizeInBytes)
     }
 
-    pub fn set_stride_in_bytes(mut self, stride_in_bytes: Bytes) -> Self {
+    pub fn set_stride_in_bytes(mut self, stride_in_bytes: ByteCount) -> Self {
         self.0.StrideInBytes = stride_in_bytes.0 as u32;
         self
     }
 
-    pub fn stride_in_bytes(&self) -> Bytes {
-        Bytes::from(self.0.StrideInBytes)
+    pub fn stride_in_bytes(&self) -> ByteCount {
+        ByteCount::from(self.0.StrideInBytes)
     }
 }
 
@@ -1029,13 +1029,13 @@ impl<'a> InputElementDesc<'a> {
         self.0.InputSlot
     }
 
-    pub fn set_offset(mut self, offset: Bytes) -> Self {
+    pub fn set_offset(mut self, offset: ByteCount) -> Self {
         self.0.AlignedByteOffset = offset.0 as u32;
         self
     }
 
-    pub fn offset(&self) -> Bytes {
-        Bytes::from(self.0.AlignedByteOffset)
+    pub fn offset(&self) -> ByteCount {
+        ByteCount::from(self.0.AlignedByteOffset)
     }
 
     pub fn set_input_slot_class(mut self, class: InputClassification) -> Self {
@@ -1089,13 +1089,13 @@ impl IndexBufferView {
         GpuVirtualAddress(self.0.BufferLocation)
     }
 
-    pub fn set_size_in_bytes(mut self, size_in_bytes: Bytes) -> Self {
+    pub fn set_size_in_bytes(mut self, size_in_bytes: ByteCount) -> Self {
         self.0.SizeInBytes = size_in_bytes.0 as u32;
         self
     }
 
-    pub fn size_in_bytes(&self) -> Bytes {
-        Bytes::from(self.0.SizeInBytes)
+    pub fn size_in_bytes(&self) -> ByteCount {
+        ByteCount::from(self.0.SizeInBytes)
     }
 
     pub fn set_format(mut self, format: Format) -> Self {
@@ -2277,13 +2277,13 @@ impl SubresourceFootprint {
     pub fn depth(&self) -> u32 {
         self.0.Depth
     }
-    pub fn set_row_pitch(mut self, row_pitch: Bytes) -> Self {
+    pub fn set_row_pitch(mut self, row_pitch: ByteCount) -> Self {
         self.0.RowPitch = row_pitch.0 as u32;
         self
     }
 
-    pub fn row_pitch(&self) -> Bytes {
-        Bytes::from(self.0.RowPitch)
+    pub fn row_pitch(&self) -> ByteCount {
+        ByteCount::from(self.0.RowPitch)
     }
 }
 
@@ -2302,13 +2302,13 @@ impl Default for PlacedSubresourceFootprint {
 }
 
 impl PlacedSubresourceFootprint {
-    pub fn set_offset(mut self, offset: Bytes) -> Self {
+    pub fn set_offset(mut self, offset: ByteCount) -> Self {
         self.0.Offset = offset.0 as u64;
         self
     }
 
-    pub fn offset(&self) -> Bytes {
-        Bytes::from(self.0.Offset)
+    pub fn offset(&self) -> ByteCount {
+        ByteCount::from(self.0.Offset)
     }
 
     pub fn set_footprint(mut self, footprint: SubresourceFootprint) -> Self {
@@ -2339,13 +2339,13 @@ impl ConstantBufferViewDesc {
         GpuVirtualAddress(self.0.BufferLocation)
     }
 
-    pub fn set_size_in_bytes(mut self, size_in_bytes: Bytes) -> Self {
+    pub fn set_size_in_bytes(mut self, size_in_bytes: ByteCount) -> Self {
         self.0.SizeInBytes = size_in_bytes.0 as u32;
         self
     }
 
-    pub fn size_in_bytes(&self) -> Bytes {
-        Bytes::from(self.0.SizeInBytes)
+    pub fn size_in_bytes(&self) -> ByteCount {
+        ByteCount::from(self.0.SizeInBytes)
     }
 }
 
@@ -3123,22 +3123,22 @@ impl<'a> SubresourceData<'a> {
         self
     }
 
-    pub fn set_row_pitch(mut self, row_pitch: Bytes) -> Self {
+    pub fn set_row_pitch(mut self, row_pitch: ByteCount) -> Self {
         self.0.RowPitch = row_pitch.0 as i64;
         self
     }
 
-    pub fn row_pitch(&self) -> Bytes {
-        Bytes::from(self.0.RowPitch)
+    pub fn row_pitch(&self) -> ByteCount {
+        ByteCount::from(self.0.RowPitch)
     }
 
-    pub fn set_slice_pitch(mut self, slice_pitch: Bytes) -> Self {
+    pub fn set_slice_pitch(mut self, slice_pitch: ByteCount) -> Self {
         self.0.SlicePitch = slice_pitch.0 as i64;
         self
     }
 
-    pub fn slice_pitch(&self) -> Bytes {
-        Bytes::from(self.0.SlicePitch)
+    pub fn slice_pitch(&self) -> ByteCount {
+        ByteCount::from(self.0.SlicePitch)
     }
 }
 
@@ -3410,14 +3410,14 @@ impl BufferSrv {
 
     pub fn set_structure_byte_stride(
         mut self,
-        structure_byte_stride: Bytes,
+        structure_byte_stride: ByteCount,
     ) -> Self {
         self.0.StructureByteStride = structure_byte_stride.0 as u32;
         self
     }
 
-    pub fn structure_byte_stride(&self) -> Bytes {
-        Bytes::from(self.0.StructureByteStride)
+    pub fn structure_byte_stride(&self) -> ByteCount {
+        ByteCount::from(self.0.StructureByteStride)
     }
 
     pub fn set_flags(mut self, flags: BufferSrvFlags) -> Self {
@@ -3963,26 +3963,26 @@ impl BufferUav {
 
     pub fn set_structure_byte_stride(
         mut self,
-        structure_byte_stride: Bytes,
+        structure_byte_stride: ByteCount,
     ) -> Self {
         self.0.StructureByteStride = structure_byte_stride.0 as u32;
         self
     }
 
-    pub fn structure_byte_stride(&self) -> Bytes {
-        Bytes::from(self.0.StructureByteStride)
+    pub fn structure_byte_stride(&self) -> ByteCount {
+        ByteCount::from(self.0.StructureByteStride)
     }
 
     pub fn set_counter_offset_in_bytes(
         mut self,
-        counter_offset_in_bytes: Bytes,
+        counter_offset_in_bytes: ByteCount,
     ) -> Self {
         self.0.CounterOffsetInBytes = counter_offset_in_bytes.0;
         self
     }
 
-    pub fn counter_offset_in_bytes(&self) -> Bytes {
-        Bytes(self.0.CounterOffsetInBytes)
+    pub fn counter_offset_in_bytes(&self) -> ByteCount {
+        ByteCount(self.0.CounterOffsetInBytes)
     }
 
     pub fn set_flags(mut self, flags: BufferUavFlags) -> Self {
@@ -4527,8 +4527,8 @@ pub struct PipelineStateStreamDesc<'a>(
 );
 
 impl<'a> PipelineStateStreamDesc<'a> {
-    pub fn size_in_bytes(&self) -> Bytes {
-        Bytes::from(self.0.SizeInBytes)
+    pub fn size_in_bytes(&self) -> ByteCount {
+        ByteCount::from(self.0.SizeInBytes)
     }
 
     pub fn set_pipeline_state_subobject_stream(
@@ -5060,22 +5060,22 @@ impl FeatureDataD3DOptions {
 pub struct ResourceAllocationInfo(pub D3D12_RESOURCE_ALLOCATION_INFO);
 
 impl ResourceAllocationInfo {
-    pub fn set_size_in_bytes(mut self, size_in_bytes: Bytes) -> Self {
+    pub fn set_size_in_bytes(mut self, size_in_bytes: ByteCount) -> Self {
         self.0.SizeInBytes = size_in_bytes.0;
         self
     }
 
-    pub fn size_in_bytes(&self) -> Bytes {
-        Bytes::from(self.0.SizeInBytes)
+    pub fn size_in_bytes(&self) -> ByteCount {
+        ByteCount::from(self.0.SizeInBytes)
     }
 
-    pub fn set_alignment(mut self, alignment: Bytes) -> Self {
+    pub fn set_alignment(mut self, alignment: ByteCount) -> Self {
         self.0.Alignment = alignment.0;
         self
     }
 
-    pub fn alignment(&self) -> Bytes {
-        Bytes::from(self.0.Alignment)
+    pub fn alignment(&self) -> ByteCount {
+        ByteCount::from(self.0.Alignment)
     }
 }
 
@@ -5086,13 +5086,13 @@ impl ResourceAllocationInfo {
 pub struct HeapDesc(pub D3D12_HEAP_DESC);
 
 impl HeapDesc {
-    pub fn set_size_in_bytes(mut self, size_in_bytes: Bytes) -> Self {
+    pub fn set_size_in_bytes(mut self, size_in_bytes: ByteCount) -> Self {
         self.0.SizeInBytes = size_in_bytes.0;
         self
     }
 
-    pub fn size_in_bytes(&self) -> Bytes {
-        Bytes::from(self.0.SizeInBytes)
+    pub fn size_in_bytes(&self) -> ByteCount {
+        ByteCount::from(self.0.SizeInBytes)
     }
 
     pub fn set_properties(mut self, properties: &HeapProperties) -> Self {
@@ -5104,13 +5104,13 @@ impl HeapDesc {
         HeapProperties(self.0.Properties)
     }
 
-    pub fn set_alignment(mut self, alignment: Bytes) -> Self {
+    pub fn set_alignment(mut self, alignment: ByteCount) -> Self {
         self.0.Alignment = alignment.0;
         self
     }
 
-    pub fn alignment(&self) -> Bytes {
-        Bytes::from(self.0.Alignment)
+    pub fn alignment(&self) -> ByteCount {
+        ByteCount::from(self.0.Alignment)
     }
 
     pub fn set_flags(mut self, flags: HeapFlags) -> Self {

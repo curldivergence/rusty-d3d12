@@ -57,13 +57,13 @@ impl Vertex {
                 .unwrap()
                 .set_format(Format::R32G32B32_Float)
                 .set_input_slot(0)
-                .set_offset(Bytes(offset_of!(Self, position) as u64)),
+                .set_offset(ByteCount(offset_of!(Self, position) as u64)),
             InputElementDesc::default()
                 .set_name("Color")
                 .unwrap()
                 .set_format(Format::R32G32B32A32_Float)
                 .set_input_slot(0)
-                .set_offset(Bytes(offset_of!(Self, color) as u64)),
+                .set_offset(ByteCount(offset_of!(Self, color) as u64)),
         ]
     }
 }
@@ -73,14 +73,14 @@ trait TypedBuffer {
     fn from_resource(
         resource: Resource,
         element_count: u32,
-        element_size: Bytes,
+        element_size: ByteCount,
     ) -> Self;
 }
 
 struct VertexBuffer {
     buffer: Resource,
     view: VertexBufferView,
-    size: Bytes,
+    size: ByteCount,
 }
 
 impl TypedBuffer for VertexBuffer {
@@ -90,7 +90,7 @@ impl TypedBuffer for VertexBuffer {
     fn from_resource(
         buffer: Resource,
         element_count: u32,
-        element_size: Bytes,
+        element_size: ByteCount,
     ) -> Self {
         let size = element_size * element_count;
         let view = VertexBufferView::default()
@@ -108,7 +108,7 @@ impl TypedBuffer for VertexBuffer {
 struct IndexBuffer {
     buffer: Resource,
     view: IndexBufferView,
-    size: Bytes,
+    size: ByteCount,
 }
 
 impl TypedBuffer for IndexBuffer {
@@ -117,15 +117,15 @@ impl TypedBuffer for IndexBuffer {
     fn from_resource(
         buffer: Resource,
         element_count: u32,
-        element_size: Bytes,
+        element_size: ByteCount,
     ) -> Self {
         let size = element_size * element_count;
         let view = IndexBufferView::default()
             .set_buffer_location(buffer.get_gpu_virtual_address())
             .set_size_in_bytes(element_count * element_size)
             .set_format(match element_size {
-                Bytes(2) => Format::R16_UInt,
-                Bytes(4) => Format::R32_UInt,
+                ByteCount(2) => Format::R16_UInt,
+                ByteCount(4) => Format::R32_UInt,
                 _ => panic!("wrong index type"),
             });
 
@@ -144,7 +144,7 @@ struct HelloTriangleSample {
     vertex_buffers: Vec<VertexBuffer>,
     current_frame: u64,
     current_fence_value: u64,
-    rtv_descriptor_size: Bytes,
+    rtv_descriptor_size: ByteCount,
     rtv_heap: DescriptorHeap,
     swapchain: Swapchain,
     command_list: CommandList,
@@ -495,7 +495,7 @@ impl HelloTriangleSample {
     fn create_buffer(
         &self,
         device: &Device,
-        size: Bytes,
+        size: ByteCount,
         heap_type: HeapType,
         initial_state: ResourceStates,
     ) -> DxResult<Resource> {
@@ -540,7 +540,7 @@ impl HelloTriangleSample {
             .reset(&self.command_allocator, None)
             .expect("Cannot reset command lsit");
 
-        let size = Bytes::from(
+        let size = ByteCount::from(
             init_data.len() * std::mem::size_of::<T::ElementType>(),
         );
         let staging_buffer = self
@@ -595,9 +595,9 @@ impl HelloTriangleSample {
 
         self.command_list.copy_buffer_region(
             &default_buffer,
-            Bytes(0),
+            ByteCount(0),
             &staging_buffer,
-            Bytes(0),
+            ByteCount(0),
             size,
         );
 
@@ -619,7 +619,7 @@ impl HelloTriangleSample {
         Ok(T::from_resource(
             default_buffer,
             init_data.len() as u32,
-            Bytes::from(std::mem::size_of::<T::ElementType>()),
+            ByteCount::from(std::mem::size_of::<T::ElementType>()),
         ))
     }
 

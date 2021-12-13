@@ -67,25 +67,25 @@ mod sample_assets {
                     .unwrap()
                     .set_format(Format::R32G32B32_Float)
                     .set_input_slot(0)
-                    .set_offset(Bytes::from(offset_of!(Self, position))),
+                    .set_offset(ByteCount::from(offset_of!(Self, position))),
                 InputElementDesc::default()
                     .set_name("NORMAL")
                     .unwrap()
                     .set_format(Format::R32G32B32_Float)
                     .set_input_slot(0)
-                    .set_offset(Bytes::from(offset_of!(Self, normal))),
+                    .set_offset(ByteCount::from(offset_of!(Self, normal))),
                 InputElementDesc::default()
                     .set_name("TEXCOORD")
                     .unwrap()
                     .set_format(Format::R32G32_Float)
                     .set_input_slot(0)
-                    .set_offset(Bytes::from(offset_of!(Self, uv))),
+                    .set_offset(ByteCount::from(offset_of!(Self, uv))),
                 InputElementDesc::default()
                     .set_name("TANGENT")
                     .unwrap()
                     .set_format(Format::R32G32B32_Float)
                     .set_input_slot(0)
-                    .set_offset(Bytes::from(offset_of!(Self, tangent))),
+                    .set_offset(ByteCount::from(offset_of!(Self, tangent))),
             ]
         }
     }
@@ -157,11 +157,11 @@ mod sample_assets {
     pub const CITY_MATERIAL_TEXTURE_CHANNEL_COUNT: u32 = 4;
     pub const CITY_SPACING_INTERVAL: f32 = 16.;
 
-    pub const VERTEX_DATA_OFFSET: Bytes = Bytes(524288);
-    pub const VERTEX_DATA_SIZE: Bytes = Bytes(820248);
+    pub const VERTEX_DATA_OFFSET: ByteCount = ByteCount(524288);
+    pub const VERTEX_DATA_SIZE: ByteCount = ByteCount(820248);
 
-    pub const INDEX_DATA_OFFSET: Bytes = Bytes(1344536);
-    pub const INDEX_DATA_SIZE: Bytes = Bytes(74568);
+    pub const INDEX_DATA_OFFSET: ByteCount = ByteCount(1344536);
+    pub const INDEX_DATA_SIZE: ByteCount = ByteCount(74568);
 }
 
 use sample_assets::*;
@@ -206,8 +206,8 @@ struct DynamicIndexingSample {
     rtv_heap: DescriptorHeap,
     dsv_heap: DescriptorHeap,
     cbv_srv_heap: DescriptorHeap,
-    cbv_srv_descriptor_handle_size: Bytes,
-    rtv_descriptor_handle_size: Bytes,
+    cbv_srv_descriptor_handle_size: ByteCount,
+    rtv_descriptor_handle_size: ByteCount,
     sampler_heap: DescriptorHeap,
     command_allocator: CommandAllocator,
     command_list: CommandList,
@@ -445,8 +445,8 @@ impl DynamicIndexingSample {
         for frame_idx in 0..FRAMES_IN_FLIGHT {
             let mut frame_resource = FrameResource::new(&self.device);
 
-            let mut cb_offset = Bytes(0);
-            let cb_size = Bytes::from(size_of::<SceneConstantBuffer>());
+            let mut cb_offset = ByteCount(0);
+            let cb_size = ByteCount::from(size_of::<SceneConstantBuffer>());
 
             for _ in 0..CITY_ROW_COUNT {
                 for _ in 0..CITY_COLUMN_COUNT {
@@ -583,14 +583,14 @@ impl DynamicIndexingSample {
                 &self.mesh_data[VERTEX_DATA_OFFSET.into()
                     ..(VERTEX_DATA_OFFSET + VERTEX_DATA_SIZE).into()],
             )
-            .set_row_pitch(Bytes(VERTEX_DATA_SIZE.0))
-            .set_slice_pitch(Bytes(VERTEX_DATA_SIZE.0));
+            .set_row_pitch(ByteCount(VERTEX_DATA_SIZE.0))
+            .set_slice_pitch(ByteCount(VERTEX_DATA_SIZE.0));
 
         self.command_list
             .update_subresources_heap_alloc(
                 &vertex_buffer,
                 &vertex_staging_buffer,
-                Bytes(0),
+                ByteCount(0),
                 0,
                 1,
                 &[vertex_subresource_data],
@@ -612,10 +612,10 @@ impl DynamicIndexingSample {
         self.vertex_buffer_view = Some(
             VertexBufferView::default()
                 .set_buffer_location(vertex_buffer.get_gpu_virtual_address())
-                .set_size_in_bytes(Bytes::from(
+                .set_size_in_bytes(ByteCount::from(
                     vertex_count * size_of::<Vertex>() as u64,
                 ))
-                .set_stride_in_bytes(Bytes::from(size_of::<Vertex>())),
+                .set_stride_in_bytes(ByteCount::from(size_of::<Vertex>())),
         );
 
         self.vertex_buffer = Some(vertex_buffer);
@@ -670,14 +670,14 @@ impl DynamicIndexingSample {
                 &self.mesh_data[INDEX_DATA_OFFSET.into()
                     ..(INDEX_DATA_OFFSET + INDEX_DATA_SIZE).into()],
             )
-            .set_row_pitch(Bytes(INDEX_DATA_SIZE.0))
-            .set_slice_pitch(Bytes(INDEX_DATA_SIZE.0));
+            .set_row_pitch(ByteCount(INDEX_DATA_SIZE.0))
+            .set_slice_pitch(ByteCount(INDEX_DATA_SIZE.0));
 
         self.command_list
             .update_subresources_heap_alloc(
                 &index_buffer,
                 &index_staging_buffer,
-                Bytes(0),
+                ByteCount(0),
                 0,
                 1,
                 &[index_subresource_data],
@@ -697,7 +697,7 @@ impl DynamicIndexingSample {
         self.index_buffer_view = Some(
             IndexBufferView::default()
                 .set_buffer_location(index_buffer.get_gpu_virtual_address())
-                .set_size_in_bytes(self.index_count * Bytes(4))
+                .set_size_in_bytes(self.index_count * ByteCount(4))
                 .set_format(Format::R32_UInt),
         );
 
@@ -843,7 +843,7 @@ impl DynamicIndexingSample {
             .update_subresources_heap_alloc(
                 &city_diffuse_texture,
                 &texture_staging_buffer,
-                Bytes(0),
+                ByteCount(0),
                 0,
                 subresource_count,
                 slice::from_ref(&texture_subresource_data),
@@ -877,7 +877,7 @@ impl DynamicIndexingSample {
             .expect("Cannot get upload buffer step");
 
         let upload_buffer_size =
-            Bytes::from(upload_buffer_step * CITY_MATERIAL_COUNT);
+            ByteCount::from(upload_buffer_step * CITY_MATERIAL_COUNT);
 
         let materials_staging_buffer = self
             .device
@@ -899,11 +899,11 @@ impl DynamicIndexingSample {
         for mat_idx in 0..CITY_MATERIAL_COUNT as usize {
             let texture_subresource_data = SubresourceData::default()
                 .set_data(&texture_data[mat_idx])
-                .set_row_pitch(Bytes(
+                .set_row_pitch(ByteCount(
                     CITY_MATERIAL_TEXTURE_CHANNEL_COUNT as u64
                         * texture_desc.0.Width,
                 ))
-                .set_slice_pitch(Bytes(
+                .set_slice_pitch(ByteCount(
                     CITY_MATERIAL_TEXTURE_CHANNEL_COUNT as u64
                         * texture_desc.0.Width
                         * texture_desc.0.Height as u64,
@@ -913,7 +913,7 @@ impl DynamicIndexingSample {
                 .update_subresources_heap_alloc(
                     &self.city_material_textures[mat_idx],
                     &materials_staging_buffer,
-                    Bytes(mat_idx as u64 * upload_buffer_step.0),
+                    ByteCount(mat_idx as u64 * upload_buffer_step.0),
                     0,
                     subresource_count,
                     slice::from_ref(&texture_subresource_data),
@@ -1388,7 +1388,7 @@ d3dx12.h as a dependency to have DX12SerializeVersionedRootSignature"
 fn setup_heaps(
     device: &Device,
     swapchain: &Swapchain,
-    rtv_descriptor_handle_size: Bytes,
+    rtv_descriptor_handle_size: ByteCount,
 ) -> (
     Vec<Resource>,
     DescriptorHeap,
@@ -1602,7 +1602,7 @@ impl FrameResource {
         cbv_srv_descriptor_heap: &DescriptorHeap,
         sampler_descriptor_heap: &DescriptorHeap,
         root_signature: &RootSignature,
-        cbv_srv_descriptor_handle_size: Bytes,
+        cbv_srv_descriptor_handle_size: ByteCount,
     ) {
         let bundle = device
             .create_command_list(
@@ -1643,7 +1643,7 @@ impl FrameResource {
         cbv_srv_descriptor_heap: &DescriptorHeap,
         sampler_descriptor_heap: &DescriptorHeap,
         root_signature: &RootSignature,
-        cbv_srv_descriptor_handle_size: Bytes,
+        cbv_srv_descriptor_handle_size: ByteCount,
     ) {
         let mut heaps = [
             cbv_srv_descriptor_heap.clone(),

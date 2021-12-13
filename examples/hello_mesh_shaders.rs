@@ -76,7 +76,7 @@ impl Vertex {
             .unwrap()
             .set_format(Format::R32G32B32_Float)
             .set_input_slot(0)
-            .set_offset(Bytes(offset_of!(Self, position) as u64))]
+            .set_offset(ByteCount(offset_of!(Self, position) as u64))]
     }
 }
 
@@ -120,7 +120,7 @@ struct HelloMeshShadersSample {
     scissor_desc: Rect,
     render_targets: Vec<Resource>,
     rtv_heap: DescriptorHeap,
-    rtv_descriptor_handle_size: Bytes,
+    rtv_descriptor_handle_size: ByteCount,
     dsv_heap: DescriptorHeap,
     command_allocators: Vec<CommandAllocator>,
     command_list: CommandList,
@@ -334,7 +334,7 @@ impl HelloMeshShadersSample {
             .reset(&self.command_allocators[0], None)
             .expect("Cannot reset command lsit");
 
-        let size = Bytes::from(init_data.len() * std::mem::size_of::<T>());
+        let size = ByteCount::from(init_data.len() * std::mem::size_of::<T>());
         let staging_buffer = self
             .device
             .create_committed_resource(
@@ -394,9 +394,9 @@ impl HelloMeshShadersSample {
 
         self.command_list.copy_buffer_region(
             &default_buffer,
-            Bytes(0),
+            ByteCount(0),
             &staging_buffer,
-            Bytes(0),
+            ByteCount(0),
             size,
         );
 
@@ -759,7 +759,7 @@ fn setup_root_signature(
 fn setup_heaps(
     device: &Device,
     swapchain: &Swapchain,
-    rtv_descriptor_handle_size: Bytes,
+    rtv_descriptor_handle_size: ByteCount,
 ) -> (Vec<Resource>, DescriptorHeap, DescriptorHeap) {
     let rtv_heap = device
         .create_descriptor_heap(

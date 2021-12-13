@@ -215,7 +215,7 @@ impl Vertex {
             .unwrap()
             .set_format(Format::R32G32B32_Float)
             .set_input_slot(0)
-            .set_offset(Bytes::from(offset_of!(Self, position)))]
+            .set_offset(ByteCount::from(offset_of!(Self, position)))]
     }
 }
 
@@ -233,13 +233,13 @@ impl BlurVertex {
                 .unwrap()
                 .set_format(Format::R32G32B32_Float)
                 .set_input_slot(0)
-                .set_offset(Bytes::from(offset_of!(Self, position))),
+                .set_offset(ByteCount::from(offset_of!(Self, position))),
             InputElementDesc::default()
                 .set_name("TEXCOORD")
                 .unwrap()
                 .set_format(Format::R32G32_Float)
                 .set_input_slot(0)
-                .set_offset(Bytes::from(offset_of!(Self, uv))),
+                .set_offset(ByteCount::from(offset_of!(Self, uv))),
         ]
     }
 }
@@ -327,10 +327,10 @@ struct Pipeline {
     scissor_rect: Rect,
     triangle_count: u32,
     rtv_heaps: [DescriptorHeap; DEVICE_COUNT],
-    rtv_descriptor_handle_sizes: [Bytes; DEVICE_COUNT],
+    rtv_descriptor_handle_sizes: [ByteCount; DEVICE_COUNT],
     dsv_heap: DescriptorHeap,
     cbv_srv_heap: DescriptorHeap,
-    cbv_srv_descriptor_handle_sizes: [Bytes; DEVICE_COUNT],
+    cbv_srv_descriptor_handle_sizes: [ByteCount; DEVICE_COUNT],
     timestamp_result_buffers: [Resource; DEVICE_COUNT],
     current_times_index: usize,
     query_heaps: [QueryHeap; DEVICE_COUNT],
@@ -930,7 +930,7 @@ impl Pipeline {
                     &secondary_adapter_texture_desc,
                     0,
                     1,
-                    Bytes(0),
+                    ByteCount(0),
                 );
 
             let dest = TextureCopyLocation::new_subresource_index(
@@ -1126,7 +1126,7 @@ impl Pipeline {
             timestamp_heap_index as u32,
             2,
             &self.timestamp_result_buffers[adapter_idx],
-            Bytes::from(timestamp_heap_index * size_of::<u64>()),
+            ByteCount::from(timestamp_heap_index * size_of::<u64>()),
         );
 
         self.direct_command_lists[adapter_idx]
@@ -1151,7 +1151,7 @@ impl Pipeline {
             let render_target_desc =
                 self.render_targets[adapter_idx][self.frame_index].get_desc();
             let (render_target_layout, _, _, _) = self.devices[adapter_idx]
-                .get_copyable_footprints(&render_target_desc, 0, 1, Bytes(0));
+                .get_copyable_footprints(&render_target_desc, 0, 1, ByteCount(0));
 
             let dest = TextureCopyLocation::new_placed_footprint(
                 &self.cross_adapter_resources[adapter_idx][self.frame_index],
@@ -1311,7 +1311,7 @@ impl Pipeline {
             timestamp_heap_index as u32,
             2,
             &self.timestamp_result_buffers[adapter_idx],
-            Bytes::from(timestamp_heap_index * size_of::<u64>()),
+            ByteCount::from(timestamp_heap_index * size_of::<u64>()),
         );
 
         self.direct_command_lists[adapter_idx]
@@ -1558,12 +1558,12 @@ impl Pipeline {
         let empty_range = Range::default();
         let moving_average = [&mut self.draw_times, &mut self.blur_times];
         for device_idx in 0..DEVICE_COUNT {
-            let range_begin = Bytes::from(
+            let range_begin = ByteCount::from(
                 2 * oldest_frame_index as u32 * size_of::<u64>() as u32,
             );
             let read_range = Range::default()
                 .set_begin(range_begin)
-                .set_end(range_begin + Bytes(2 * size_of::<u64>() as u64));
+                .set_end(range_begin + ByteCount(2 * size_of::<u64>() as u64));
 
             let mapped_data = self.timestamp_result_buffers[device_idx]
                 .map(0, Some(&read_range))
@@ -1702,7 +1702,7 @@ fn create_blur_workload_constant_buffer(
     devices: &[Device; DEVICE_COUNT],
     blur_ps_loop_count: u32,
 ) -> (Resource, WorkloadConstantBufferData, *mut u8) {
-    let blur_workload_constant_buffer_size = Bytes::from(
+    let blur_workload_constant_buffer_size = ByteCount::from(
         size_of::<WorkloadConstantBufferData>() as u32
             * FRAMES_IN_FLIGHT as u32,
     );
@@ -1743,7 +1743,7 @@ fn create_workload_constant_buffer(
     devices: &[Device; DEVICE_COUNT],
     ps_loop_count: u32,
 ) -> (Resource, WorkloadConstantBufferData, *mut u8) {
-    let workload_constant_buffer_size = Bytes::from(
+    let workload_constant_buffer_size = ByteCount::from(
         size_of::<WorkloadConstantBufferData>() as u32
             * FRAMES_IN_FLIGHT as u32,
     );
@@ -1783,7 +1783,7 @@ fn create_workload_constant_buffer(
 fn create_triangle_constant_buffer(
     devices: &[Device; DEVICE_COUNT],
 ) -> (Resource, Vec<SceneConstantBuffer>, *mut u8) {
-    let constant_buffer_size = Bytes::from(
+    let constant_buffer_size = ByteCount::from(
         size_of::<SceneConstantBuffer>() as u32
             * MAX_TRIANGLE_COUNT
             * FRAMES_IN_FLIGHT as u32,
@@ -1909,7 +1909,7 @@ fn create_blur_vertex_buffer(
         },
     ];
     let quad_vertex_buffer_size =
-        Bytes::from(quad_vertices.len() * size_of::<BlurVertex>());
+        ByteCount::from(quad_vertices.len() * size_of::<BlurVertex>());
     let quad_vertex_buffer = devices[1]
         .create_committed_resource(
             &HeapProperties::default().set_heap_type(HeapType::Default),
@@ -1948,7 +1948,7 @@ fn create_blur_vertex_buffer(
         .update_subresources_heap_alloc(
             &quad_vertex_buffer,
             &quad_vertex_buffer_upload,
-            Bytes(0),
+            ByteCount(0),
             0,
             1,
             slice::from_ref(&quad_vertex_data),
@@ -1966,7 +1966,7 @@ fn create_blur_vertex_buffer(
     let quad_vertex_buffer_view = VertexBufferView::default()
         .set_buffer_location(quad_vertex_buffer.get_gpu_virtual_address())
         .set_size_in_bytes(quad_vertex_buffer_size)
-        .set_stride_in_bytes(Bytes::from(std::mem::size_of::<BlurVertex>()));
+        .set_stride_in_bytes(ByteCount::from(std::mem::size_of::<BlurVertex>()));
     (
         quad_vertex_buffer,
         quad_vertex_buffer_upload,
@@ -1999,7 +1999,7 @@ fn create_primary_vertex_buffer(
     ];
 
     let vertex_buffer_size =
-        Bytes::from(triangle_vertices.len() * size_of::<Vertex>());
+        ByteCount::from(triangle_vertices.len() * size_of::<Vertex>());
 
     let vertex_buffer = devices[0]
         .create_committed_resource(
@@ -2042,7 +2042,7 @@ fn create_primary_vertex_buffer(
         .update_subresources_heap_alloc(
             &vertex_buffer,
             &vertex_buffer_upload,
-            Bytes(0),
+            ByteCount(0),
             0,
             1,
             slice::from_ref(&vertex_data),
@@ -2061,7 +2061,7 @@ fn create_primary_vertex_buffer(
 
     let vertex_buffer_view = VertexBufferView::default()
         .set_buffer_location(vertex_buffer.get_gpu_virtual_address())
-        .set_stride_in_bytes(Bytes::from(std::mem::size_of::<Vertex>()))
+        .set_stride_in_bytes(ByteCount::from(std::mem::size_of::<Vertex>()))
         .set_size_in_bytes(vertex_buffer_size);
     trace!("Created primary adapter vertex buffer");
 
@@ -2360,7 +2360,7 @@ fn create_root_signatures(
 
 fn create_shared_resource_descs(
     devices: &[Device; DEVICE_COUNT],
-) -> (bool, Bytes, ResourceDesc) {
+) -> (bool, ByteCount, ResourceDesc) {
     let texture_size;
     let cross_adapter_desc;
 
@@ -2388,7 +2388,7 @@ fn create_shared_resource_descs(
         );
         trace!("cross adapter texture info: {:?}", &texture_info);
         // ToDo: implement getters
-        texture_size = Bytes(texture_info.0.SizeInBytes);
+        texture_size = ByteCount(texture_info.0.SizeInBytes);
     } else {
         info!("Cross adapter textures are not supported");
         let (layout, _, _, _) = devices[0].get_copyable_footprints(
@@ -2400,7 +2400,7 @@ fn create_shared_resource_descs(
                 .set_flags(ResourceFlags::AllowRenderTarget),
             0,
             1,
-            Bytes(0),
+            ByteCount(0),
         );
 
         texture_size = align_to_multiple(
@@ -2428,7 +2428,7 @@ fn create_frame_resources(
     devices: &[Device; DEVICE_COUNT],
     rtv_heaps: &[DescriptorHeap; DEVICE_COUNT],
     swapchain: &Swapchain,
-    rtv_descriptor_handle_sizes: [Bytes; DEVICE_COUNT],
+    rtv_descriptor_handle_sizes: [ByteCount; DEVICE_COUNT],
 ) -> (
     [[Resource; FRAMES_IN_FLIGHT]; DEVICE_COUNT],
     [[CommandAllocator; FRAMES_IN_FLIGHT]; DEVICE_COUNT],
@@ -2529,7 +2529,7 @@ fn create_query_heaps(
 ) -> ([Resource; DEVICE_COUNT], [QueryHeap; DEVICE_COUNT]) {
     let query_result_count = (FRAMES_IN_FLIGHT * 2) as u64;
     let query_results_buffer_size =
-        Bytes::from(query_result_count * std::mem::size_of::<u64>() as u64);
+        ByteCount::from(query_result_count * std::mem::size_of::<u64>() as u64);
 
     let query_heap_desc = QueryHeapDesc::default()
         .set_heap_type(QueryHeapType::Timestamp)

@@ -204,10 +204,10 @@ pub enum Format {
 }
 
 impl Format {
-    pub fn get_size(self) -> Bytes {
+    pub fn get_size(self) -> ByteCount {
         match self {
-            Self::R16_UInt => Bytes(2),
-            Self::R32_UInt => Bytes(4),
+            Self::R16_UInt => ByteCount(2),
+            Self::R32_UInt => ByteCount(4),
             _ => unimplemented!(),
         }
     }

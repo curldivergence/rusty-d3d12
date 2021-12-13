@@ -53,38 +53,37 @@ macro_rules! impl_mul_div {
     };
 }
 
-/// Bytes
+/// ByteCount
 
-// ToDo: rename to ByteCount?
 #[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Bytes(pub u64);
+pub struct ByteCount(pub u64);
 
-// Bytes + Bytes = Bytes
-impl std::ops::Add<Bytes> for Bytes {
+// ByteCount + ByteCount = ByteCount
+impl std::ops::Add<ByteCount> for ByteCount {
     type Output = Self;
 
-    fn add(self, rhs: Bytes) -> Self::Output {
+    fn add(self, rhs: ByteCount) -> Self::Output {
         Self(self.0 + rhs.0)
     }
 }
 
-impl std::ops::AddAssign<Bytes> for Bytes {
+impl std::ops::AddAssign<ByteCount> for ByteCount {
     fn add_assign(&mut self, rhs: Self) {
         *self = Self(self.0 + rhs.0);
     }
 }
 
-impl_mul_div!(Bytes, u8);
-impl_mul_div!(Bytes, i8);
-impl_mul_div!(Bytes, u16);
-impl_mul_div!(Bytes, i16);
-impl_mul_div!(Bytes, u32);
-impl_mul_div!(Bytes, i32);
-impl_mul_div!(Bytes, u64);
-impl_mul_div!(Bytes, i64);
-impl_mul_div!(Bytes, usize);
-impl_mul_div!(Bytes, isize);
+impl_mul_div!(ByteCount, u8);
+impl_mul_div!(ByteCount, i8);
+impl_mul_div!(ByteCount, u16);
+impl_mul_div!(ByteCount, i16);
+impl_mul_div!(ByteCount, u32);
+impl_mul_div!(ByteCount, i32);
+impl_mul_div!(ByteCount, u64);
+impl_mul_div!(ByteCount, i64);
+impl_mul_div!(ByteCount, usize);
+impl_mul_div!(ByteCount, isize);
 
 // // Bytes * Elements = Bytes
 // impl std::ops::Mul<Elements> for Bytes {
@@ -95,22 +94,22 @@ impl_mul_div!(Bytes, isize);
 //     }
 // }
 
-impl Into<usize> for Bytes {
+impl Into<usize> for ByteCount {
     fn into(self) -> usize {
         self.0 as usize
     }
 }
 
-impl_from!(Bytes, u8);
-impl_from!(Bytes, i8);
-impl_from!(Bytes, u16);
-impl_from!(Bytes, i16);
-impl_from!(Bytes, u32);
-impl_from!(Bytes, i32);
-impl_from!(Bytes, u64);
-impl_from!(Bytes, i64);
-impl_from!(Bytes, usize);
-impl_from!(Bytes, isize);
+impl_from!(ByteCount, u8);
+impl_from!(ByteCount, i8);
+impl_from!(ByteCount, u16);
+impl_from!(ByteCount, i16);
+impl_from!(ByteCount, u32);
+impl_from!(ByteCount, i32);
+impl_from!(ByteCount, u64);
+impl_from!(ByteCount, i64);
+impl_from!(ByteCount, usize);
+impl_from!(ByteCount, isize);
 
 /// Elements
 
@@ -196,6 +195,6 @@ pub fn align_to_multiple(value: u64, alignment: u64) -> u64 {
 #[macro_export]
 macro_rules! size_of {
     ($struct_type:ty) => {
-        Bytes::from(std::mem::size_of::<$struct_type>())
+        ByteCount::from(std::mem::size_of::<$struct_type>())
     };
 }
