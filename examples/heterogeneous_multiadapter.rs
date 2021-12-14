@@ -213,7 +213,7 @@ impl Vertex {
         vec![InputElementDesc::default()
             .set_name("POSITION")
             .unwrap()
-            .set_format(Format::R32G32B32_Float)
+            .set_format(Format::R32G32B32Float)
             .set_input_slot(0)
             .set_offset(ByteCount::from(offset_of!(Self, position)))]
     }
@@ -231,13 +231,13 @@ impl BlurVertex {
             InputElementDesc::default()
                 .set_name("POSITION")
                 .unwrap()
-                .set_format(Format::R32G32B32_Float)
+                .set_format(Format::R32G32B32Float)
                 .set_input_slot(0)
                 .set_offset(ByteCount::from(offset_of!(Self, position))),
             InputElementDesc::default()
                 .set_name("TEXCOORD")
                 .unwrap()
-                .set_format(Format::R32G32_Float)
+                .set_format(Format::R32G32Float)
                 .set_input_slot(0)
                 .set_offset(ByteCount::from(offset_of!(Self, uv))),
         ]
@@ -631,7 +631,7 @@ impl Pipeline {
                         HeapFlags::None,
                         &ResourceDesc::default()
                             .set_dimension(ResourceDimension::Texture2D)
-                            .set_format(Format::R8G8B8A8_UNorm)
+                            .set_format(Format::R8G8B8A8Unorm)
                             .set_width(WINDOW_WIDTH.into())
                             .set_height(WINDOW_HEIGHT.into())
                             .set_flags(ResourceFlags::AllowRenderTarget),
@@ -1854,10 +1854,10 @@ fn create_depth_stencil(
     dsv_heap: &DescriptorHeap,
 ) -> Resource {
     let depth_stencil_desc = DepthStencilViewDesc::default()
-        .set_format(Format::D32_Float)
+        .set_format(Format::D32Float)
         .set_view_dimension(DsvDimension::Texture2D);
     let clear_value = ClearValue::default()
-        .set_format(Format::D32_Float)
+        .set_format(Format::D32Float)
         .set_depth_stencil(
             &DepthStencilValue::default().set_depth(1.).set_stencil(0),
         );
@@ -1867,7 +1867,7 @@ fn create_depth_stencil(
             HeapFlags::None,
             &ResourceDesc::default()
                 .set_dimension(ResourceDimension::Texture2D)
-                .set_format(Format::D32_Float)
+                .set_format(Format::D32Float)
                 .set_width(WINDOW_WIDTH.into())
                 .set_height(WINDOW_HEIGHT.into())
                 .set_flags(ResourceFlags::AllowDepthStencil),
@@ -2154,8 +2154,8 @@ fn create_psos(
             &DepthStencilDesc::default().set_depth_enable(false),
         )
         .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
-        .set_rtv_formats(&[Format::R8G8B8A8_UNorm])
-        .set_dsv_format(Format::D32_Float);
+        .set_rtv_formats(&[Format::R8G8B8A8Unorm])
+        .set_dsv_format(Format::D32Float);
 
     let pso = devices[0]
         .create_graphics_pipeline_state(&pso_desc)
@@ -2211,7 +2211,7 @@ fn create_psos(
             &DepthStencilDesc::default().set_depth_enable(false),
         )
         .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
-        .set_rtv_formats(&[Format::R8G8B8A8_UNorm]);
+        .set_rtv_formats(&[Format::R8G8B8A8Unorm]);
     let blur_pso_u = devices[1]
         .create_graphics_pipeline_state(&blur_pso_desc_u)
         .expect("Cannot create PSO");
@@ -2231,7 +2231,7 @@ fn create_psos(
             &DepthStencilDesc::default().set_depth_enable(false),
         )
         .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
-        .set_rtv_formats(&[Format::R8G8B8A8_UNorm]);
+        .set_rtv_formats(&[Format::R8G8B8A8Unorm]);
     let blur_pso_v = devices[1]
         .create_graphics_pipeline_state(&blur_pso_desc_v)
         .expect("Cannot create PSO");
@@ -2376,7 +2376,7 @@ fn create_shared_resource_descs(
         info!("Cross adapter textures are supported");
         cross_adapter_desc = ResourceDesc::default()
             .set_dimension(ResourceDimension::Texture2D)
-            .set_format(Format::R8G8B8A8_UNorm)
+            .set_format(Format::R8G8B8A8Unorm)
             .set_width(WINDOW_WIDTH.into())
             .set_height(WINDOW_HEIGHT.into())
             .set_layout(TextureLayout::RowMajor)
@@ -2394,7 +2394,7 @@ fn create_shared_resource_descs(
         let (layout, _, _, _) = devices[0].get_copyable_footprints(
             &ResourceDesc::default()
                 .set_dimension(ResourceDimension::Texture2D)
-                .set_format(Format::R8G8B8A8_UNorm)
+                .set_format(Format::R8G8B8A8Unorm)
                 .set_width(WINDOW_WIDTH.into())
                 .set_height(WINDOW_HEIGHT.into())
                 .set_flags(ResourceFlags::AllowRenderTarget),
@@ -2435,12 +2435,12 @@ fn create_frame_resources(
     [CommandAllocator; FRAMES_IN_FLIGHT],
 ) {
     let clear_value = ClearValue::default()
-        .set_format(Format::R8G8B8A8_UNorm)
+        .set_format(Format::R8G8B8A8Unorm)
         .set_color(CLEAR_COLOR);
 
     let render_target_desc = ResourceDesc::default()
         .set_dimension(ResourceDimension::Texture2D)
-        .set_format(Format::R8G8B8A8_UNorm)
+        .set_format(Format::R8G8B8A8Unorm)
         .set_width(WINDOW_WIDTH.into())
         .set_height(WINDOW_HEIGHT.into())
         .set_flags(ResourceFlags::AllowRenderTarget);

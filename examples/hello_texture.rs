@@ -60,13 +60,13 @@ impl Vertex {
             InputElementDesc::default()
                 .set_name("POSITION")
                 .unwrap()
-                .set_format(Format::R32G32B32_Float)
+                .set_format(Format::R32G32B32Float)
                 .set_input_slot(0)
                 .set_offset(ByteCount(offset_of!(Self, position) as u64)),
             InputElementDesc::default()
                 .set_name("TEXCOORD")
                 .unwrap()
-                .set_format(Format::R32G32_Float)
+                .set_format(Format::R32G32Float)
                 .set_input_slot(0)
                 .set_offset(ByteCount(offset_of!(Self, uv) as u64)),
         ]
@@ -296,7 +296,7 @@ impl HelloTextureSample {
                     &HeapProperties::default().set_heap_type(HeapType::Default),
                     HeapFlags::None,
                     &ResourceDesc::default()
-                        .set_format(Format::R8G8B8A8_UNorm)
+                        .set_format(Format::R8G8B8A8Unorm)
                         .set_width(texture_width as u64)
                         .set_height(texture_height)
                         .set_dimension(ResourceDimension::Texture2D),
@@ -338,7 +338,7 @@ impl HelloTextureSample {
         let srv_desc = ShaderResourceViewDesc::default()
             .new_texture_2d(&Tex2DSrv::default().set_mip_levels(1))
             .set_shader4_component_mapping(ShaderComponentMapping::default())
-            .set_format(Format::R8G8B8A8_UNorm);
+            .set_format(Format::R8G8B8A8Unorm);
         self.device.create_shader_resource_view(
             &self.texture.as_ref().expect("No texture has been created"),
             Some(&srv_desc),
@@ -544,7 +544,7 @@ fn create_pipeline_state(
             &DepthStencilDesc::default().set_depth_enable(false),
         )
         .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
-        .set_rtv_formats(&[Format::R8G8B8A8_UNorm]);
+        .set_rtv_formats(&[Format::R8G8B8A8Unorm]);
 
     let pso = device
         .create_graphics_pipeline_state(&pso_desc)

@@ -123,13 +123,13 @@ impl Vertex {
             InputElementDesc::default()
                 .set_name("POSITION")
                 .unwrap()
-                .set_format(Format::R32G32B32A32_Float)
+                .set_format(Format::R32G32B32A32Float)
                 .set_input_slot(0)
                 .set_offset(ByteCount::from(offset_of!(Self, position))),
             InputElementDesc::default()
                 .set_name("COLOR")
                 .unwrap()
-                .set_format(Format::R32G32B32A32_Float)
+                .set_format(Format::R32G32B32A32Float)
                 .set_input_slot(0)
                 .set_offset(ByteCount::from(offset_of!(Self, color))),
         ]
@@ -975,8 +975,8 @@ fn create_pso(
             &DepthStencilDesc::default().set_depth_enable(false),
         )
         .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
-        .set_rtv_formats(&[Format::R8G8B8A8_UNorm])
-        .set_dsv_format(Format::D32_Float);
+        .set_rtv_formats(&[Format::R8G8B8A8Unorm])
+        .set_dsv_format(Format::D32Float);
 
     let pso = device
         .create_graphics_pipeline_state(&pso_desc)
@@ -1029,7 +1029,7 @@ fn create_shared_resource_desc(device: &Device) -> (ByteCount, ResourceDesc) {
     let cross_adapter_desc = ResourceDesc::default()
         .set_dimension(ResourceDimension::Texture2D)
         .set_layout(TextureLayout::RowMajor)
-        .set_format(Format::R8G8B8A8_UNorm)
+        .set_format(Format::R8G8B8A8Unorm)
         .set_width(WINDOW_WIDTH.into())
         .set_height(WINDOW_HEIGHT.into())
         .set_flags(ResourceFlags::AllowCrossAdapter);
@@ -1053,12 +1053,12 @@ fn create_frame_resources(
     rtv_descriptor_handle_size: ByteCount,
 ) -> (Vec<Resource>, Vec<CommandAllocator>) {
     let clear_value = ClearValue::default()
-        .set_format(Format::R8G8B8A8_UNorm)
+        .set_format(Format::R8G8B8A8Unorm)
         .set_color(CLEAR_COLOR);
 
     let render_target_desc = ResourceDesc::default()
         .set_dimension(ResourceDimension::Texture2D)
-        .set_format(Format::R8G8B8A8_UNorm)
+        .set_format(Format::R8G8B8A8Unorm)
         .set_width(WINDOW_WIDTH.into())
         .set_height(WINDOW_HEIGHT.into())
         .set_flags(ResourceFlags::AllowRenderTarget);

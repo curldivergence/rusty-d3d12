@@ -223,7 +223,7 @@ impl Vertex {
         vec![InputElementDesc::default()
             .set_name("COLOR")
             .unwrap()
-            .set_format(Format::R32G32B32A32_Float)
+            .set_format(Format::R32G32B32A32Float)
             .set_input_slot(0)
             .set_offset(ByteCount::from(offset_of!(Self, color)))]
     }
@@ -1818,8 +1818,8 @@ fn create_graphics_pso(
             &DepthStencilDesc::default().set_depth_enable(false),
         )
         .set_primitive_topology_type(PrimitiveTopologyType::Point)
-        .set_rtv_formats(&[Format::R8G8B8A8_UNorm])
-        .set_dsv_format(Format::D32_Float);
+        .set_rtv_formats(&[Format::R8G8B8A8Unorm])
+        .set_dsv_format(Format::D32Float);
 
     let graphics_pso = device
         .create_graphics_pipeline_state(&graphics_pso_desc)
@@ -1917,12 +1917,12 @@ fn create_render_targets(
     rtv_uav_descriptor_handle_size: ByteCount,
 ) -> Vec<Resource> {
     let clear_value = ClearValue::default()
-        .set_format(Format::R8G8B8A8_UNorm)
+        .set_format(Format::R8G8B8A8Unorm)
         .set_color(CLEAR_COLOR);
 
     let render_target_desc = ResourceDesc::default()
         .set_dimension(ResourceDimension::Texture2D)
-        .set_format(Format::R8G8B8A8_UNorm)
+        .set_format(Format::R8G8B8A8Unorm)
         .set_width(WINDOW_WIDTH.into())
         .set_height(WINDOW_HEIGHT)
         .set_flags(ResourceFlags::AllowRenderTarget);

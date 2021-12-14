@@ -55,13 +55,13 @@ impl Vertex {
             InputElementDesc::default()
                 .set_name("Position")
                 .unwrap()
-                .set_format(Format::R32G32B32_Float)
+                .set_format(Format::R32G32B32Float)
                 .set_input_slot(0)
                 .set_offset(ByteCount(offset_of!(Self, position) as u64)),
             InputElementDesc::default()
                 .set_name("Color")
                 .unwrap()
-                .set_format(Format::R32G32B32A32_Float)
+                .set_format(Format::R32G32B32A32Float)
                 .set_input_slot(0)
                 .set_offset(ByteCount(offset_of!(Self, color) as u64)),
         ]
@@ -124,8 +124,8 @@ impl TypedBuffer for IndexBuffer {
             .set_buffer_location(buffer.get_gpu_virtual_address())
             .set_size_in_bytes(element_count * element_size)
             .set_format(match element_size {
-                ByteCount(2) => Format::R16_UInt,
-                ByteCount(4) => Format::R32_UInt,
+                ByteCount(2) => Format::R16Uint,
+                ByteCount(4) => Format::R32Uint,
                 _ => panic!("wrong index type"),
             });
 
@@ -353,8 +353,8 @@ float4 PS(VertexOut input) : SV_Target
             )
             .set_input_layout(&input_layout)
             .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
-            .set_rtv_formats(&[Format::R8G8B8A8_UNorm])
-            .set_dsv_format(Format::D24_UNorm_S8_UInt);
+            .set_rtv_formats(&[Format::R8G8B8A8Unorm])
+            .set_dsv_format(Format::D24UnormS8Uint);
 
         let pso = renderer
             .device

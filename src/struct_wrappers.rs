@@ -2233,7 +2233,7 @@ pub struct SubresourceFootprint(pub D3D12_SUBRESOURCE_FOOTPRINT);
 impl Default for SubresourceFootprint {
     fn default() -> Self {
         Self(D3D12_SUBRESOURCE_FOOTPRINT {
-            Format: Format::R8G8B8A8_UNorm as i32,
+            Format: Format::R8G8B8A8Unorm as i32,
             Width: 0,
             Height: 1,
             Depth: 1,

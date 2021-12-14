@@ -65,25 +65,25 @@ mod sample_assets {
                 InputElementDesc::default()
                     .set_name("POSITION")
                     .unwrap()
-                    .set_format(Format::R32G32B32_Float)
+                    .set_format(Format::R32G32B32Float)
                     .set_input_slot(0)
                     .set_offset(ByteCount::from(offset_of!(Self, position))),
                 InputElementDesc::default()
                     .set_name("NORMAL")
                     .unwrap()
-                    .set_format(Format::R32G32B32_Float)
+                    .set_format(Format::R32G32B32Float)
                     .set_input_slot(0)
                     .set_offset(ByteCount::from(offset_of!(Self, normal))),
                 InputElementDesc::default()
                     .set_name("TEXCOORD")
                     .unwrap()
-                    .set_format(Format::R32G32_Float)
+                    .set_format(Format::R32G32Float)
                     .set_input_slot(0)
                     .set_offset(ByteCount::from(offset_of!(Self, uv))),
                 InputElementDesc::default()
                     .set_name("TANGENT")
                     .unwrap()
-                    .set_format(Format::R32G32B32_Float)
+                    .set_format(Format::R32G32B32Float)
                     .set_input_slot(0)
                     .set_offset(ByteCount::from(offset_of!(Self, tangent))),
             ]
@@ -122,7 +122,7 @@ mod sample_assets {
             width: 1024,
             height: 1024,
             mip_levels: 1,
-            format: Format::BC1_UNorm,
+            format: Format::Bc1Unorm,
             data: [
                 DataProperties {
                     offset: 0,
@@ -495,7 +495,7 @@ impl DynamicIndexingSample {
         let _debug_printer = make_debug_printer!(&self.info_queue);
 
         let depth_stencil_desc = DepthStencilViewDesc::default()
-            .set_format(Format::D32_Float)
+            .set_format(Format::D32Float)
             .set_view_dimension(DsvDimension::Texture2D)
             .set_flags(DsvFlags::None);
 
@@ -508,7 +508,7 @@ impl DynamicIndexingSample {
                     .set_dimension(ResourceDimension::Texture2D)
                     .set_width(WINDOW_WIDTH.into())
                     .set_height(WINDOW_HEIGHT.into())
-                    .set_format(Format::D32_Float)
+                    .set_format(Format::D32Float)
                     .set_flags(
                         ResourceFlags::AllowDepthStencil
                             | ResourceFlags::DenyShaderResource,
@@ -516,7 +516,7 @@ impl DynamicIndexingSample {
                 ResourceStates::DepthWrite,
                 Some(
                     &ClearValue::default()
-                        .set_format(Format::D32_Float)
+                        .set_format(Format::D32Float)
                         .set_depth_stencil(
                             &DepthStencilValue::default()
                                 .set_depth(1.)
@@ -698,7 +698,7 @@ impl DynamicIndexingSample {
             IndexBufferView::default()
                 .set_buffer_location(index_buffer.get_gpu_virtual_address())
                 .set_size_in_bytes(self.index_count * ByteCount(4))
-                .set_format(Format::R32_UInt),
+                .set_format(Format::R32Uint),
         );
 
         self.index_buffer = Some(index_buffer);
@@ -713,7 +713,7 @@ impl DynamicIndexingSample {
         let _debug_printer = make_debug_printer!(&self.info_queue);
 
         let texture_desc = ResourceDesc::default()
-            .set_format(Format::R8G8B8A8_UNorm)
+            .set_format(Format::R8G8B8A8Unorm)
             .set_width(CITY_MATERIAL_TEXTURE_WIDTH as u64)
             .set_height(CITY_MATERIAL_TEXTURE_HEIGHT)
             .set_dimension(ResourceDimension::Texture2D);
@@ -765,7 +765,7 @@ impl DynamicIndexingSample {
                     .set_shader4_component_mapping(
                         ShaderComponentMapping::default(),
                     )
-                    .set_format(Format::R8G8B8A8_UNorm)
+                    .set_format(Format::R8G8B8A8Unorm)
                     .new_texture_2d(&Tex2DSrv::default().set_mip_levels(1));
 
             self.device.create_shader_resource_view(
@@ -1233,8 +1233,8 @@ fn create_pipeline_state(
         .set_blend_state(&BlendDesc::default())
         .set_depth_stencil_state(&DepthStencilDesc::default())
         .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
-        .set_rtv_formats(&[Format::R8G8B8A8_UNorm])
-        .set_dsv_format(Format::D32_Float);
+        .set_rtv_formats(&[Format::R8G8B8A8Unorm])
+        .set_dsv_format(Format::D32Float);
 
     let pso = device
         .create_graphics_pipeline_state(&pso_desc)
