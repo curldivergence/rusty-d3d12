@@ -153,7 +153,10 @@ fn main() {
 
     for file in files_to_copy {
         std::fs::copy(copy_source_path.join(file), copy_dest_path.join(file))
-            .expect("Cannot copy Agility SDK dlls");
+            .unwrap_or_else(|err| {
+                eprintln!("cannot copy Agility SDK dlls: {:?}", err);
+                0
+            });
     }
 
     #[cfg(feature = "pix")]
