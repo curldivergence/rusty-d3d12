@@ -8,6 +8,7 @@ license = "MIT"
 keywords = ["d3d", "d3d12", "directx12", "directx", "dxgi"]
 categories = ["rendering::graphics-api", "graphics", "game-development", "multimedia", "api-bindings"]
 repository = "https://github.com/curldivergence/rusty-d3d12"
+exclude = ["/assets", "/extern"]
 
 [features]
 default = []
