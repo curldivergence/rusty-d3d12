@@ -53,6 +53,7 @@ macro_rules! impl_mul_div {
     };
 }
 
+// ToDo: get rid of it in favor of usize??
 /// ByteCount
 
 #[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
