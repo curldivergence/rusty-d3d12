@@ -553,6 +553,7 @@ pub const D3D12_RESOURCE_FLAGS_D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS:
     D3D12_RESOURCE_FLAGS = 32;
 pub const D3D12_RESOURCE_FLAGS_D3D12_RESOURCE_FLAG_VIDEO_DECODE_REFERENCE_ONLY : D3D12_RESOURCE_FLAGS = 64 ;
 pub const D3D12_RESOURCE_FLAGS_D3D12_RESOURCE_FLAG_VIDEO_ENCODE_REFERENCE_ONLY : D3D12_RESOURCE_FLAGS = 128 ;
+pub const D3D12_RESOURCE_FLAGS_D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE : D3D12_RESOURCE_FLAGS = 256 ;
 pub type D3D12_RESOURCE_FLAGS = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -3985,6 +3986,233 @@ pub struct ID3D12GraphicsCommandList4Vtbl { pub QueryInterface : :: std :: optio
 pub struct ID3D12GraphicsCommandList4 {
     pub lpVtbl: *mut ID3D12GraphicsCommandList4Vtbl,
 }
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_UNDEFINED:
+    D3D12_BARRIER_LAYOUT = -1;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_COMMON:
+    D3D12_BARRIER_LAYOUT = 0;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_PRESENT:
+    D3D12_BARRIER_LAYOUT = 0;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_GENERIC_READ:
+    D3D12_BARRIER_LAYOUT = 1;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_RENDER_TARGET:
+    D3D12_BARRIER_LAYOUT = 2;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS:
+    D3D12_BARRIER_LAYOUT = 3;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE:
+    D3D12_BARRIER_LAYOUT = 4;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_READ:
+    D3D12_BARRIER_LAYOUT = 5;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_SHADER_RESOURCE:
+    D3D12_BARRIER_LAYOUT = 6;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_COPY_SOURCE:
+    D3D12_BARRIER_LAYOUT = 7;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_COPY_DEST:
+    D3D12_BARRIER_LAYOUT = 8;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_RESOLVE_SOURCE:
+    D3D12_BARRIER_LAYOUT = 9;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_RESOLVE_DEST:
+    D3D12_BARRIER_LAYOUT = 10;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_SHADING_RATE_SOURCE:
+    D3D12_BARRIER_LAYOUT = 11;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_VIDEO_DECODE_READ:
+    D3D12_BARRIER_LAYOUT = 12;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_VIDEO_DECODE_WRITE:
+    D3D12_BARRIER_LAYOUT = 13;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_VIDEO_PROCESS_READ:
+    D3D12_BARRIER_LAYOUT = 14;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_VIDEO_PROCESS_WRITE:
+    D3D12_BARRIER_LAYOUT = 15;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_VIDEO_ENCODE_READ:
+    D3D12_BARRIER_LAYOUT = 16;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_VIDEO_ENCODE_WRITE:
+    D3D12_BARRIER_LAYOUT = 17;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_COMMON:
+    D3D12_BARRIER_LAYOUT = 18;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_GENERIC_READ : D3D12_BARRIER_LAYOUT = 19 ;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_UNORDERED_ACCESS : D3D12_BARRIER_LAYOUT = 20 ;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_SHADER_RESOURCE : D3D12_BARRIER_LAYOUT = 21 ;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_COPY_SOURCE:
+    D3D12_BARRIER_LAYOUT = 22;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_COPY_DEST:
+    D3D12_BARRIER_LAYOUT = 23;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COMMON:
+    D3D12_BARRIER_LAYOUT = 24;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_GENERIC_READ : D3D12_BARRIER_LAYOUT = 25 ;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_UNORDERED_ACCESS : D3D12_BARRIER_LAYOUT = 26 ;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_SHADER_RESOURCE : D3D12_BARRIER_LAYOUT = 27 ;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_SOURCE : D3D12_BARRIER_LAYOUT = 28 ;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_DEST:
+    D3D12_BARRIER_LAYOUT = 29;
+pub const D3D12_BARRIER_LAYOUT_D3D12_BARRIER_LAYOUT_VIDEO_QUEUE_COMMON:
+    D3D12_BARRIER_LAYOUT = 30;
+pub type D3D12_BARRIER_LAYOUT = ::std::os::raw::c_int;
+pub const D3D12_BARRIER_SYNC_D3D12_BARRIER_SYNC_NONE: D3D12_BARRIER_SYNC = 0;
+pub const D3D12_BARRIER_SYNC_D3D12_BARRIER_SYNC_ALL: D3D12_BARRIER_SYNC = 1;
+pub const D3D12_BARRIER_SYNC_D3D12_BARRIER_SYNC_DRAW: D3D12_BARRIER_SYNC = 2;
+pub const D3D12_BARRIER_SYNC_D3D12_BARRIER_SYNC_INPUT_ASSEMBLER:
+    D3D12_BARRIER_SYNC = 4;
+pub const D3D12_BARRIER_SYNC_D3D12_BARRIER_SYNC_VERTEX_SHADING:
+    D3D12_BARRIER_SYNC = 8;
+pub const D3D12_BARRIER_SYNC_D3D12_BARRIER_SYNC_PIXEL_SHADING:
+    D3D12_BARRIER_SYNC = 16;
+pub const D3D12_BARRIER_SYNC_D3D12_BARRIER_SYNC_DEPTH_STENCIL:
+    D3D12_BARRIER_SYNC = 32;
+pub const D3D12_BARRIER_SYNC_D3D12_BARRIER_SYNC_RENDER_TARGET:
+    D3D12_BARRIER_SYNC = 64;
+pub const D3D12_BARRIER_SYNC_D3D12_BARRIER_SYNC_COMPUTE_SHADING:
+    D3D12_BARRIER_SYNC = 128;
+pub const D3D12_BARRIER_SYNC_D3D12_BARRIER_SYNC_RAYTRACING: D3D12_BARRIER_SYNC =
+    256;
+pub const D3D12_BARRIER_SYNC_D3D12_BARRIER_SYNC_COPY: D3D12_BARRIER_SYNC = 512;
+pub const D3D12_BARRIER_SYNC_D3D12_BARRIER_SYNC_RESOLVE: D3D12_BARRIER_SYNC =
+    1024;
+pub const D3D12_BARRIER_SYNC_D3D12_BARRIER_SYNC_EXECUTE_INDIRECT:
+    D3D12_BARRIER_SYNC = 2048;
+pub const D3D12_BARRIER_SYNC_D3D12_BARRIER_SYNC_PREDICATION:
+    D3D12_BARRIER_SYNC = 2048;
+pub const D3D12_BARRIER_SYNC_D3D12_BARRIER_SYNC_ALL_SHADING:
+    D3D12_BARRIER_SYNC = 4096;
+pub const D3D12_BARRIER_SYNC_D3D12_BARRIER_SYNC_NON_PIXEL_SHADING:
+    D3D12_BARRIER_SYNC = 8192;
+pub const D3D12_BARRIER_SYNC_D3D12_BARRIER_SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO : D3D12_BARRIER_SYNC = 16384 ;
+pub const D3D12_BARRIER_SYNC_D3D12_BARRIER_SYNC_VIDEO_DECODE:
+    D3D12_BARRIER_SYNC = 1048576;
+pub const D3D12_BARRIER_SYNC_D3D12_BARRIER_SYNC_VIDEO_PROCESS:
+    D3D12_BARRIER_SYNC = 2097152;
+pub const D3D12_BARRIER_SYNC_D3D12_BARRIER_SYNC_VIDEO_ENCODE:
+    D3D12_BARRIER_SYNC = 4194304;
+pub const D3D12_BARRIER_SYNC_D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE : D3D12_BARRIER_SYNC = 8388608 ;
+pub const D3D12_BARRIER_SYNC_D3D12_BARRIER_SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE : D3D12_BARRIER_SYNC = 16777216 ;
+pub const D3D12_BARRIER_SYNC_D3D12_BARRIER_SYNC_SPLIT: D3D12_BARRIER_SYNC =
+    -2147483648;
+pub type D3D12_BARRIER_SYNC = ::std::os::raw::c_int;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_COMMON:
+    D3D12_BARRIER_ACCESS = 0;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_VERTEX_BUFFER:
+    D3D12_BARRIER_ACCESS = 1;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_CONSTANT_BUFFER:
+    D3D12_BARRIER_ACCESS = 2;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_INDEX_BUFFER:
+    D3D12_BARRIER_ACCESS = 4;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_RENDER_TARGET:
+    D3D12_BARRIER_ACCESS = 8;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_UNORDERED_ACCESS:
+    D3D12_BARRIER_ACCESS = 16;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE:
+    D3D12_BARRIER_ACCESS = 32;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ:
+    D3D12_BARRIER_ACCESS = 64;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_SHADER_RESOURCE:
+    D3D12_BARRIER_ACCESS = 128;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_STREAM_OUTPUT:
+    D3D12_BARRIER_ACCESS = 256;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT:
+    D3D12_BARRIER_ACCESS = 512;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_PREDICATION:
+    D3D12_BARRIER_ACCESS = 512;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_COPY_DEST:
+    D3D12_BARRIER_ACCESS = 1024;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_COPY_SOURCE:
+    D3D12_BARRIER_ACCESS = 2048;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_RESOLVE_DEST:
+    D3D12_BARRIER_ACCESS = 4096;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_RESOLVE_SOURCE:
+    D3D12_BARRIER_ACCESS = 8192;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ : D3D12_BARRIER_ACCESS = 16384 ;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE : D3D12_BARRIER_ACCESS = 32768 ;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_SHADING_RATE_SOURCE:
+    D3D12_BARRIER_ACCESS = 65536;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_VIDEO_DECODE_READ:
+    D3D12_BARRIER_ACCESS = 131072;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_VIDEO_DECODE_WRITE:
+    D3D12_BARRIER_ACCESS = 262144;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_VIDEO_PROCESS_READ:
+    D3D12_BARRIER_ACCESS = 524288;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_VIDEO_PROCESS_WRITE:
+    D3D12_BARRIER_ACCESS = 1048576;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_VIDEO_ENCODE_READ:
+    D3D12_BARRIER_ACCESS = 2097152;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_VIDEO_ENCODE_WRITE:
+    D3D12_BARRIER_ACCESS = 4194304;
+pub const D3D12_BARRIER_ACCESS_D3D12_BARRIER_ACCESS_NO_ACCESS:
+    D3D12_BARRIER_ACCESS = -2147483648;
+pub type D3D12_BARRIER_ACCESS = ::std::os::raw::c_int;
+pub const D3D12_BARRIER_TYPE_D3D12_BARRIER_TYPE_GLOBAL: D3D12_BARRIER_TYPE = 0;
+pub const D3D12_BARRIER_TYPE_D3D12_BARRIER_TYPE_TEXTURE: D3D12_BARRIER_TYPE = 1;
+pub const D3D12_BARRIER_TYPE_D3D12_BARRIER_TYPE_BUFFER: D3D12_BARRIER_TYPE = 2;
+pub type D3D12_BARRIER_TYPE = ::std::os::raw::c_int;
+pub const D3D12_TEXTURE_BARRIER_FLAGS_D3D12_TEXTURE_BARRIER_FLAG_NONE:
+    D3D12_TEXTURE_BARRIER_FLAGS = 0;
+pub const D3D12_TEXTURE_BARRIER_FLAGS_D3D12_TEXTURE_BARRIER_FLAG_DISCARD:
+    D3D12_TEXTURE_BARRIER_FLAGS = 1;
+pub type D3D12_TEXTURE_BARRIER_FLAGS = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_BARRIER_SUBRESOURCE_RANGE {
+    pub IndexOrFirstMipLevel: UINT,
+    pub NumMipLevels: UINT,
+    pub FirstArraySlice: UINT,
+    pub NumArraySlices: UINT,
+    pub FirstPlane: UINT,
+    pub NumPlanes: UINT,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_GLOBAL_BARRIER {
+    pub SyncBefore: D3D12_BARRIER_SYNC,
+    pub SyncAfter: D3D12_BARRIER_SYNC,
+    pub AccessBefore: D3D12_BARRIER_ACCESS,
+    pub AccessAfter: D3D12_BARRIER_ACCESS,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_TEXTURE_BARRIER {
+    pub SyncBefore: D3D12_BARRIER_SYNC,
+    pub SyncAfter: D3D12_BARRIER_SYNC,
+    pub AccessBefore: D3D12_BARRIER_ACCESS,
+    pub AccessAfter: D3D12_BARRIER_ACCESS,
+    pub LayoutBefore: D3D12_BARRIER_LAYOUT,
+    pub LayoutAfter: D3D12_BARRIER_LAYOUT,
+    pub pResource: *mut ID3D12Resource,
+    pub Subresources: D3D12_BARRIER_SUBRESOURCE_RANGE,
+    pub Flags: D3D12_TEXTURE_BARRIER_FLAGS,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_BUFFER_BARRIER {
+    pub SyncBefore: D3D12_BARRIER_SYNC,
+    pub SyncAfter: D3D12_BARRIER_SYNC,
+    pub AccessBefore: D3D12_BARRIER_ACCESS,
+    pub AccessAfter: D3D12_BARRIER_ACCESS,
+    pub pResource: *mut ID3D12Resource,
+    pub Offset: UINT64,
+    pub Size: UINT64,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct D3D12_RESOURCE_STATE_BARRIER {
+    pub State: D3D12_RESOURCE_STATES,
+    pub pResource: *mut ID3D12Resource,
+    pub Subresource: UINT,
+    pub Sync: D3D12_BARRIER_SYNC,
+    pub Access: D3D12_BARRIER_ACCESS,
+    pub Layout: D3D12_BARRIER_LAYOUT,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct D3D12_BARRIER_GROUP {
+    pub Type: D3D12_BARRIER_TYPE,
+    pub NumBarriers: UINT32,
+    pub __bindgen_anon_1: D3D12_BARRIER_GROUP__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union D3D12_BARRIER_GROUP__bindgen_ty_1 {
+    pub pGlobalBarriers: *const D3D12_GLOBAL_BARRIER,
+    pub pTextureBarriers: *const D3D12_TEXTURE_BARRIER,
+    pub pBufferBarriers: *const D3D12_BUFFER_BARRIER,
+    pub pStateBarriers: *const D3D12_RESOURCE_STATE_BARRIER,
+}
 pub const D3D12_SHADING_RATE_D3D12_SHADING_RATE_1X1: D3D12_SHADING_RATE = 0;
 pub const D3D12_SHADING_RATE_D3D12_SHADING_RATE_1X2: D3D12_SHADING_RATE = 1;
 pub const D3D12_SHADING_RATE_D3D12_SHADING_RATE_2X1: D3D12_SHADING_RATE = 4;
@@ -4018,6 +4246,14 @@ pub struct ID3D12GraphicsCommandList6Vtbl { pub QueryInterface : :: std :: optio
 #[derive(Debug, Copy, Clone)]
 pub struct ID3D12GraphicsCommandList6 {
     pub lpVtbl: *mut ID3D12GraphicsCommandList6Vtbl,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D12GraphicsCommandList7Vtbl { pub QueryInterface : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , riid : * const IID , ppvObject : * mut * mut :: std :: os :: raw :: c_void) -> HRESULT > , pub AddRef : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7) -> ULONG > , pub Release : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7) -> ULONG > , pub GetPrivateData : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , guid : * const GUID , pDataSize : * mut UINT , pData : * mut :: std :: os :: raw :: c_void) -> HRESULT > , pub SetPrivateData : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , guid : * const GUID , DataSize : UINT , pData : * const :: std :: os :: raw :: c_void) -> HRESULT > , pub SetPrivateDataInterface : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , guid : * const GUID , pData : * const IUnknown) -> HRESULT > , pub SetName : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , Name : LPCWSTR) -> HRESULT > , pub GetDevice : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , riid : * const IID , ppvDevice : * mut * mut :: std :: os :: raw :: c_void) -> HRESULT > , pub GetType : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7) -> D3D12_COMMAND_LIST_TYPE > , pub Close : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7) -> HRESULT > , pub Reset : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pAllocator : * mut ID3D12CommandAllocator , pInitialState : * mut ID3D12PipelineState) -> HRESULT > , pub ClearState : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pPipelineState : * mut ID3D12PipelineState) > , pub DrawInstanced : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , VertexCountPerInstance : UINT , InstanceCount : UINT , StartVertexLocation : UINT , StartInstanceLocation : UINT) > , pub DrawIndexedInstanced : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , IndexCountPerInstance : UINT , InstanceCount : UINT , StartIndexLocation : UINT , BaseVertexLocation : INT , StartInstanceLocation : UINT) > , pub Dispatch : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , ThreadGroupCountX : UINT , ThreadGroupCountY : UINT , ThreadGroupCountZ : UINT) > , pub CopyBufferRegion : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pDstBuffer : * mut ID3D12Resource , DstOffset : UINT64 , pSrcBuffer : * mut ID3D12Resource , SrcOffset : UINT64 , NumBytes : UINT64) > , pub CopyTextureRegion : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pDst : * const D3D12_TEXTURE_COPY_LOCATION , DstX : UINT , DstY : UINT , DstZ : UINT , pSrc : * const D3D12_TEXTURE_COPY_LOCATION , pSrcBox : * const D3D12_BOX) > , pub CopyResource : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pDstResource : * mut ID3D12Resource , pSrcResource : * mut ID3D12Resource) > , pub CopyTiles : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pTiledResource : * mut ID3D12Resource , pTileRegionStartCoordinate : * const D3D12_TILED_RESOURCE_COORDINATE , pTileRegionSize : * const D3D12_TILE_REGION_SIZE , pBuffer : * mut ID3D12Resource , BufferStartOffsetInBytes : UINT64 , Flags : D3D12_TILE_COPY_FLAGS) > , pub ResolveSubresource : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pDstResource : * mut ID3D12Resource , DstSubresource : UINT , pSrcResource : * mut ID3D12Resource , SrcSubresource : UINT , Format : DXGI_FORMAT) > , pub IASetPrimitiveTopology : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , PrimitiveTopology : D3D12_PRIMITIVE_TOPOLOGY) > , pub RSSetViewports : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , NumViewports : UINT , pViewports : * const D3D12_VIEWPORT) > , pub RSSetScissorRects : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , NumRects : UINT , pRects : * const D3D12_RECT) > , pub OMSetBlendFactor : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , BlendFactor : * const FLOAT) > , pub OMSetStencilRef : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , StencilRef : UINT) > , pub SetPipelineState : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pPipelineState : * mut ID3D12PipelineState) > , pub ResourceBarrier : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , NumBarriers : UINT , pBarriers : * const D3D12_RESOURCE_BARRIER) > , pub ExecuteBundle : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pCommandList : * mut ID3D12GraphicsCommandList) > , pub SetDescriptorHeaps : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , NumDescriptorHeaps : UINT , ppDescriptorHeaps : * const * mut ID3D12DescriptorHeap) > , pub SetComputeRootSignature : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pRootSignature : * mut ID3D12RootSignature) > , pub SetGraphicsRootSignature : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pRootSignature : * mut ID3D12RootSignature) > , pub SetComputeRootDescriptorTable : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , RootParameterIndex : UINT , BaseDescriptor : D3D12_GPU_DESCRIPTOR_HANDLE) > , pub SetGraphicsRootDescriptorTable : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , RootParameterIndex : UINT , BaseDescriptor : D3D12_GPU_DESCRIPTOR_HANDLE) > , pub SetComputeRoot32BitConstant : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , RootParameterIndex : UINT , SrcData : UINT , DestOffsetIn32BitValues : UINT) > , pub SetGraphicsRoot32BitConstant : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , RootParameterIndex : UINT , SrcData : UINT , DestOffsetIn32BitValues : UINT) > , pub SetComputeRoot32BitConstants : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , RootParameterIndex : UINT , Num32BitValuesToSet : UINT , pSrcData : * const :: std :: os :: raw :: c_void , DestOffsetIn32BitValues : UINT) > , pub SetGraphicsRoot32BitConstants : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , RootParameterIndex : UINT , Num32BitValuesToSet : UINT , pSrcData : * const :: std :: os :: raw :: c_void , DestOffsetIn32BitValues : UINT) > , pub SetComputeRootConstantBufferView : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , RootParameterIndex : UINT , BufferLocation : D3D12_GPU_VIRTUAL_ADDRESS) > , pub SetGraphicsRootConstantBufferView : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , RootParameterIndex : UINT , BufferLocation : D3D12_GPU_VIRTUAL_ADDRESS) > , pub SetComputeRootShaderResourceView : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , RootParameterIndex : UINT , BufferLocation : D3D12_GPU_VIRTUAL_ADDRESS) > , pub SetGraphicsRootShaderResourceView : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , RootParameterIndex : UINT , BufferLocation : D3D12_GPU_VIRTUAL_ADDRESS) > , pub SetComputeRootUnorderedAccessView : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , RootParameterIndex : UINT , BufferLocation : D3D12_GPU_VIRTUAL_ADDRESS) > , pub SetGraphicsRootUnorderedAccessView : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , RootParameterIndex : UINT , BufferLocation : D3D12_GPU_VIRTUAL_ADDRESS) > , pub IASetIndexBuffer : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pView : * const D3D12_INDEX_BUFFER_VIEW) > , pub IASetVertexBuffers : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , StartSlot : UINT , NumViews : UINT , pViews : * const D3D12_VERTEX_BUFFER_VIEW) > , pub SOSetTargets : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , StartSlot : UINT , NumViews : UINT , pViews : * const D3D12_STREAM_OUTPUT_BUFFER_VIEW) > , pub OMSetRenderTargets : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , NumRenderTargetDescriptors : UINT , pRenderTargetDescriptors : * const D3D12_CPU_DESCRIPTOR_HANDLE , RTsSingleHandleToDescriptorRange : BOOL , pDepthStencilDescriptor : * const D3D12_CPU_DESCRIPTOR_HANDLE) > , pub ClearDepthStencilView : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , DepthStencilView : D3D12_CPU_DESCRIPTOR_HANDLE , ClearFlags : D3D12_CLEAR_FLAGS , Depth : FLOAT , Stencil : UINT8 , NumRects : UINT , pRects : * const D3D12_RECT) > , pub ClearRenderTargetView : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , RenderTargetView : D3D12_CPU_DESCRIPTOR_HANDLE , ColorRGBA : * const FLOAT , NumRects : UINT , pRects : * const D3D12_RECT) > , pub ClearUnorderedAccessViewUint : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , ViewGPUHandleInCurrentHeap : D3D12_GPU_DESCRIPTOR_HANDLE , ViewCPUHandle : D3D12_CPU_DESCRIPTOR_HANDLE , pResource : * mut ID3D12Resource , Values : * const UINT , NumRects : UINT , pRects : * const D3D12_RECT) > , pub ClearUnorderedAccessViewFloat : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , ViewGPUHandleInCurrentHeap : D3D12_GPU_DESCRIPTOR_HANDLE , ViewCPUHandle : D3D12_CPU_DESCRIPTOR_HANDLE , pResource : * mut ID3D12Resource , Values : * const FLOAT , NumRects : UINT , pRects : * const D3D12_RECT) > , pub DiscardResource : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pResource : * mut ID3D12Resource , pRegion : * const D3D12_DISCARD_REGION) > , pub BeginQuery : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pQueryHeap : * mut ID3D12QueryHeap , Type : D3D12_QUERY_TYPE , Index : UINT) > , pub EndQuery : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pQueryHeap : * mut ID3D12QueryHeap , Type : D3D12_QUERY_TYPE , Index : UINT) > , pub ResolveQueryData : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pQueryHeap : * mut ID3D12QueryHeap , Type : D3D12_QUERY_TYPE , StartIndex : UINT , NumQueries : UINT , pDestinationBuffer : * mut ID3D12Resource , AlignedDestinationBufferOffset : UINT64) > , pub SetPredication : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pBuffer : * mut ID3D12Resource , AlignedBufferOffset : UINT64 , Operation : D3D12_PREDICATION_OP) > , pub SetMarker : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , Metadata : UINT , pData : * const :: std :: os :: raw :: c_void , Size : UINT) > , pub BeginEvent : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , Metadata : UINT , pData : * const :: std :: os :: raw :: c_void , Size : UINT) > , pub EndEvent : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7) > , pub ExecuteIndirect : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pCommandSignature : * mut ID3D12CommandSignature , MaxCommandCount : UINT , pArgumentBuffer : * mut ID3D12Resource , ArgumentBufferOffset : UINT64 , pCountBuffer : * mut ID3D12Resource , CountBufferOffset : UINT64) > , pub AtomicCopyBufferUINT : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pDstBuffer : * mut ID3D12Resource , DstOffset : UINT64 , pSrcBuffer : * mut ID3D12Resource , SrcOffset : UINT64 , Dependencies : UINT , ppDependentResources : * const * mut ID3D12Resource , pDependentSubresourceRanges : * const D3D12_SUBRESOURCE_RANGE_UINT64) > , pub AtomicCopyBufferUINT64 : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pDstBuffer : * mut ID3D12Resource , DstOffset : UINT64 , pSrcBuffer : * mut ID3D12Resource , SrcOffset : UINT64 , Dependencies : UINT , ppDependentResources : * const * mut ID3D12Resource , pDependentSubresourceRanges : * const D3D12_SUBRESOURCE_RANGE_UINT64) > , pub OMSetDepthBounds : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , Min : FLOAT , Max : FLOAT) > , pub SetSamplePositions : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , NumSamplesPerPixel : UINT , NumPixels : UINT , pSamplePositions : * mut D3D12_SAMPLE_POSITION) > , pub ResolveSubresourceRegion : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pDstResource : * mut ID3D12Resource , DstSubresource : UINT , DstX : UINT , DstY : UINT , pSrcResource : * mut ID3D12Resource , SrcSubresource : UINT , pSrcRect : * mut D3D12_RECT , Format : DXGI_FORMAT , ResolveMode : D3D12_RESOLVE_MODE) > , pub SetViewInstanceMask : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , Mask : UINT) > , pub WriteBufferImmediate : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , Count : UINT , pParams : * const D3D12_WRITEBUFFERIMMEDIATE_PARAMETER , pModes : * const D3D12_WRITEBUFFERIMMEDIATE_MODE) > , pub SetProtectedResourceSession : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pProtectedResourceSession : * mut ID3D12ProtectedResourceSession) > , pub BeginRenderPass : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , NumRenderTargets : UINT , pRenderTargets : * const D3D12_RENDER_PASS_RENDER_TARGET_DESC , pDepthStencil : * const D3D12_RENDER_PASS_DEPTH_STENCIL_DESC , Flags : D3D12_RENDER_PASS_FLAGS) > , pub EndRenderPass : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7) > , pub InitializeMetaCommand : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pMetaCommand : * mut ID3D12MetaCommand , pInitializationParametersData : * const :: std :: os :: raw :: c_void , InitializationParametersDataSizeInBytes : SIZE_T) > , pub ExecuteMetaCommand : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pMetaCommand : * mut ID3D12MetaCommand , pExecutionParametersData : * const :: std :: os :: raw :: c_void , ExecutionParametersDataSizeInBytes : SIZE_T) > , pub BuildRaytracingAccelerationStructure : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pDesc : * const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC , NumPostbuildInfoDescs : UINT , pPostbuildInfoDescs : * const D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC) > , pub EmitRaytracingAccelerationStructurePostbuildInfo : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pDesc : * const D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC , NumSourceAccelerationStructures : UINT , pSourceAccelerationStructureData : * const D3D12_GPU_VIRTUAL_ADDRESS) > , pub CopyRaytracingAccelerationStructure : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , DestAccelerationStructureData : D3D12_GPU_VIRTUAL_ADDRESS , SourceAccelerationStructureData : D3D12_GPU_VIRTUAL_ADDRESS , Mode : D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE) > , pub SetPipelineState1 : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pStateObject : * mut ID3D12StateObject) > , pub DispatchRays : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , pDesc : * const D3D12_DISPATCH_RAYS_DESC) > , pub RSSetShadingRate : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , baseShadingRate : D3D12_SHADING_RATE , combiners : * const D3D12_SHADING_RATE_COMBINER) > , pub RSSetShadingRateImage : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , shadingRateImage : * mut ID3D12Resource) > , pub DispatchMesh : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , ThreadGroupCountX : UINT , ThreadGroupCountY : UINT , ThreadGroupCountZ : UINT) > , pub Barrier : :: std :: option :: Option < unsafe extern "C" fn (This : * mut ID3D12GraphicsCommandList7 , NumBarrierGroups : UINT32 , pBarrierGroups : * const D3D12_BARRIER_GROUP) > , }
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ID3D12GraphicsCommandList7 {
+    pub lpVtbl: *mut ID3D12GraphicsCommandList7Vtbl,
 }
 extern "C" {
     pub fn pix_init_analysis();

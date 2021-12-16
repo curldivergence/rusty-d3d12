@@ -25,7 +25,7 @@ const USE_DEBUG: bool = true;
 const USE_WARP_ADAPTER: bool = false;
 
 #[no_mangle]
-pub static D3D12SDKVersion: u32 = 4;
+pub static D3D12SDKVersion: u32 = 600;
 
 #[no_mangle]
 pub static D3D12SDKPath: &[u8; 9] = b".\\D3D12\\\0";
