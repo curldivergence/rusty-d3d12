@@ -1,6 +1,6 @@
 [package]
 name = "rusty-d3d12"
-version = "0.3.1"
+version = "0.4.0"
 authors = ["Andrey Pushkar <andrey.s.pushkar@gmail.com>"]
 edition = "2021"
 description = """Low-level D3D12 bindings for Rust."""
@@ -10,11 +10,16 @@ categories = ["rendering::graphics-api", "graphics", "game-development", "multim
 repository = "https://github.com/curldivergence/rusty-d3d12"
 exclude = ["/assets", "/extern"]
 
+[package.metadata.docs.rs]
+features = ["log_ref_counting", "pix", "debug_callback"]
+targets = ["x86_64-pc-windows-msvc"]
+
 [features]
 default = []
 log_ref_counting = []
 pix = []
 devel = ["pix"]
+debug_callback = []
 
 [build-dependencies]
 bindgen = "0.59"

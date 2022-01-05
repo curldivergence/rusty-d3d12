@@ -805,7 +805,7 @@ impl DynamicIndexingSample {
             .expect("Cannot set texture name");
 
         let subresource_count = u32::from(
-            texture_desc.0.DepthOrArraySize * texture_desc.0.MipLevels,
+            texture_desc.depth_or_array_size() * texture_desc.mip_levels(),
         );
 
         let upload_buffer_size = city_diffuse_texture
@@ -869,8 +869,8 @@ impl DynamicIndexingSample {
     ) {
         let _debug_printer = make_debug_printer!(&self.info_queue);
 
-        let subresource_count =
-            (texture_desc.0.DepthOrArraySize * texture_desc.0.MipLevels) as u32;
+        let subresource_count = (texture_desc.depth_or_array_size()
+            * texture_desc.mip_levels()) as u32;
 
         let upload_buffer_step = self.city_material_textures[0]
             .get_required_intermediate_size(0, subresource_count)
@@ -901,12 +901,12 @@ impl DynamicIndexingSample {
                 .set_data(&texture_data[mat_idx])
                 .set_row_pitch(ByteCount(
                     CITY_MATERIAL_TEXTURE_CHANNEL_COUNT as u64
-                        * texture_desc.0.Width,
+                        * texture_desc.width(),
                 ))
                 .set_slice_pitch(ByteCount(
                     CITY_MATERIAL_TEXTURE_CHANNEL_COUNT as u64
-                        * texture_desc.0.Width
-                        * texture_desc.0.Height as u64,
+                        * texture_desc.width()
+                        * texture_desc.height() as u64,
                 ));
 
             self.command_list

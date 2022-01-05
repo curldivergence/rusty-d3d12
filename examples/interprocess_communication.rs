@@ -255,6 +255,7 @@ impl Pipeline {
                 .expect("Cannot create debug info queue"),
             );
 
+            #[cfg(feature = "debug_callback")]
             temp_info_queue
                 .register_callback(
                     debug_callback,
@@ -1038,7 +1039,7 @@ fn create_shared_resource_desc(device: &Device) -> (ByteCount, ResourceDesc) {
         device.get_copyable_footprints(&cross_adapter_desc, 0, 1, 0.into());
 
     texture_size = align_to_multiple(
-        (layout[0].0.Footprint.RowPitch * layout[0].0.Footprint.Height) as u64,
+        (layout[0].footprint().row_pitch() * layout[0].footprint().height()).0,
         DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT.0,
     )
     .into();

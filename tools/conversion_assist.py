@@ -12,7 +12,7 @@ def camel_case_to_snake(string):
 
 def parse_flags():
     lines = ""
-    print("Paste flags enum definition from bindings.rs:")
+    print("Paste flags enum definition from d3d12.rs:")
     while True:
         ln = input()
         if ln:
@@ -87,7 +87,7 @@ bitflags! {{
 
 def parse_enum():
     lines = ""
-    print("Paste enum definition from bindings.rs:")
+    print("Paste enum definition from d3d12.rs:")
     while True:
         ln = input()
         if ln:
@@ -166,7 +166,7 @@ pub enum {enum_name} {{"""
 
 def parse_struct():
     lines = ""
-    print("Paste struct definition from bindings.rs:")
+    print("Paste struct definition from d3d12.rs:")
     while True:
         ln = input()
         if ln:

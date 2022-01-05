@@ -30,7 +30,7 @@ pub struct GpuVirtualAddress(pub D3D12_GPU_VIRTUAL_ADDRESS);
 // ToDo: such fields should not be public?
 #[repr(transparent)]
 #[derive(Debug, Clone)]
-pub struct SwapchainDesc(pub DXGI_SWAP_CHAIN_DESC1);
+pub struct SwapchainDesc(pub(crate) DXGI_SWAP_CHAIN_DESC1);
 
 impl Default for SwapchainDesc {
     fn default() -> Self {
@@ -154,11 +154,18 @@ impl SwapchainDesc {
 
 #[derive(Clone)]
 #[repr(transparent)]
-pub struct AdapterDesc(pub DXGI_ADAPTER_DESC1);
+pub struct AdapterDesc(pub(crate) DXGI_ADAPTER_DESC1);
 
 impl AdapterDesc {
     pub fn is_software(&self) -> bool {
         self.0.Flags & DXGI_ADAPTER_FLAG_DXGI_ADAPTER_FLAG_SOFTWARE as u32 != 0
+    }
+
+    // ToDo: clean up?
+    pub fn description(&self) -> Option<String> {
+        WideCStr::from_slice_with_nul(&self.0.Description)
+            .map(|wide_cstr| wide_cstr.to_string_lossy())
+            .ok()
     }
 }
 
@@ -218,7 +225,7 @@ impl std::fmt::Debug for AdapterDesc {
 #[derive(Clone)]
 #[repr(transparent)]
 #[derive(Debug)]
-pub struct SampleDesc(pub DXGI_SAMPLE_DESC);
+pub struct SampleDesc(pub(crate) DXGI_SAMPLE_DESC);
 
 impl Default for SampleDesc {
     fn default() -> Self {
@@ -251,7 +258,7 @@ impl SampleDesc {
 
 #[repr(transparent)]
 #[derive(Clone, Debug)]
-pub struct ResourceDesc(pub D3D12_RESOURCE_DESC);
+pub struct ResourceDesc(pub(crate) D3D12_RESOURCE_DESC);
 
 impl Default for ResourceDesc {
     fn default() -> Self {
@@ -365,7 +372,7 @@ impl ResourceDesc {
 #[repr(transparent)]
 #[derive(Debug, Clone)]
 
-pub struct Message(pub D3D12_MESSAGE);
+pub struct Message(pub(crate) D3D12_MESSAGE);
 
 impl Default for Message {
     fn default() -> Self {
@@ -383,7 +390,7 @@ impl Default for Message {
 #[repr(transparent)]
 #[derive(Debug, Clone)]
 
-pub struct HeapProperties(pub D3D12_HEAP_PROPERTIES);
+pub struct HeapProperties(pub(crate) D3D12_HEAP_PROPERTIES);
 
 impl Default for HeapProperties {
     fn default() -> Self {
@@ -453,7 +460,7 @@ impl HeapProperties {
 #[derive(Default, Copy, Clone)]
 #[repr(transparent)]
 #[derive(Debug)]
-pub struct Range(pub D3D12_RANGE);
+pub struct Range(pub(crate) D3D12_RANGE);
 
 impl Range {
     pub fn set_begin(mut self, begin: ByteCount) -> Self {
@@ -478,7 +485,7 @@ impl Range {
 // Non-Clone type since it contains a raw pointer
 #[repr(transparent)]
 #[derive(Debug)]
-pub struct ResourceBarrier(pub D3D12_RESOURCE_BARRIER);
+pub struct ResourceBarrier(pub(crate) D3D12_RESOURCE_BARRIER);
 
 impl ResourceBarrier {
     pub fn set_barrier_type(
@@ -571,7 +578,9 @@ impl ResourceBarrier {
 
 #[derive(Default, Debug)]
 #[repr(transparent)]
-pub struct ResourceTransitionBarrier(pub D3D12_RESOURCE_TRANSITION_BARRIER);
+pub struct ResourceTransitionBarrier(
+    pub(crate) D3D12_RESOURCE_TRANSITION_BARRIER,
+);
 
 impl ResourceTransitionBarrier {
     pub fn set_resource(mut self, resource: &Resource) -> Self {
@@ -629,7 +638,7 @@ impl ResourceTransitionBarrier {
 #[derive(Default, Debug)]
 #[repr(transparent)]
 
-pub struct ResourceAliasingBarrier(pub D3D12_RESOURCE_ALIASING_BARRIER);
+pub struct ResourceAliasingBarrier(pub(crate) D3D12_RESOURCE_ALIASING_BARRIER);
 
 impl ResourceAliasingBarrier {
     pub fn set_resource_before(mut self, resource_before: &Resource) -> Self {
@@ -662,7 +671,7 @@ impl ResourceAliasingBarrier {
 #[derive(Default, Debug)]
 #[repr(transparent)]
 
-pub struct ResourceUavBarrier(pub D3D12_RESOURCE_UAV_BARRIER);
+pub struct ResourceUavBarrier(pub(crate) D3D12_RESOURCE_UAV_BARRIER);
 
 impl ResourceUavBarrier {
     pub fn set_resource(mut self, resource: &Resource) -> Self {
@@ -682,7 +691,7 @@ impl ResourceUavBarrier {
 #[derive(Clone, Copy)]
 #[repr(transparent)]
 #[derive(Debug)]
-pub struct Viewport(pub D3D12_VIEWPORT);
+pub struct Viewport(pub(crate) D3D12_VIEWPORT);
 
 impl Default for Viewport {
     fn default() -> Self {
@@ -756,7 +765,7 @@ impl Viewport {
 #[derive(Clone, Copy)]
 #[repr(transparent)]
 #[derive(Debug)]
-pub struct Rect(pub D3D12_RECT);
+pub struct Rect(pub(crate) D3D12_RECT);
 
 impl Default for Rect {
     fn default() -> Self {
@@ -811,7 +820,7 @@ impl Rect {
 // #[derive(Clone, Copy)]
 #[repr(transparent)]
 #[derive(Debug)]
-pub struct TextureCopyLocation(pub D3D12_TEXTURE_COPY_LOCATION);
+pub struct TextureCopyLocation(pub(crate) D3D12_TEXTURE_COPY_LOCATION);
 
 impl TextureCopyLocation {
     pub fn new_placed_footprint(
@@ -853,7 +862,7 @@ impl TextureCopyLocation {
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 #[derive(Debug)]
-pub struct Box(pub D3D12_BOX);
+pub struct Box(pub(crate) D3D12_BOX);
 
 impl Default for Box {
     fn default() -> Self {
@@ -927,7 +936,7 @@ impl Box {
 #[derive(Copy, Clone, Default)]
 #[repr(transparent)]
 #[derive(Debug)]
-pub struct VertexBufferView(pub D3D12_VERTEX_BUFFER_VIEW);
+pub struct VertexBufferView(pub(crate) D3D12_VERTEX_BUFFER_VIEW);
 
 impl VertexBufferView {
     pub fn set_buffer_location(
@@ -1074,7 +1083,7 @@ impl<'a> Drop for InputElementDesc<'a> {
 #[derive(Copy, Clone, Default)]
 #[repr(transparent)]
 #[derive(Debug)]
-pub struct IndexBufferView(pub D3D12_INDEX_BUFFER_VIEW);
+pub struct IndexBufferView(pub(crate) D3D12_INDEX_BUFFER_VIEW);
 
 impl IndexBufferView {
     pub fn set_buffer_location(
@@ -1110,7 +1119,10 @@ impl IndexBufferView {
 
 #[repr(transparent)]
 #[derive(Debug)]
-pub struct ShaderBytecode<'a>(pub D3D12_SHADER_BYTECODE, PhantomData<&'a [u8]>);
+pub struct ShaderBytecode<'a>(
+    pub(crate) D3D12_SHADER_BYTECODE,
+    PhantomData<&'a [u8]>,
+);
 
 impl<'a> Default for ShaderBytecode<'a> {
     fn default() -> ShaderBytecode<'a> {
@@ -1287,7 +1299,7 @@ impl<'a> StreamOutputDesc<'a> {
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 #[derive(Debug)]
-pub struct RenderTargetBlendDesc(pub D3D12_RENDER_TARGET_BLEND_DESC);
+pub struct RenderTargetBlendDesc(pub(crate) D3D12_RENDER_TARGET_BLEND_DESC);
 
 // defaults from d3dx12.h
 impl Default for RenderTargetBlendDesc {
@@ -1406,7 +1418,7 @@ impl RenderTargetBlendDesc {
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 #[derive(Debug)]
-pub struct BlendDesc(pub D3D12_BLEND_DESC);
+pub struct BlendDesc(pub(crate) D3D12_BLEND_DESC);
 
 // defaults from d3dx12.h
 impl Default for BlendDesc {
@@ -1467,7 +1479,7 @@ impl BlendDesc {
 
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug)]
-pub struct RasterizerDesc(pub D3D12_RASTERIZER_DESC);
+pub struct RasterizerDesc(pub(crate) D3D12_RASTERIZER_DESC);
 
 // defaults from d3dx12.h
 impl Default for RasterizerDesc {
@@ -1603,7 +1615,7 @@ impl RasterizerDesc {
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 #[derive(Debug)]
-pub struct DepthStencilOpDesc(pub D3D12_DEPTH_STENCILOP_DESC);
+pub struct DepthStencilOpDesc(pub(crate) D3D12_DEPTH_STENCILOP_DESC);
 
 // defaults from d3dx12.h
 impl Default for DepthStencilOpDesc {
@@ -1660,7 +1672,7 @@ impl DepthStencilOpDesc {
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 #[derive(Debug)]
-pub struct DepthStencilDesc(pub D3D12_DEPTH_STENCIL_DESC);
+pub struct DepthStencilDesc(pub(crate) D3D12_DEPTH_STENCIL_DESC);
 
 // defaults from d3dx12.h: less depth test with writes; no stencil
 impl Default for DepthStencilDesc {
@@ -2228,7 +2240,7 @@ impl<'rs, 'sh> ComputePipelineStateDesc<'rs, 'sh> {
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 #[derive(Debug)]
-pub struct SubresourceFootprint(pub D3D12_SUBRESOURCE_FOOTPRINT);
+pub struct SubresourceFootprint(pub(crate) D3D12_SUBRESOURCE_FOOTPRINT);
 
 impl Default for SubresourceFootprint {
     fn default() -> Self {
@@ -2290,7 +2302,9 @@ impl SubresourceFootprint {
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 #[derive(Debug)]
-pub struct PlacedSubresourceFootprint(pub D3D12_PLACED_SUBRESOURCE_FOOTPRINT);
+pub struct PlacedSubresourceFootprint(
+    pub(crate) D3D12_PLACED_SUBRESOURCE_FOOTPRINT,
+);
 
 impl Default for PlacedSubresourceFootprint {
     fn default() -> Self {
@@ -2324,7 +2338,7 @@ impl PlacedSubresourceFootprint {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct ConstantBufferViewDesc(pub D3D12_CONSTANT_BUFFER_VIEW_DESC);
+pub struct ConstantBufferViewDesc(pub(crate) D3D12_CONSTANT_BUFFER_VIEW_DESC);
 
 impl ConstantBufferViewDesc {
     pub fn set_buffer_location(
@@ -2352,7 +2366,7 @@ impl ConstantBufferViewDesc {
 // ToDo: rethink the 'pub's in such wrappers
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug)]
-pub struct DescriptorHeapDesc(pub D3D12_DESCRIPTOR_HEAP_DESC);
+pub struct DescriptorHeapDesc(pub(crate) D3D12_DESCRIPTOR_HEAP_DESC);
 
 impl Default for DescriptorHeapDesc {
     fn default() -> Self {
@@ -2405,7 +2419,7 @@ impl DescriptorHeapDesc {
 
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug)]
-pub struct CommandQueueDesc(pub D3D12_COMMAND_QUEUE_DESC);
+pub struct CommandQueueDesc(pub(crate) D3D12_COMMAND_QUEUE_DESC);
 
 impl Default for CommandQueueDesc {
     fn default() -> Self {
@@ -2461,7 +2475,9 @@ impl CommandQueueDesc {
 
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug)]
-pub struct FeatureDataRootSignature(pub D3D12_FEATURE_DATA_ROOT_SIGNATURE);
+pub struct FeatureDataRootSignature(
+    pub(crate) D3D12_FEATURE_DATA_ROOT_SIGNATURE,
+);
 
 impl FeatureDataRootSignature {
     pub fn new(version: RootSignatureVersion) -> Self {
@@ -2501,7 +2517,7 @@ impl DescriptorRangeOffset {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct DescriptorRange(pub D3D12_DESCRIPTOR_RANGE1);
+pub struct DescriptorRange(pub(crate) D3D12_DESCRIPTOR_RANGE1);
 
 impl DescriptorRange {
     pub fn set_range_type(mut self, range_type: DescriptorRangeType) -> Self {
@@ -2697,7 +2713,7 @@ impl<'a> RootDescriptorTable<'a> {
 #[derive(Default, Debug)]
 #[repr(transparent)]
 
-pub struct RootConstants(pub D3D12_ROOT_CONSTANTS);
+pub struct RootConstants(pub(crate) D3D12_ROOT_CONSTANTS);
 
 impl RootConstants {
     pub fn set_shader_register(mut self, shader_register: u32) -> Self {
@@ -2730,7 +2746,7 @@ impl RootConstants {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct RootDescriptor(pub D3D12_ROOT_DESCRIPTOR1);
+pub struct RootDescriptor(pub(crate) D3D12_ROOT_DESCRIPTOR1);
 
 impl RootDescriptor {
     pub fn set_shader_register(mut self, shader_register: u32) -> Self {
@@ -2765,7 +2781,7 @@ impl RootDescriptor {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct SamplerDesc(pub D3D12_SAMPLER_DESC);
+pub struct SamplerDesc(pub(crate) D3D12_SAMPLER_DESC);
 
 impl SamplerDesc {
     pub fn set_filter(mut self, filter: Filter) -> Self {
@@ -2865,7 +2881,7 @@ impl SamplerDesc {
 
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug)]
-pub struct StaticSamplerDesc(pub D3D12_STATIC_SAMPLER_DESC);
+pub struct StaticSamplerDesc(pub(crate) D3D12_STATIC_SAMPLER_DESC);
 
 // based on the first constructor of CD3DX12_STATIC_SAMPLER_DESC
 impl Default for StaticSamplerDesc {
@@ -3023,7 +3039,9 @@ impl StaticSamplerDesc {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct VersionedRootSignatureDesc(pub D3D12_VERSIONED_ROOT_SIGNATURE_DESC);
+pub struct VersionedRootSignatureDesc(
+    pub(crate) D3D12_VERSIONED_ROOT_SIGNATURE_DESC,
+);
 
 impl VersionedRootSignatureDesc {
     // RS v1.0 is not supported
@@ -3145,7 +3163,7 @@ impl<'a> SubresourceData<'a> {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct ShaderResourceViewDesc(pub D3D12_SHADER_RESOURCE_VIEW_DESC);
+pub struct ShaderResourceViewDesc(pub(crate) D3D12_SHADER_RESOURCE_VIEW_DESC);
 
 impl ShaderResourceViewDesc {
     pub fn set_format(mut self, format: Format) -> Self {
@@ -3387,7 +3405,7 @@ impl ShaderResourceViewDesc {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct BufferSrv(pub D3D12_BUFFER_SRV);
+pub struct BufferSrv(pub(crate) D3D12_BUFFER_SRV);
 
 impl BufferSrv {
     pub fn set_first_element(mut self, first_element: u64) -> Self {
@@ -3434,7 +3452,7 @@ impl BufferSrv {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct Tex1DSrv(pub D3D12_TEX1D_SRV);
+pub struct Tex1DSrv(pub(crate) D3D12_TEX1D_SRV);
 
 impl Tex1DSrv {
     pub fn set_most_detailed_mip(mut self, most_detailed_mip: u32) -> Self {
@@ -3471,7 +3489,7 @@ impl Tex1DSrv {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct Tex1DArraySrv(pub D3D12_TEX1D_ARRAY_SRV);
+pub struct Tex1DArraySrv(pub(crate) D3D12_TEX1D_ARRAY_SRV);
 
 impl Tex1DArraySrv {
     pub fn set_most_detailed_mip(mut self, most_detailed_mip: u32) -> Self {
@@ -3526,7 +3544,7 @@ impl Tex1DArraySrv {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct Tex2DSrv(pub D3D12_TEX2D_SRV);
+pub struct Tex2DSrv(pub(crate) D3D12_TEX2D_SRV);
 
 impl Tex2DSrv {
     pub fn set_most_detailed_mip(mut self, most_detailed_mip: u32) -> Self {
@@ -3572,7 +3590,7 @@ impl Tex2DSrv {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct Tex2DArraySrv(pub D3D12_TEX2D_ARRAY_SRV);
+pub struct Tex2DArraySrv(pub(crate) D3D12_TEX2D_ARRAY_SRV);
 
 impl Tex2DArraySrv {
     pub fn set_most_detailed_mip(mut self, most_detailed_mip: u32) -> Self {
@@ -3636,12 +3654,12 @@ impl Tex2DArraySrv {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct Tex2DMsSrv(pub D3D12_TEX2DMS_SRV);
+pub struct Tex2DMsSrv(pub(crate) D3D12_TEX2DMS_SRV);
 
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct Tex2DMsArraySrv(pub D3D12_TEX2DMS_ARRAY_SRV);
+pub struct Tex2DMsArraySrv(pub(crate) D3D12_TEX2DMS_ARRAY_SRV);
 
 impl Tex2DMsArraySrv {
     pub fn set_first_array_slice(mut self, first_array_slice: u32) -> Self {
@@ -3665,7 +3683,7 @@ impl Tex2DMsArraySrv {
 
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
-pub struct Tex3DSrv(pub D3D12_TEX3D_SRV);
+pub struct Tex3DSrv(pub(crate) D3D12_TEX3D_SRV);
 
 impl Tex3DSrv {
     pub fn set_most_detailed_mip(mut self, most_detailed_mip: u32) -> Self {
@@ -3702,7 +3720,7 @@ impl Tex3DSrv {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct TexcubeSrv(pub D3D12_TEXCUBE_SRV);
+pub struct TexcubeSrv(pub(crate) D3D12_TEXCUBE_SRV);
 
 impl TexcubeSrv {
     pub fn set_most_detailed_mip(mut self, most_detailed_mip: u32) -> Self {
@@ -3739,7 +3757,7 @@ impl TexcubeSrv {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct TexcubeArraySrv(pub D3D12_TEXCUBE_ARRAY_SRV);
+pub struct TexcubeArraySrv(pub(crate) D3D12_TEXCUBE_ARRAY_SRV);
 
 impl TexcubeArraySrv {
     pub fn set_most_detailed_mip(mut self, most_detailed_mip: u32) -> Self {
@@ -3811,7 +3829,7 @@ impl RaytracingAccelerationStructureSrv {
 
 #[repr(transparent)]
 #[derive(Copy, Clone, Default, Debug)]
-pub struct UnorderedAccessViewDesc(pub D3D12_UNORDERED_ACCESS_VIEW_DESC);
+pub struct UnorderedAccessViewDesc(pub(crate) D3D12_UNORDERED_ACCESS_VIEW_DESC);
 
 impl UnorderedAccessViewDesc {
     pub fn set_format(mut self, format: Format) -> Self {
@@ -3940,7 +3958,7 @@ impl UnorderedAccessViewDesc {
 
 #[repr(transparent)]
 #[derive(Copy, Clone, Default, Debug)]
-pub struct BufferUav(pub D3D12_BUFFER_UAV);
+pub struct BufferUav(pub(crate) D3D12_BUFFER_UAV);
 
 impl BufferUav {
     pub fn set_first_element(mut self, first_element: u64) -> Self {
@@ -3998,7 +4016,7 @@ impl BufferUav {
 #[derive(Copy, Clone, Default)]
 #[repr(transparent)]
 #[derive(Debug)]
-pub struct Tex1DUav(pub D3D12_TEX1D_UAV);
+pub struct Tex1DUav(pub(crate) D3D12_TEX1D_UAV);
 
 impl Tex1DUav {
     pub fn set_mip_slice(mut self, mip_slice: u32) -> Self {
@@ -4014,7 +4032,7 @@ impl Tex1DUav {
 #[derive(Default)]
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug)]
-pub struct Tex1DArrayUav(pub D3D12_TEX1D_ARRAY_UAV);
+pub struct Tex1DArrayUav(pub(crate) D3D12_TEX1D_ARRAY_UAV);
 
 impl Tex1DArrayUav {
     pub fn set_mip_slice(mut self, mip_slice: u32) -> Self {
@@ -4048,7 +4066,7 @@ impl Tex1DArrayUav {
 #[derive(Default)]
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug)]
-pub struct Tex2DUav(pub D3D12_TEX2D_UAV);
+pub struct Tex2DUav(pub(crate) D3D12_TEX2D_UAV);
 
 impl Tex2DUav {
     pub fn set_mip_slice(mut self, mip_slice: u32) -> Self {
@@ -4073,7 +4091,7 @@ impl Tex2DUav {
 #[derive(Default)]
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug)]
-pub struct Tex2DArrayUav(pub D3D12_TEX2D_ARRAY_UAV);
+pub struct Tex2DArrayUav(pub(crate) D3D12_TEX2D_ARRAY_UAV);
 
 impl Tex2DArrayUav {
     pub fn set_mip_slice(mut self, mip_slice: u32) -> Self {
@@ -4116,7 +4134,7 @@ impl Tex2DArrayUav {
 #[derive(Default)]
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug)]
-pub struct Tex3DUav(pub D3D12_TEX3D_UAV);
+pub struct Tex3DUav(pub(crate) D3D12_TEX3D_UAV);
 
 impl Tex3DUav {
     pub fn set_mip_slice(mut self, mip_slice: u32) -> Self {
@@ -4150,7 +4168,7 @@ impl Tex3DUav {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct ClearValue(pub D3D12_CLEAR_VALUE);
+pub struct ClearValue(pub(crate) D3D12_CLEAR_VALUE);
 
 impl ClearValue {
     pub fn set_format(mut self, format: Format) -> Self {
@@ -4193,7 +4211,7 @@ impl ClearValue {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct DepthStencilValue(pub D3D12_DEPTH_STENCIL_VALUE);
+pub struct DepthStencilValue(pub(crate) D3D12_DEPTH_STENCIL_VALUE);
 
 impl DepthStencilValue {
     pub fn set_depth(mut self, depth: f32) -> Self {
@@ -4218,7 +4236,7 @@ impl DepthStencilValue {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct DepthStencilViewDesc(pub D3D12_DEPTH_STENCIL_VIEW_DESC);
+pub struct DepthStencilViewDesc(pub(crate) D3D12_DEPTH_STENCIL_VIEW_DESC);
 
 // ToDo: encode the union variant in wrapper's type?
 impl DepthStencilViewDesc {
@@ -4364,7 +4382,7 @@ impl DepthStencilViewDesc {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct Tex1DDsv(pub D3D12_TEX1D_DSV);
+pub struct Tex1DDsv(pub(crate) D3D12_TEX1D_DSV);
 
 impl Tex1DDsv {
     pub fn set_mip_slice(mut self, mip_slice: u32) -> Self {
@@ -4380,7 +4398,7 @@ impl Tex1DDsv {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct Tex1DArrayDsv(pub D3D12_TEX1D_ARRAY_DSV);
+pub struct Tex1DArrayDsv(pub(crate) D3D12_TEX1D_ARRAY_DSV);
 
 impl Tex1DArrayDsv {
     pub fn set_mip_slice(mut self, mip_slice: u32) -> Self {
@@ -4414,7 +4432,7 @@ impl Tex1DArrayDsv {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct Tex2DDsv(pub D3D12_TEX2D_DSV);
+pub struct Tex2DDsv(pub(crate) D3D12_TEX2D_DSV);
 
 impl Tex2DDsv {
     pub fn set_mip_slice(mut self, mip_slice: u32) -> Self {
@@ -4430,7 +4448,7 @@ impl Tex2DDsv {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct Tex2DArrayDsv(pub D3D12_TEX2D_ARRAY_DSV);
+pub struct Tex2DArrayDsv(pub(crate) D3D12_TEX2D_ARRAY_DSV);
 
 impl Tex2DArrayDsv {
     pub fn set_mip_slice(mut self, mip_slice: u32) -> Self {
@@ -4463,12 +4481,12 @@ impl Tex2DArrayDsv {
 
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
-pub struct Tex2DmsDsv(pub D3D12_TEX2DMS_DSV);
+pub struct Tex2DmsDsv(pub(crate) D3D12_TEX2DMS_DSV);
 
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct Tex2DmsArrayDsv(pub D3D12_TEX2DMS_ARRAY_DSV);
+pub struct Tex2DmsArrayDsv(pub(crate) D3D12_TEX2DMS_ARRAY_DSV);
 
 impl Tex2DmsArrayDsv {
     pub fn set_first_array_slice(mut self, first_array_slice: u32) -> Self {
@@ -4494,7 +4512,7 @@ impl Tex2DmsArrayDsv {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct FeatureDataShaderModel(pub D3D12_FEATURE_DATA_SHADER_MODEL);
+pub struct FeatureDataShaderModel(pub(crate) D3D12_FEATURE_DATA_SHADER_MODEL);
 
 impl FeatureDataShaderModel {
     pub fn new(highest_shader_model: ShaderModel) -> Self {
@@ -4798,7 +4816,7 @@ impl<'rs, 'sh> MeshShaderPipelineStateDesc<'rs, 'sh> {
 #[derive(Copy, Clone, Default, Debug)]
 #[repr(transparent)]
 
-pub struct RtFormatArray(pub D3D12_RT_FORMAT_ARRAY);
+pub struct RtFormatArray(pub(crate) D3D12_RT_FORMAT_ARRAY);
 
 impl RtFormatArray {
     pub fn set_rt_formats(mut self, rt_formats: &[Format]) -> Self {
@@ -4822,7 +4840,7 @@ impl RtFormatArray {
 #[repr(transparent)]
 #[derive(Debug, Copy, Clone)]
 
-pub struct QueryHeapDesc(pub D3D12_QUERY_HEAP_DESC);
+pub struct QueryHeapDesc(pub(crate) D3D12_QUERY_HEAP_DESC);
 
 impl Default for QueryHeapDesc {
     fn default() -> Self {
@@ -4866,7 +4884,7 @@ impl QueryHeapDesc {
 #[derive(Default, Debug, Copy, Clone)]
 #[repr(transparent)]
 
-pub struct FeatureDataD3DOptions(pub D3D12_FEATURE_DATA_D3D12_OPTIONS);
+pub struct FeatureDataD3DOptions(pub(crate) D3D12_FEATURE_DATA_D3D12_OPTIONS);
 
 impl FeatureDataD3DOptions {
     pub fn set_double_precision_float_shader_ops(
@@ -5057,7 +5075,7 @@ impl FeatureDataD3DOptions {
 #[derive(Default, Debug, Copy, Clone)]
 #[repr(transparent)]
 
-pub struct ResourceAllocationInfo(pub D3D12_RESOURCE_ALLOCATION_INFO);
+pub struct ResourceAllocationInfo(pub(crate) D3D12_RESOURCE_ALLOCATION_INFO);
 
 impl ResourceAllocationInfo {
     pub fn set_size_in_bytes(mut self, size_in_bytes: ByteCount) -> Self {
@@ -5083,7 +5101,7 @@ impl ResourceAllocationInfo {
 #[repr(transparent)]
 #[derive(Debug, Copy, Clone)]
 
-pub struct HeapDesc(pub D3D12_HEAP_DESC);
+pub struct HeapDesc(pub(crate) D3D12_HEAP_DESC);
 
 impl HeapDesc {
     pub fn set_size_in_bytes(mut self, size_in_bytes: ByteCount) -> Self {

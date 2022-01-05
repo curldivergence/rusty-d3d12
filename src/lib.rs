@@ -9,6 +9,8 @@ use winapi::shared::winerror;
 extern crate static_assertions;
 
 mod raw_bindings;
+
+#[doc(hidden)]
 pub use raw_bindings::d3d12::*;
 
 #[macro_use]
@@ -340,7 +342,7 @@ pub fn d3d_enable_experimental_shader_models() -> DxResult<()> {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Debug {
-    pub this: *mut ID3D12Debug5,
+    this: *mut ID3D12Debug5,
 }
 impl_com_object_refcount_unnamed!(Debug);
 impl_com_object_clone_drop!(Debug);
@@ -373,11 +375,20 @@ impl Debug {
     }
 }
 
+#[cfg(feature = "debug_callback")]
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct InfoQueue {
-    pub this: *mut ID3D12InfoQueue1,
+    this: *mut ID3D12InfoQueue1,
 }
+
+#[cfg(not(feature = "debug_callback"))]
+#[derive(Debug)]
+#[repr(transparent)]
+pub struct InfoQueue {
+    this: *mut ID3D12InfoQueue,
+}
+
 impl_com_object_refcount_unnamed!(InfoQueue);
 impl_com_object_clone_drop!(InfoQueue);
 
@@ -386,25 +397,62 @@ impl InfoQueue {
         device: &Device,
         break_flags: Option<&[MessageSeverity]>,
     ) -> DxResult<Self> {
-        let mut info_queue: *mut ID3D12InfoQueue1 = std::ptr::null_mut();
-        unsafe {
-            dx_try!(
-                device.this,
-                QueryInterface,
-                &IID_ID3D12InfoQueue1,
-                cast_to_ppv(&mut info_queue)
-            );
-            // ToDo: do we need it? It leads to refcount-related exceptions
-            // under certain circumstances (see commit a738100)
-            // device.release();
+        #[cfg(feature = "debug_callback")]
+        {
+            let mut info_queue: *mut ID3D12InfoQueue1 = std::ptr::null_mut();
+            unsafe {
+                dx_try!(
+                    device.this,
+                    QueryInterface,
+                    &IID_ID3D12InfoQueue1,
+                    cast_to_ppv(&mut info_queue)
+                );
+                // ToDo: do we need it? It leads to refcount-related exceptions
+                // under certain circumstances (see commit a738100)
+                // device.release();
 
-            if let Some(break_flags) = break_flags {
-                for flag in break_flags {
-                    dx_try!(info_queue, SetBreakOnSeverity, *flag as i32, 1);
+                if let Some(break_flags) = break_flags {
+                    for flag in break_flags {
+                        dx_try!(
+                            info_queue,
+                            SetBreakOnSeverity,
+                            *flag as i32,
+                            1
+                        );
+                    }
                 }
             }
+
+            Ok(InfoQueue { this: info_queue })
         }
-        Ok(InfoQueue { this: info_queue })
+        #[cfg(not(feature = "debug_callback"))]
+        {
+            let mut info_queue: *mut ID3D12InfoQueue = std::ptr::null_mut();
+            unsafe {
+                dx_try!(
+                    device.this,
+                    QueryInterface,
+                    &IID_ID3D12InfoQueue,
+                    cast_to_ppv(&mut info_queue)
+                );
+                // ToDo: do we need it? It leads to refcount-related exceptions
+                // under certain circumstances (see commit a738100)
+                // device.release();
+
+                if let Some(break_flags) = break_flags {
+                    for flag in break_flags {
+                        dx_try!(
+                            info_queue,
+                            SetBreakOnSeverity,
+                            *flag as i32,
+                            1
+                        );
+                    }
+                }
+            }
+
+            Ok(InfoQueue { this: info_queue })
+        }
     }
 
     pub fn get_messages(&self) -> DxResult<Vec<String>> {
@@ -462,6 +510,7 @@ impl InfoQueue {
         Ok(())
     }
 
+    #[cfg(feature = "debug_callback")]
     pub fn register_callback(
         &self,
         callback: unsafe extern "C" fn(
@@ -493,7 +542,7 @@ impl InfoQueue {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct DebugDevice {
-    pub this: *mut ID3D12DebugDevice,
+    this: *mut ID3D12DebugDevice,
 }
 impl_com_object_refcount_unnamed!(DebugDevice);
 impl_com_object_clone_drop!(DebugDevice);
@@ -535,7 +584,7 @@ impl DebugDevice {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Factory {
-    pub this: *mut IDXGIFactory6,
+    this: *mut IDXGIFactory6,
 }
 impl_com_object_refcount_unnamed!(Factory);
 impl_com_object_clone_drop!(Factory);
@@ -693,7 +742,7 @@ impl Factory {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Adapter {
-    pub this: *mut IDXGIAdapter3,
+    this: *mut IDXGIAdapter3,
 }
 impl_com_object_refcount_unnamed!(Adapter);
 impl_com_object_clone_drop!(Adapter);
@@ -711,7 +760,7 @@ impl Adapter {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Device {
-    pub this: *mut ID3D12Device2,
+    this: *mut ID3D12Device2,
 }
 impl_com_object_refcount_unnamed!(Device);
 impl_com_object_clone_drop!(Device);
@@ -1203,7 +1252,12 @@ impl Device {
         first_subresouce: u32,
         num_subresources: u32,
         base_offset: ByteCount,
-    ) -> (Vec<PlacedSubresourceFootprint>, Vec<u32>, Vec<ByteCount>, ByteCount) {
+    ) -> (
+        Vec<PlacedSubresourceFootprint>,
+        Vec<u32>,
+        Vec<ByteCount>,
+        ByteCount,
+    ) {
         let mut placed_subresource_footprints: Vec<PlacedSubresourceFootprint> =
             Vec::with_capacity(num_subresources as usize);
         unsafe {
@@ -1373,7 +1427,7 @@ impl Device {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct DeviceChild {
-    pub this: *mut ID3D12DeviceChild,
+    this: *mut ID3D12DeviceChild,
 }
 impl_com_object_refcount_unnamed!(DeviceChild);
 impl_com_object_clone_drop!(DeviceChild);
@@ -1411,7 +1465,7 @@ impl From<Fence> for DeviceChild {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct CommandQueue {
-    pub this: *mut ID3D12CommandQueue,
+    this: *mut ID3D12CommandQueue,
 }
 impl_com_object_refcount_unnamed!(CommandQueue);
 impl_com_object_clone_drop!(CommandQueue);
@@ -1453,7 +1507,7 @@ impl CommandQueue {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Swapchain {
-    pub this: *mut IDXGISwapChain4,
+    this: *mut IDXGISwapChain4,
 }
 impl_com_object_refcount_unnamed!(Swapchain);
 impl_com_object_clone_drop!(Swapchain);
@@ -1499,7 +1553,7 @@ impl Swapchain {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct DescriptorHeap {
-    pub this: *mut ID3D12DescriptorHeap,
+    this: *mut ID3D12DescriptorHeap,
 }
 
 impl_com_object_set_get_name!(DescriptorHeap);
@@ -1576,7 +1630,7 @@ impl GpuDescriptorHandle {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Resource {
-    pub this: *mut ID3D12Resource,
+    this: *mut ID3D12Resource,
 }
 impl_com_object_clone_drop!(Resource);
 impl_com_object_refcount_named!(Resource);
@@ -1669,7 +1723,7 @@ impl Resource {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct CommandAllocator {
-    pub this: *mut ID3D12CommandAllocator,
+    this: *mut ID3D12CommandAllocator,
 }
 impl_com_object_set_get_name!(CommandAllocator);
 impl_com_object_refcount_named!(CommandAllocator);
@@ -1687,7 +1741,7 @@ assert_eq_size!(CommandList, *mut ID3D12GraphicsCommandList6);
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct CommandList {
-    pub this: *mut ID3D12GraphicsCommandList6,
+    this: *mut ID3D12GraphicsCommandList6,
 }
 impl_com_object_set_get_name!(CommandList);
 impl_com_object_refcount_named!(CommandList);
@@ -2422,7 +2476,7 @@ unsafe fn memcpy_subresource(
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Fence {
-    pub this: *mut ID3D12Fence,
+    this: *mut ID3D12Fence,
 }
 
 impl_com_object_set_get_name!(Fence);
@@ -2510,7 +2564,7 @@ impl Handle {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct RootSignature {
-    pub this: *mut ID3D12RootSignature,
+    this: *mut ID3D12RootSignature,
 }
 
 impl_com_object_set_get_name!(RootSignature);
@@ -2551,7 +2605,7 @@ impl RootSignature {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct PipelineState {
-    pub this: *mut ID3D12PipelineState,
+    this: *mut ID3D12PipelineState,
 }
 impl_com_object_set_get_name!(PipelineState);
 impl_com_object_refcount_named!(PipelineState);
@@ -2562,7 +2616,7 @@ unsafe impl Send for PipelineState {}
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Blob {
-    pub this: *mut ID3DBlob,
+    this: *mut ID3DBlob,
 }
 impl_com_object_refcount_unnamed!(Blob);
 impl_com_object_clone_drop!(Blob);
@@ -2572,7 +2626,8 @@ impl Blob {
         unsafe {
             let buffer_pointer: *mut u8 =
                 dx_call!(self.this, GetBufferPointer,) as *mut u8;
-            let buffer_size: ByteCount = ByteCount(dx_call!(self.this, GetBufferSize,));
+            let buffer_size: ByteCount =
+                ByteCount(dx_call!(self.this, GetBufferSize,));
             std::slice::from_raw_parts(buffer_pointer, buffer_size.0 as usize)
         }
     }
@@ -2581,7 +2636,7 @@ impl Blob {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct QueryHeap {
-    pub this: *mut ID3D12QueryHeap,
+    this: *mut ID3D12QueryHeap,
 }
 impl_com_object_set_get_name!(QueryHeap);
 impl_com_object_refcount_named!(QueryHeap);
@@ -2590,7 +2645,7 @@ impl_com_object_clone_drop!(QueryHeap);
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Heap {
-    pub this: *mut ID3D12Heap,
+    this: *mut ID3D12Heap,
 }
 impl_com_object_set_get_name!(Heap);
 impl_com_object_refcount_named!(Heap);

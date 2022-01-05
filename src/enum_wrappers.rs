@@ -500,7 +500,7 @@ bitflags! {
 
 bitflags! {
     pub struct CreateFactoryFlags: u32 {
-        const None = 0; // Is there any constant for it?
+        const None = 0; // ToDo: Is there any constant for it?
         const Debug = DXGI_CREATE_FACTORY_DEBUG;
     }
 }
@@ -592,7 +592,6 @@ pub enum Feature {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
-
 pub enum DescriptorRangeType {
     Srv = D3D12_DESCRIPTOR_RANGE_TYPE_D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
     Uav = D3D12_DESCRIPTOR_RANGE_TYPE_D3D12_DESCRIPTOR_RANGE_TYPE_UAV,

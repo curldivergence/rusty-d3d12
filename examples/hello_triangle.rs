@@ -469,10 +469,11 @@ impl HelloTriangleSample {
             let desc_struct =
                 adapter.get_desc().expect("Cannot get adapter desc");
             // ToDo: move this inside DxgiAdapterDesc?
-            let desc_string =
-                WideCStr::from_slice_with_nul(&desc_struct.0.Description)
-                    .expect("Cannot parse UTF16 adapter description");
-            debug!("\t{}", desc_string.to_string_lossy());
+
+            debug!(
+                "\t{}",
+                &desc_struct.description().expect("cannot get adapter desc")
+            );
         }
 
         adapters.remove(0)

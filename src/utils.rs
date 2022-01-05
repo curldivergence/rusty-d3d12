@@ -192,7 +192,7 @@ pub fn align_to_multiple(value: u64, alignment: u64) -> u64 {
     (value + (alignment - 1)) & (!(alignment - 1))
 }
 
-///
+/// This macro is similar to [std::mem::size_of] function, but returns [ByteCount] instead of [usize]
 #[macro_export]
 macro_rules! size_of {
     ($struct_type:ty) => {

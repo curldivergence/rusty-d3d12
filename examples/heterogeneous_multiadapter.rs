@@ -444,6 +444,7 @@ impl Pipeline {
                     .expect("Cannot create debug info queue"),
                 );
 
+                #[cfg(feature = "debug_callback")]
                 info_queue
                     .register_callback(
                         debug_callback,
@@ -1151,7 +1152,12 @@ impl Pipeline {
             let render_target_desc =
                 self.render_targets[adapter_idx][self.frame_index].get_desc();
             let (render_target_layout, _, _, _) = self.devices[adapter_idx]
-                .get_copyable_footprints(&render_target_desc, 0, 1, ByteCount(0));
+                .get_copyable_footprints(
+                    &render_target_desc,
+                    0,
+                    1,
+                    ByteCount(0),
+                );
 
             let dest = TextureCopyLocation::new_placed_footprint(
                 &self.cross_adapter_resources[adapter_idx][self.frame_index],
@@ -1966,7 +1972,9 @@ fn create_blur_vertex_buffer(
     let quad_vertex_buffer_view = VertexBufferView::default()
         .set_buffer_location(quad_vertex_buffer.get_gpu_virtual_address())
         .set_size_in_bytes(quad_vertex_buffer_size)
-        .set_stride_in_bytes(ByteCount::from(std::mem::size_of::<BlurVertex>()));
+        .set_stride_in_bytes(
+            ByteCount::from(std::mem::size_of::<BlurVertex>()),
+        );
     (
         quad_vertex_buffer,
         quad_vertex_buffer_upload,
@@ -2370,7 +2378,7 @@ fn create_shared_resource_descs(
         .expect("Cannot check feature support");
 
     let cross_adapter_textures_supported =
-        feature_data.0.CrossAdapterRowMajorTextureSupported != 0;
+        feature_data.cross_adapter_row_major_texture_supported();
 
     if cross_adapter_textures_supported {
         info!("Cross adapter textures are supported");
@@ -2387,8 +2395,7 @@ fn create_shared_resource_descs(
             slice::from_ref(&cross_adapter_desc),
         );
         trace!("cross adapter texture info: {:?}", &texture_info);
-        // ToDo: implement getters
-        texture_size = ByteCount(texture_info.0.SizeInBytes);
+        texture_size = texture_info.size_in_bytes();
     } else {
         info!("Cross adapter textures are not supported");
         let (layout, _, _, _) = devices[0].get_copyable_footprints(
@@ -2404,8 +2411,9 @@ fn create_shared_resource_descs(
         );
 
         texture_size = align_to_multiple(
-            (layout[0].0.Footprint.RowPitch * layout[0].0.Footprint.Height)
-                as u64,
+            (layout[0].footprint().row_pitch()
+                * layout[0].footprint().height())
+            .0,
             DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT.0,
         )
         .into();

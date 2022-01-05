@@ -949,6 +949,7 @@ impl Pipeline {
                 .expect("Cannot create debug info queue"),
             );
 
+            #[cfg(feature = "debug_callback")]
             temp_info_queue
                 .register_callback(
                     debug_callback,
