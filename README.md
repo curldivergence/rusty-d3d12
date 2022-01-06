@@ -4,7 +4,7 @@
 # rusty-d3d12
 This project provides low-level bindings for D3D12 API. It utilizes `rust-bindgen` for generating raw bindings (unlike `d3d12-rs` crate), but aims for providing idiomatic APIs (unlike the raw D3D12 wrappers from `winapi` or `windows-rs` crates).
 
-## Features:
+## Features
 - type-safe wrappers for D3D12 enumerations and bit flags
 - wrappers for `ID3D12*` interfaces and POD structs (the latter are marked as `#[repr(transparent)]` so that they can be used as a drop-in replacement for the native types, but expose type-safe getters and setters)
 - `D3D12` and `DXGI` prefixes have been stripped from all types, functions and enum variants (e.g. this library exposes `CommandListType::Direct` instead of `D3D12_COMMAND_LIST_TYPE_DIRECT`) since it's very likely that people who use it already know the name of the API it wraps (it's mentioned in the crate name after all), and do not need to be constantly reminded about it :) Also all type and function names have been reshaped with respect to the official Rust code style (e.g. `get_gpu_descriptor_handle_for_heap_start` instead of `GetGPUDescriptorHandleForHeapStart`). Note that most, but *not* all the enum variant names have been converted yet, so some of them will be changed in future versions

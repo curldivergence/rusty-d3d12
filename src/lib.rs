@@ -1,3 +1,80 @@
+/*!
+
+This project provides low-level bindings for D3D12 API. It utilizes `rust-bindgen` for generating raw bindings (unlike `d3d12-rs` crate), but aims for providing idiomatic APIs (unlike the raw D3D12 wrappers from `winapi` or `windows-rs` crates).
+
+## Features
+- type-safe wrappers for D3D12 enumerations and bit flags
+- wrappers for `ID3D12*` interfaces and POD structs (the latter are marked as `#[repr(transparent)]` so that they can be used as a drop-in replacement for the native types, but expose type-safe getters and setters)
+- `D3D12` and `DXGI` prefixes have been stripped from all types, functions and enum variants (e.g. this library exposes `CommandListType::Direct` instead of `D3D12_COMMAND_LIST_TYPE_DIRECT`) since it's very likely that people who use it already know the name of the API it wraps (it's mentioned in the crate name after all), and do not need to be constantly reminded about it :) Also all type and function names have been reshaped with respect to the official Rust code style (e.g. `get_gpu_descriptor_handle_for_heap_start` instead of `GetGPUDescriptorHandleForHeapStart`). Note that most, but *not* all the enum variant names have been converted yet, so some of them will be changed in future versions
+- D3D12 Agility SDK is integrated into the library and shipped along with it (see `heterogeneous_multiadapter.rs` for an example of exporting required symbols). Current SDK version is `1.600.10`
+- PIX markers (they require enabling `pix` feature which is off by default not to introduce a dependency on `WinPixEventRuntime.dll` for people who don't need it)
+- automatic COM object reference counting via `Clone` and `Drop` traits implementations with optional logging possibilities (e.g. see `impl_com_object_refcount_named` macro)
+- D3D12 debug callback support (please note that `debug_callback` feature needs to be activated explicitly since `ID3D12InfoQueue1` interface is only supported on Windows 11), object autonaming and GPU validation
+- convenience macros for wrapping API calls (`dx_call!` and `dx_try!`)
+- not yet covered APIs can be accessed through raw bindings exports, and new APIs can be wrapped in semi-automatic mode with the help of `conversion_assist.py` script
+- most of the APIs provided by `rusty-d3d12` are *not* marked as `unsafe` since it pollutes client code while giving little in return: obviously, a lot of bad things can happen due to misusing D3D12, but guarding against something like that is a task for a *high*-level graphics library or engine. So `unsafe` is reserved for something unsafe that happens on Rust side, e.g. accessing unions (see `ClearValue::color()`)
+
+## Examples
+
+- create debug controller and enable validations:
+```rust
+let debug_controller = Debug::new().expect("cannot create debug controller");
+debug_controller.enable_debug_layer();
+debug_controller.enable_gpu_based_validation();
+debug_controller.enable_object_auto_name();
+```
+- create a descriptor heap:
+```rust
+let heap = device.create_descriptor_heap(
+        &DescriptorHeapDesc::default()
+            .set_heap_type(heap_type)
+            .set_num_descriptors(descriptor_count)
+            .set_flags(flags),
+    ).expect("cannot create descriptor heap");
+
+heap.set_name(name).expect("cannot set name on descriptor heap");
+```
+- check if cross-adapter textures are supported:
+```rust
+let mut feature_data = FeatureDataD3DOptions::default();
+device
+    .check_feature_support(Feature::D3D12Options, &mut feature_data)
+    .expect("Cannot check feature support");
+
+let cross_adapter_textures_supported = feature_data.cross_adapter_row_major_texture_supported();
+```
+- create mesh shader PSO:
+```rust
+let ms_bytecode = ShaderBytecode::from_bytes(&mesh_shader);
+let ps_bytecode = ShaderBytecode::from_bytes(&pixel_shader);
+
+let pso_subobjects_desc = MeshShaderPipelineStateDesc::default()
+    .set_root_signature(root_signature)
+    .set_ms_bytecode(&ms_bytecode)
+    .set_ps_bytecode(&ps_bytecode)
+    .set_rasterizer_state(
+        &RasterizerDesc::default().set_depth_clip_enable(false),
+    )
+    .set_blend_state(&BlendDesc::default())
+    .set_depth_stencil_state(
+        &DepthStencilDesc::default().set_depth_enable(false),
+    )
+    .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
+    .set_rtv_formats(&[Format::R8G8B8A8Unorm]);
+
+let pso_desc = PipelineStateStreamDesc::default()
+    .set_pipeline_state_subobject_stream(
+        pso_subobjects_desc.as_byte_stream(),
+    );
+
+let pso = device
+    .create_pipeline_state(&pso_desc)
+    .expect("Cannot create PSO");
+```
+
+Please see the project [repository](https://github.com/curldivergence/rusty-d3d12) for more info, including runnable [examples](https://github.com/curldivergence/rusty-d3d12/tree/main/examples).
+*/
+
 use log::{trace, warn};
 use std::default::Default;
 use std::ffi::{c_void, CString};
@@ -34,6 +111,7 @@ fn cast_to_ppv<T>(pointer: &mut *mut T) -> *mut *mut std::ffi::c_void {
 // Behold! This macro and the one below now can accept both methods and
 // plain functions.
 // ToDo: is there a way to fix the trailing comma issue?
+/// Macro for extracting infallible D3D12 methods
 macro_rules! dx_call {
     ($object_ptr:expr, $method_name:ident, $($args:expr),*) => {{
         let vtbl = (*$object_ptr).lpVtbl;
@@ -43,7 +121,7 @@ macro_rules! dx_call {
     ($fn_name:ident $args:tt) => {$fn_name $args;}
 }
 
-// ToDo: better name?
+/// Macro for extracting fallible D3D12 methods
 macro_rules! dx_try {
     ($object_ptr:expr, $method_name:ident, $($args:expr),*) => {{
         let vtbl = (*$object_ptr).lpVtbl;
@@ -163,8 +241,7 @@ macro_rules! cast_to_iunknown {
     }};
 }
 
-// Of course these macros should be traits instead, but there is no way
-// to refer to fields in a trait :(
+// ToDo: revise this (macro -> trait?)
 macro_rules! impl_com_object_clone_drop{
     ($struct_type:ty
         $(, $extra_member:ident)*
@@ -739,6 +816,7 @@ impl Factory {
     }
 }
 
+/// Wrapper around IDXGIAdapter3 interface
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Adapter {
@@ -2251,32 +2329,12 @@ impl CommandList {
         single_handle_to_descriptor_range: bool,
         depth_stencil: Option<CpuDescriptorHandle>,
     ) {
-        // since CPUDescriptorHandle object is not just a wrapper around
-        // the correspondent COM pointer but also contains another member,
-        // we cannot just pass an array of CPUDescriptorHandle's where
-        // an array of D3D12_CPU_DESCRIPTOR_HANDLE's is required
-        // one could argue this smells, but it is really convenient
-        // to store descriptor size inside descriptor heap handle object
-        const MAX_RT_COUNT: usize =
-            D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT as usize;
-
-        assert!(
-            descriptors.len() <= MAX_RT_COUNT,
-            "Cannot set more than {} descriptor heaps",
-            MAX_RT_COUNT
-        );
-
-        let mut hw_descriptors = [0u64; MAX_RT_COUNT];
-        for i in 0..descriptors.len() {
-            hw_descriptors[i] = descriptors[i].hw_handle.ptr;
-        }
-
         unsafe {
             dx_call!(
                 self.this,
                 OMSetRenderTargets,
                 descriptors.len() as std::os::raw::c_uint,
-                hw_descriptors.as_mut_ptr() as *mut D3D12_CPU_DESCRIPTOR_HANDLE,
+                descriptors.as_ptr() as *mut D3D12_CPU_DESCRIPTOR_HANDLE,
                 match single_handle_to_descriptor_range {
                     true => 1,
                     false => 0,
@@ -2613,6 +2671,7 @@ impl_com_object_clone_drop!(PipelineState);
 
 unsafe impl Send for PipelineState {}
 
+/// Wrapper around ID3DBlob interface
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Blob {

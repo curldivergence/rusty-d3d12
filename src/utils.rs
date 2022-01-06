@@ -54,8 +54,7 @@ macro_rules! impl_mul_div {
 }
 
 // ToDo: get rid of it in favor of usize??
-/// ByteCount
-
+/// A newtype around [u64] made to distinguish between element counts and byte sizes in APIs
 #[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ByteCount(pub u64);
@@ -112,49 +111,6 @@ impl_from!(ByteCount, i64);
 impl_from!(ByteCount, usize);
 impl_from!(ByteCount, isize);
 
-/// Elements
-
-// ToDo: do we really need this newtype or not?
-
-// #[derive(Copy, Clone, Debug)]
-// pub struct Elements(pub u64);
-
-// // Elements + Elements = Elements
-// impl std::ops::Add<Elements> for Elements {
-//     type Output = Self;
-
-//     fn add(self, rhs: Self) -> Self::Output {
-//         Self(self.0 + rhs.0)
-//     }
-// }
-
-// impl std::ops::AddAssign<Elements> for Elements {
-//     fn add_assign(&mut self, rhs: Self) {
-//         *self = Self(self.0 + rhs.0);
-//     }
-// }
-
-// impl_from!(Elements, u8);
-// impl_from!(Elements, i8);
-// impl_from!(Elements, u16);
-// impl_from!(Elements, i16);
-// impl_from!(Elements, u32);
-// impl_from!(Elements, i32);
-// impl_from!(Elements, u64);
-// impl_from!(Elements, i64);
-// impl_from!(Elements, usize);
-// impl_from!(Elements, isize);
-
-// impl std::ops::Mul<u64> for Elements {
-//     type Output = Self;
-
-//     fn mul(self, rhs: u64) -> Self::Output {
-//         Self::from(self.0 * rhs)
-//     }
-// }
-
-///
-
 pub fn compile_shader(
     name: &str,
     source: &str,
@@ -187,12 +143,11 @@ pub fn compile_shader(
     }
 }
 
-///
 pub fn align_to_multiple(value: u64, alignment: u64) -> u64 {
     (value + (alignment - 1)) & (!(alignment - 1))
 }
 
-/// This macro is similar to [std::mem::size_of] function, but returns [ByteCount] instead of [usize]
+/// A macro similar to [std::mem::size_of] function, but returns [ByteCount] instead of [usize]
 #[macro_export]
 macro_rules! size_of {
     ($struct_type:ty) => {

@@ -141,8 +141,12 @@ fn main() {
     let examples_bin_path =
         workspace_dir.join("target").join(profile).join("examples");
     let copy_dest_path = examples_bin_path.join("D3D12");
-    std::fs::create_dir_all(&copy_dest_path)
-        .expect("Cannot create D3D12 dir to copy Agility SDK dlls");
+    std::fs::create_dir_all(&copy_dest_path).unwrap_or_else(|err| {
+        eprintln!(
+            "Cannot create D3D12 dir to copy Agility SDK dlls: {:?}",
+            err
+        );
+    });
 
     let files_to_copy = [
         "D3D12Core.dll",
@@ -167,14 +171,20 @@ fn main() {
             &format!("{}\\{}", PIX_LIB_PATH, pix_dll_name),
             examples_bin_path.join(pix_dll_name),
         )
-        .expect("Cannot copy WinPixEventRuntime.dll");
+        .unwrap_or_else(|err| {
+            eprintln!("cannot copy WinPixEventRuntime.dll: {:?}", err);
+            0
+        });
         let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
 
         std::fs::copy(
             &format!("{}\\{}", PIX_LIB_PATH, pix_dll_name),
             out_path.join(pix_dll_name),
         )
-        .expect("Cannot copy WinPixEventRuntime.dll");
+        .unwrap_or_else(|err| {
+            eprintln!("cannot copy WinPixEventRuntime.dll: {:?}", err);
+            0
+        });
     }
 }
 
@@ -202,20 +212,20 @@ fn generate_bindings() {
         .derive_hash(true)
         .derive_ord(true)
         // DXGI and D3D types, vars and functions
-        .whitelist_type(".*DXGI.*")
-        .whitelist_type(".*D3D12.*")
-        .whitelist_var(".*DXGI.*")
-        .whitelist_var(".*D3D12.*")
-        .whitelist_var(".*IID_.*")
-        .whitelist_var(".*WKPDID_.*")
-        .whitelist_function(".*DXGI.*")
-        .whitelist_function(".*D3D12.*")
-        .whitelist_function("Enum.*")
-        .whitelist_function("CopyBufferRegion")
+        .allowlist_type(".*DXGI.*")
+        .allowlist_type(".*D3D12.*")
+        .allowlist_var(".*DXGI.*")
+        .allowlist_var(".*D3D12.*")
+        .allowlist_var(".*IID_.*")
+        .allowlist_var(".*WKPDID_.*")
+        .allowlist_function(".*DXGI.*")
+        .allowlist_function(".*D3D12.*")
+        .allowlist_function("Enum.*")
+        .allowlist_function("CopyBufferRegion")
         // WinAPI functions from <synchapi.h>
-        .whitelist_function("CreateEventW")
-        .whitelist_function("WaitForSingleObject")
-        .whitelist_function("CloseHandle")
+        .allowlist_function("CreateEventW")
+        .allowlist_function("WaitForSingleObject")
+        .allowlist_function("CloseHandle")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks))
         // Finish the builder and generate the bindings.
         .generate()
@@ -224,7 +234,7 @@ fn generate_bindings() {
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     bindings
         .write_to_file(out_path.join("d3d12_bindings.rs"))
-        .expect("Cannot write bindings!");
+        .expect("Cannot write bindings");
 
     generate_pix_bindings();
 }
@@ -269,9 +279,9 @@ fn generate_pix_bindings() {
             "{}\\generation\\pix_wrapper.h",
             workspace_dir.to_str().unwrap()
         ))
-        .whitelist_function("pix_.*")
-        .whitelist_type("ID3D12GraphicsCommandList.*")
-        .whitelist_type("ID3D12CommandQueue.*")
+        .allowlist_function("pix_.*")
+        .allowlist_type("ID3D12GraphicsCommandList.*")
+        .allowlist_type("ID3D12CommandQueue.*")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks))
         .generate()
         .expect("Unable to generate bindings");
@@ -279,5 +289,5 @@ fn generate_pix_bindings() {
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     bindings
         .write_to_file(out_path.join("pix_bindings.rs"))
-        .expect("Couldn't write bindings!");
+        .expect("Couldn't write bindings");
 }
