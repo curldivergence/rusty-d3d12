@@ -110,12 +110,6 @@ If the type in question is already present in the pre-generated `d3d12.rs`, you 
   3. Press `Enter`.
   4. The script will provide you with the boilerplate wrapper struct definition, e.g.
   ```rust
-  pub struct D3D12_ROOT_DESCRIPTOR1 {
-    pub ShaderRegister: UINT,
-    pub RegisterSpace: UINT,
-    pub Flags: D3D12_ROOT_DESCRIPTOR_FLAGS,
-  }
-
   #[derive(Default)]
   #[repr(transparent)]
   pub struct RootDescriptor1(pub D3D12_ROOT_DESCRIPTOR1);
