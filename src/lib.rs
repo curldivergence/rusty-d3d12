@@ -1670,7 +1670,7 @@ impl DescriptorHeap {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Hash, PartialOrd, Ord, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct CpuDescriptorHandle {
     pub hw_handle: D3D12_CPU_DESCRIPTOR_HANDLE,
@@ -1688,7 +1688,7 @@ impl CpuDescriptorHandle {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct GpuDescriptorHandle {
     pub hw_handle: D3D12_GPU_DESCRIPTOR_HANDLE,
@@ -1816,7 +1816,7 @@ impl CommandAllocator {
 
 assert_eq_size!(CommandList, *mut ID3D12GraphicsCommandList6);
 
-#[derive(Debug)]
+#[derive(Debug, Hash, PartialOrd, Ord, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct CommandList {
     this: *mut ID3D12GraphicsCommandList6,
