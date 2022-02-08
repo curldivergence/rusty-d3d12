@@ -81,7 +81,7 @@ impl SwapChainDesc {
     }
 
     pub fn set_format(&mut self, format: Format) -> &mut Self {
-        unsafe { std::mem::transmute(self.0.Format) }
+        self.0.Format = format as i32;
         self
     }
 
@@ -202,7 +202,7 @@ impl SwapChainDesc {
         self
     }
 
-    pub fn flags(&self) -> u32 {
+    pub fn flags(&self) -> SwapChainFlags {
         unsafe { std::mem::transmute(self.0.Flags) }
     }
 }
@@ -222,6 +222,136 @@ impl AdapterDesc {
         WideCStr::from_slice_with_nul(&self.0.Description)
             .map(|wide_cstr| wide_cstr.to_string_lossy())
             .ok()
+    }
+
+    pub fn set_vendor_id(&mut self, vendor_id: u32) -> &mut Self {
+        self.0.VendorId = vendor_id;
+        self
+    }
+
+    pub fn with_vendor_id(mut self, vendor_id: u32) -> Self {
+        self.set_vendor_id(vendor_id);
+        self
+    }
+
+    pub fn vendor_id(&self) -> u32 {
+        self.0.VendorId
+    }
+
+    pub fn set_device_id(&mut self, device_id: u32) -> &mut Self {
+        self.0.DeviceId = device_id;
+        self
+    }
+
+    pub fn with_device_id(mut self, device_id: u32) -> Self {
+        self.set_device_id(device_id);
+        self
+    }
+
+    pub fn device_id(&self) -> u32 {
+        self.0.DeviceId
+    }
+
+    pub fn set_sub_sys_id(&mut self, sub_sys_id: u32) -> &mut Self {
+        self.0.SubSysId = sub_sys_id;
+        self
+    }
+
+    pub fn with_sub_sys_id(mut self, sub_sys_id: u32) -> Self {
+        self.set_sub_sys_id(sub_sys_id);
+        self
+    }
+
+    pub fn sub_sys_id(&self) -> u32 {
+        self.0.SubSysId
+    }
+
+    pub fn set_revision(&mut self, revision: u32) -> &mut Self {
+        self.0.Revision = revision;
+        self
+    }
+
+    pub fn with_revision(mut self, revision: u32) -> Self {
+        self.set_revision(revision);
+        self
+    }
+
+    pub fn revision(&self) -> u32 {
+        self.0.Revision
+    }
+
+    pub fn set_dedicated_video_memory(
+        &mut self,
+        dedicated_video_memory: u64,
+    ) -> &mut Self {
+        self.0.DedicatedVideoMemory = dedicated_video_memory;
+        self
+    }
+
+    pub fn with_dedicated_video_memory(
+        mut self,
+        dedicated_video_memory: u64,
+    ) -> Self {
+        self.set_dedicated_video_memory(dedicated_video_memory);
+        self
+    }
+
+    pub fn dedicated_video_memory(&self) -> u64 {
+        self.0.DedicatedVideoMemory
+    }
+
+    pub fn set_dedicated_system_memory(
+        &mut self,
+        dedicated_system_memory: u64,
+    ) -> &mut Self {
+        self.0.DedicatedSystemMemory = dedicated_system_memory;
+        self
+    }
+
+    pub fn with_dedicated_system_memory(
+        mut self,
+        dedicated_system_memory: u64,
+    ) -> Self {
+        self.set_dedicated_system_memory(dedicated_system_memory);
+        self
+    }
+
+    pub fn dedicated_system_memory(&self) -> u64 {
+        self.0.DedicatedSystemMemory
+    }
+
+    pub fn set_shared_system_memory(
+        &mut self,
+        shared_system_memory: u64,
+    ) -> &mut Self {
+        self.0.SharedSystemMemory = shared_system_memory;
+        self
+    }
+
+    pub fn with_shared_system_memory(
+        mut self,
+        shared_system_memory: u64,
+    ) -> Self {
+        self.set_shared_system_memory(shared_system_memory);
+        self
+    }
+
+    pub fn shared_system_memory(&self) -> u64 {
+        self.0.SharedSystemMemory
+    }
+
+    pub fn set_flags(&mut self, flags: AdapterFlag) -> &mut Self {
+        self.0.Flags = flags as u32;
+        self
+    }
+
+    pub fn with_flags(mut self, flags: AdapterFlag) -> Self {
+        self.set_flags(flags);
+        self
+    }
+
+    pub fn flags(&self) -> AdapterFlag {
+        unsafe { std::mem::transmute(self.0.Flags) }
     }
 }
 
@@ -279,18 +409,9 @@ impl std::fmt::Debug for AdapterDesc {
 }
 
 /// Wrapper around DXGI_SAMPLE_DESC structure
-#[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(Default, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone, Copy)]
 #[repr(transparent)]
 pub struct SampleDesc(pub(crate) DXGI_SAMPLE_DESC);
-
-impl Default for SampleDesc {
-    fn default() -> Self {
-        Self(DXGI_SAMPLE_DESC {
-            Count: 1,
-            Quality: 0,
-        })
-    }
-}
 
 impl SampleDesc {
     pub fn set_count(&mut self, count: u32) -> &mut Self {
@@ -345,8 +466,13 @@ impl Default for ResourceDesc {
 }
 
 impl ResourceDesc {
-    pub fn set_dimension(mut self, dimension: ResourceDimension) -> Self {
+    pub fn set_dimension(&mut self, dimension: ResourceDimension) -> &mut Self {
         self.0.Dimension = dimension as i32;
+        self
+    }
+
+    pub fn with_dimension(mut self, dimension: ResourceDimension) -> Self {
+        self.set_dimension(dimension);
         self
     }
 
@@ -354,17 +480,27 @@ impl ResourceDesc {
         unsafe { std::mem::transmute(self.0.Dimension) }
     }
 
-    pub fn set_alignment(mut self, alignment: ByteCount) -> Self {
-        self.0.Alignment = alignment.0;
+    pub fn set_alignment(&mut self, alignment: u64) -> &mut Self {
+        self.0.Alignment = alignment;
         self
     }
 
-    pub fn alignment(&self) -> ByteCount {
-        ByteCount(self.0.Alignment)
+    pub fn with_alignment(mut self, alignment: u64) -> Self {
+        self.set_alignment(alignment);
+        self
     }
 
-    pub fn set_width(mut self, width: u64) -> Self {
+    pub fn alignment(&self) -> u64 {
+        self.0.Alignment
+    }
+
+    pub fn set_width(&mut self, width: u64) -> &mut Self {
         self.0.Width = width;
+        self
+    }
+
+    pub fn with_width(mut self, width: u64) -> Self {
+        self.set_width(width);
         self
     }
 
@@ -372,8 +508,13 @@ impl ResourceDesc {
         self.0.Width
     }
 
-    pub fn set_height(mut self, height: u32) -> Self {
+    pub fn set_height(&mut self, height: u32) -> &mut Self {
         self.0.Height = height;
+        self
+    }
+
+    pub fn with_height(mut self, height: u32) -> Self {
+        self.set_height(height);
         self
     }
 
@@ -381,8 +522,19 @@ impl ResourceDesc {
         self.0.Height
     }
 
-    pub fn set_depth_or_array_size(mut self, depth_or_array_size: u16) -> Self {
+    pub fn set_depth_or_array_size(
+        &mut self,
+        depth_or_array_size: u16,
+    ) -> &mut Self {
         self.0.DepthOrArraySize = depth_or_array_size;
+        self
+    }
+
+    pub fn with_depth_or_array_size(
+        mut self,
+        depth_or_array_size: u16,
+    ) -> Self {
+        self.set_depth_or_array_size(depth_or_array_size);
         self
     }
 
@@ -390,8 +542,13 @@ impl ResourceDesc {
         self.0.DepthOrArraySize
     }
 
-    pub fn set_mip_levels(mut self, mip_levels: u16) -> Self {
+    pub fn set_mip_levels(&mut self, mip_levels: u16) -> &mut Self {
         self.0.MipLevels = mip_levels;
+        self
+    }
+
+    pub fn with_mip_levels(mut self, mip_levels: u16) -> Self {
+        self.set_mip_levels(mip_levels);
         self
     }
 
@@ -399,8 +556,13 @@ impl ResourceDesc {
         self.0.MipLevels
     }
 
-    pub fn set_format(mut self, format: Format) -> Self {
+    pub fn set_format(&mut self, format: Format) -> &mut Self {
         self.0.Format = format as i32;
+        self
+    }
+
+    pub fn with_format(mut self, format: Format) -> Self {
+        self.set_format(format);
         self
     }
 
@@ -408,8 +570,13 @@ impl ResourceDesc {
         unsafe { std::mem::transmute(self.0.Format) }
     }
 
-    pub fn set_sample_desc(mut self, sample_desc: SampleDesc) -> Self {
+    pub fn set_sample_desc(&mut self, sample_desc: SampleDesc) -> &mut Self {
         self.0.SampleDesc = sample_desc.0;
+        self
+    }
+
+    pub fn with_sample_desc(mut self, sample_desc: SampleDesc) -> Self {
+        self.set_sample_desc(sample_desc);
         self
     }
 
@@ -417,8 +584,13 @@ impl ResourceDesc {
         SampleDesc(self.0.SampleDesc)
     }
 
-    pub fn set_layout(mut self, layout: TextureLayout) -> Self {
+    pub fn set_layout(&mut self, layout: TextureLayout) -> &mut Self {
         self.0.Layout = layout as i32;
+        self
+    }
+
+    pub fn with_layout(mut self, layout: TextureLayout) -> Self {
+        self.set_layout(layout);
         self
     }
 
@@ -460,25 +632,18 @@ impl Default for Message {
 }
 
 /// Wrapper around D3D12_HEAP_PROPERTIES structure
+#[derive(Default, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone)]
 #[repr(transparent)]
-#[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Debug, Clone)]
 pub struct HeapProperties(pub(crate) D3D12_HEAP_PROPERTIES);
 
-impl Default for HeapProperties {
-    fn default() -> Self {
-        HeapProperties(D3D12_HEAP_PROPERTIES {
-            Type: HeapType::Default as i32,
-            CPUPageProperty: CpuPageProperty::Unknown as i32,
-            MemoryPoolPreference: MemoryPool::Unknown as i32,
-            CreationNodeMask: 0,
-            VisibleNodeMask: 0,
-        })
-    }
-}
-
 impl HeapProperties {
-    pub fn set_heap_type(mut self, heap_type: HeapType) -> Self {
+    pub fn set_heap_type(&mut self, heap_type: HeapType) -> &mut Self {
         self.0.Type = heap_type as i32;
+        self
+    }
+
+    pub fn with_heap_type(mut self, heap_type: HeapType) -> Self {
+        self.set_heap_type(heap_type);
         self
     }
 
@@ -487,10 +652,18 @@ impl HeapProperties {
     }
 
     pub fn set_cpu_page_property(
+        &mut self,
+        cpu_page_property: CpuPageProperty,
+    ) -> &mut Self {
+        self.0.CPUPageProperty = cpu_page_property as i32;
+        self
+    }
+
+    pub fn with_cpu_page_property(
         mut self,
         cpu_page_property: CpuPageProperty,
     ) -> Self {
-        self.0.CPUPageProperty = cpu_page_property as i32;
+        self.set_cpu_page_property(cpu_page_property);
         self
     }
 
@@ -499,10 +672,18 @@ impl HeapProperties {
     }
 
     pub fn set_memory_pool_preference(
+        &mut self,
+        memory_pool_preference: MemoryPool,
+    ) -> &mut Self {
+        self.0.MemoryPoolPreference = memory_pool_preference as i32;
+        self
+    }
+
+    pub fn with_memory_pool_preference(
         mut self,
         memory_pool_preference: MemoryPool,
     ) -> Self {
-        self.0.MemoryPoolPreference = memory_pool_preference as i32;
+        self.set_memory_pool_preference(memory_pool_preference);
         self
     }
 
@@ -510,8 +691,16 @@ impl HeapProperties {
         unsafe { std::mem::transmute(self.0.MemoryPoolPreference) }
     }
 
-    pub fn set_creation_node_mask(mut self, node_mask: u32) -> Self {
-        self.0.CreationNodeMask = node_mask;
+    pub fn set_creation_node_mask(
+        &mut self,
+        creation_node_mask: u32,
+    ) -> &mut Self {
+        self.0.CreationNodeMask = creation_node_mask;
+        self
+    }
+
+    pub fn with_creation_node_mask(mut self, creation_node_mask: u32) -> Self {
+        self.set_creation_node_mask(creation_node_mask);
         self
     }
 
@@ -519,8 +708,16 @@ impl HeapProperties {
         self.0.CreationNodeMask
     }
 
-    pub fn set_visibility_node_mask(mut self, node_mask: u32) -> Self {
-        self.0.VisibleNodeMask = node_mask;
+    pub fn set_visible_node_mask(
+        &mut self,
+        visible_node_mask: u32,
+    ) -> &mut Self {
+        self.0.VisibleNodeMask = visible_node_mask;
+        self
+    }
+
+    pub fn with_visible_node_mask(mut self, visible_node_mask: u32) -> Self {
+        self.set_visible_node_mask(visible_node_mask);
         self
     }
 
@@ -530,13 +727,18 @@ impl HeapProperties {
 }
 
 /// Wrapper around D3D12_RANGE structure
-#[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Default, Copy, Clone, Debug)]
+#[derive(Default, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone)]
 #[repr(transparent)]
 pub struct Range(pub(crate) D3D12_RANGE);
 
 impl Range {
-    pub fn set_begin(mut self, begin: ByteCount) -> Self {
+    pub fn set_begin(&mut self, begin: ByteCount) -> &mut Self {
         self.0.Begin = begin.0;
+        self
+    }
+
+    pub fn with_begin(mut self, begin: ByteCount) -> Self {
+        self.set_begin(begin);
         self
     }
 
@@ -544,8 +746,13 @@ impl Range {
         ByteCount(self.0.Begin)
     }
 
-    pub fn set_end(mut self, end: ByteCount) -> Self {
+    pub fn set_end(&mut self, end: ByteCount) -> &mut Self {
         self.0.End = end.0;
+        self
+    }
+
+    pub fn with_end(mut self, end: ByteCount) -> Self {
+        self.set_end(end);
         self
     }
 
@@ -562,10 +769,18 @@ pub struct ResourceBarrier(pub(crate) D3D12_RESOURCE_BARRIER);
 
 impl ResourceBarrier {
     pub fn set_barrier_type(
+        &mut self,
+        barrier_type: ResourceBarrierType,
+    ) -> &mut Self {
+        self.0.Type = barrier_type as i32;
+        self
+    }
+
+    pub fn with_barrier_type(
         mut self,
         barrier_type: ResourceBarrierType,
     ) -> Self {
-        self.0.Type = barrier_type as i32;
+        self.set_barrier_type(barrier_type);
         self
     }
 
@@ -573,8 +788,13 @@ impl ResourceBarrier {
         unsafe { std::mem::transmute(self.0.Type) }
     }
 
-    pub fn set_flags(mut self, flags: ResourceBarrierFlags) -> Self {
+    pub fn set_flags(&mut self, flags: ResourceBarrierFlags) -> &mut Self {
         self.0.Flags = flags.bits();
+        self
+    }
+
+    pub fn with_flags(mut self, flags: ResourceBarrierFlags) -> Self {
+        self.set_flags(flags);
         self
     }
 
@@ -582,7 +802,7 @@ impl ResourceBarrier {
         unsafe { ResourceBarrierFlags::from_bits_unchecked(self.0.Flags) }
     }
 
-    // ToDo: rename it
+    // ToDo: rename it??
     pub fn new_transition(desc: &ResourceTransitionBarrier) -> Self {
         Self(D3D12_RESOURCE_BARRIER {
             Type: ResourceBarrierType::Transition as i32,
@@ -657,8 +877,13 @@ pub struct ResourceTransitionBarrier(
 );
 
 impl ResourceTransitionBarrier {
-    pub fn set_resource(mut self, resource: &Resource) -> Self {
+    pub fn set_resource(&mut self, resource: &Resource) -> &mut Self {
         self.0.pResource = resource.this;
+        self
+    }
+
+    pub fn with_p_resource(mut self, resource: &Resource) -> Self {
+        self.set_resource(resource);
         self
     }
 
@@ -672,13 +897,18 @@ impl ResourceTransitionBarrier {
     }
 
     // None value means "all subresources"
-    pub fn set_subresource(mut self, subresource: Option<u32>) -> Self {
+    pub fn set_subresource(&mut self, subresource: Option<u32>) -> &mut Self {
         match subresource {
             Some(index) => self.0.Subresource = index,
             None => {
                 self.0.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES
             }
         }
+        self
+    }
+
+    pub fn with_subresource(mut self, subresource: Option<u32>) -> Self {
+        self.set_subresource(subresource);
         self
     }
 
@@ -689,23 +919,38 @@ impl ResourceTransitionBarrier {
         }
     }
 
-    pub fn set_state_before(mut self, state_before: ResourceStates) -> Self {
+    pub fn set_state_before(
+        &mut self,
+        state_before: ResourceStates,
+    ) -> &mut Self {
         self.0.StateBefore = state_before.bits();
         self
     }
 
-    pub fn state_before(&self) -> ResourceStates {
-        // ToDo: get rid of transmute
-        unsafe { std::mem::transmute(self.0.StateBefore) }
+    pub fn with_state_before(mut self, state_before: ResourceStates) -> Self {
+        self.set_state_before(state_before);
+        self
     }
 
-    pub fn set_state_after(mut self, state_after: ResourceStates) -> Self {
+    pub fn state_before(&self) -> ResourceStates {
+        unsafe { ResourceStates::from_bits_unchecked(self.0.StateBefore) }
+    }
+
+    pub fn set_state_after(
+        &mut self,
+        state_after: ResourceStates,
+    ) -> &mut Self {
         self.0.StateAfter = state_after.bits();
         self
     }
 
+    pub fn with_state_after(mut self, state_after: ResourceStates) -> Self {
+        self.set_state_after(state_after);
+        self
+    }
+
     pub fn state_after(&self) -> ResourceStates {
-        unsafe { std::mem::transmute(self.0.StateAfter) }
+        unsafe { ResourceStates::from_bits_unchecked(self.0.StateAfter) }
     }
 }
 
@@ -715,8 +960,16 @@ impl ResourceTransitionBarrier {
 pub struct ResourceAliasingBarrier(pub(crate) D3D12_RESOURCE_ALIASING_BARRIER);
 
 impl ResourceAliasingBarrier {
-    pub fn set_resource_before(mut self, resource_before: &Resource) -> Self {
+    pub fn set_resource_before(
+        &mut self,
+        resource_before: &Resource,
+    ) -> &mut Self {
         self.0.pResourceBefore = resource_before.this;
+        self
+    }
+
+    pub fn with_resource_before(mut self, resource_before: &Resource) -> Self {
+        self.set_resource_before(resource_before);
         self
     }
 
@@ -728,8 +981,16 @@ impl ResourceAliasingBarrier {
         resource
     }
 
-    pub fn set_resource_after(mut self, resource_after: &Resource) -> Self {
+    pub fn set_resource_after(
+        &mut self,
+        resource_after: &Resource,
+    ) -> &mut Self {
         self.0.pResourceAfter = resource_after.this;
+        self
+    }
+
+    pub fn with_resource_after(mut self, resource_after: &Resource) -> Self {
+        self.set_resource_after(resource_after);
         self
     }
 
@@ -748,8 +1009,13 @@ impl ResourceAliasingBarrier {
 pub struct ResourceUavBarrier(pub(crate) D3D12_RESOURCE_UAV_BARRIER);
 
 impl ResourceUavBarrier {
-    pub fn set_resource(mut self, resource: &Resource) -> Self {
+    pub fn set_resource(&mut self, resource: &Resource) -> &mut Self {
         self.0.pResource = resource.this;
+        self
+    }
+
+    pub fn with_resource(mut self, resource: &Resource) -> Self {
+        self.set_resource(resource);
         self
     }
 
@@ -763,26 +1029,18 @@ impl ResourceUavBarrier {
 }
 
 /// Wrapper around D3D12_VIEWPORT structure
-#[derive(Clone, Copy, Debug)]
+#[derive(Default, Debug, PartialOrd, PartialEq, Clone)]
 #[repr(transparent)]
 pub struct Viewport(pub(crate) D3D12_VIEWPORT);
 
-impl Default for Viewport {
-    fn default() -> Self {
-        Viewport(D3D12_VIEWPORT {
-            TopLeftX: 0.,
-            TopLeftY: 0.,
-            Width: 0.,
-            Height: 0.,
-            MinDepth: 0.,
-            MaxDepth: 1.,
-        })
-    }
-}
-
 impl Viewport {
-    pub fn set_top_left_x(mut self, top_left_x: f32) -> Self {
+    pub fn set_top_left_x(&mut self, top_left_x: f32) -> &mut Self {
         self.0.TopLeftX = top_left_x;
+        self
+    }
+
+    pub fn with_top_left_x(mut self, top_left_x: f32) -> Self {
+        self.set_top_left_x(top_left_x);
         self
     }
 
@@ -790,8 +1048,13 @@ impl Viewport {
         self.0.TopLeftX
     }
 
-    pub fn set_top_left_y(mut self, top_left_y: f32) -> Self {
+    pub fn set_top_left_y(&mut self, top_left_y: f32) -> &mut Self {
         self.0.TopLeftY = top_left_y;
+        self
+    }
+
+    pub fn with_top_left_y(mut self, top_left_y: f32) -> Self {
+        self.set_top_left_y(top_left_y);
         self
     }
 
@@ -799,8 +1062,13 @@ impl Viewport {
         self.0.TopLeftY
     }
 
-    pub fn set_width(mut self, width: f32) -> Self {
+    pub fn set_width(&mut self, width: f32) -> &mut Self {
         self.0.Width = width;
+        self
+    }
+
+    pub fn with_width(mut self, width: f32) -> Self {
+        self.set_width(width);
         self
     }
 
@@ -808,8 +1076,13 @@ impl Viewport {
         self.0.Width
     }
 
-    pub fn set_height(mut self, height: f32) -> Self {
+    pub fn set_height(&mut self, height: f32) -> &mut Self {
         self.0.Height = height;
+        self
+    }
+
+    pub fn with_height(mut self, height: f32) -> Self {
+        self.set_height(height);
         self
     }
 
@@ -817,8 +1090,13 @@ impl Viewport {
         self.0.Height
     }
 
-    pub fn set_min_depth(mut self, min_depth: f32) -> Self {
+    pub fn set_min_depth(&mut self, min_depth: f32) -> &mut Self {
         self.0.MinDepth = min_depth;
+        self
+    }
+
+    pub fn with_min_depth(mut self, min_depth: f32) -> Self {
+        self.set_min_depth(min_depth);
         self
     }
 
@@ -826,8 +1104,13 @@ impl Viewport {
         self.0.MinDepth
     }
 
-    pub fn set_max_depth(mut self, max_depth: f32) -> Self {
+    pub fn set_max_depth(&mut self, max_depth: f32) -> &mut Self {
         self.0.MaxDepth = max_depth;
+        self
+    }
+
+    pub fn with_max_depth(mut self, max_depth: f32) -> Self {
+        self.set_max_depth(max_depth);
         self
     }
 
@@ -853,8 +1136,13 @@ impl Default for Rect {
 }
 
 impl Rect {
-    pub fn set_left(mut self, left: i32) -> Self {
+    pub fn set_left(&mut self, left: i32) -> &mut Self {
         self.0.left = left;
+        self
+    }
+
+    pub fn with_left(mut self, left: i32) -> Self {
+        self.set_left(left);
         self
     }
 
@@ -862,8 +1150,13 @@ impl Rect {
         self.0.left
     }
 
-    pub fn set_top(mut self, top: i32) -> Self {
+    pub fn set_top(&mut self, top: i32) -> &mut Self {
         self.0.top = top;
+        self
+    }
+
+    pub fn with_top(mut self, top: i32) -> Self {
+        self.set_top(top);
         self
     }
 
@@ -871,8 +1164,13 @@ impl Rect {
         self.0.top
     }
 
-    pub fn set_right(mut self, right: i32) -> Self {
+    pub fn set_right(&mut self, right: i32) -> &mut Self {
         self.0.right = right;
+        self
+    }
+
+    pub fn with_right(mut self, right: i32) -> Self {
+        self.set_right(right);
         self
     }
 
@@ -880,8 +1178,13 @@ impl Rect {
         self.0.right
     }
 
-    pub fn set_bottom(mut self, bottom: i32) -> Self {
+    pub fn set_bottom(&mut self, bottom: i32) -> &mut Self {
         self.0.bottom = bottom;
+        self
+    }
+
+    pub fn with_bottom(mut self, bottom: i32) -> Self {
+        self.set_bottom(bottom);
         self
     }
 
@@ -934,26 +1237,18 @@ impl TextureCopyLocation {
 }
 
 /// Wrapper around D3D12_BOX structure
-#[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Copy, Clone, Debug)]
+#[derive(Default, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone)]
 #[repr(transparent)]
 pub struct Box(pub(crate) D3D12_BOX);
 
-impl Default for Box {
-    fn default() -> Self {
-        Self(D3D12_BOX {
-            left: 0,
-            top: 0,
-            front: 0,
-            right: 0,
-            bottom: 1,
-            back: 1,
-        })
-    }
-}
-
 impl Box {
-    pub fn set_left(mut self, left: u32) -> Self {
+    pub fn set_left(&mut self, left: u32) -> &mut Self {
         self.0.left = left;
+        self
+    }
+
+    pub fn with_left(mut self, left: u32) -> Self {
+        self.set_left(left);
         self
     }
 
@@ -961,8 +1256,13 @@ impl Box {
         self.0.left
     }
 
-    pub fn set_top(mut self, top: u32) -> Self {
+    pub fn set_top(&mut self, top: u32) -> &mut Self {
         self.0.top = top;
+        self
+    }
+
+    pub fn with_top(mut self, top: u32) -> Self {
+        self.set_top(top);
         self
     }
 
@@ -970,8 +1270,13 @@ impl Box {
         self.0.top
     }
 
-    pub fn set_front(mut self, front: u32) -> Self {
+    pub fn set_front(&mut self, front: u32) -> &mut Self {
         self.0.front = front;
+        self
+    }
+
+    pub fn with_front(mut self, front: u32) -> Self {
+        self.set_front(front);
         self
     }
 
@@ -979,8 +1284,13 @@ impl Box {
         self.0.front
     }
 
-    pub fn set_right(mut self, right: u32) -> Self {
+    pub fn set_right(&mut self, right: u32) -> &mut Self {
         self.0.right = right;
+        self
+    }
+
+    pub fn with_right(mut self, right: u32) -> Self {
+        self.set_right(right);
         self
     }
 
@@ -988,8 +1298,13 @@ impl Box {
         self.0.right
     }
 
-    pub fn set_bottom(mut self, bottom: u32) -> Self {
+    pub fn set_bottom(&mut self, bottom: u32) -> &mut Self {
         self.0.bottom = bottom;
+        self
+    }
+
+    pub fn with_bottom(mut self, bottom: u32) -> Self {
+        self.set_bottom(bottom);
         self
     }
 
@@ -997,8 +1312,13 @@ impl Box {
         self.0.bottom
     }
 
-    pub fn set_back(mut self, back: u32) -> Self {
+    pub fn set_back(&mut self, back: u32) -> &mut Self {
         self.0.back = back;
+        self
+    }
+
+    pub fn with_back(mut self, back: u32) -> Self {
+        self.set_back(back);
         self
     }
 
@@ -1008,16 +1328,24 @@ impl Box {
 }
 
 /// Wrapper around D3D12_VERTEX_BUFFER_VIEW structure
-#[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Copy, Clone, Default, Debug)]
+#[derive(Default, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone)]
 #[repr(transparent)]
 pub struct VertexBufferView(pub(crate) D3D12_VERTEX_BUFFER_VIEW);
 
 impl VertexBufferView {
     pub fn set_buffer_location(
+        &mut self,
+        buffer_location: GpuVirtualAddress,
+    ) -> &mut Self {
+        self.0.BufferLocation = buffer_location.0;
+        self
+    }
+
+    pub fn with_buffer_location(
         mut self,
         buffer_location: GpuVirtualAddress,
     ) -> Self {
-        self.0.BufferLocation = buffer_location.0;
+        self.set_buffer_location(buffer_location);
         self
     }
 
@@ -1025,8 +1353,13 @@ impl VertexBufferView {
         GpuVirtualAddress(self.0.BufferLocation)
     }
 
-    pub fn set_size_in_bytes(mut self, size_in_bytes: ByteCount) -> Self {
+    pub fn set_size_in_bytes(&mut self, size_in_bytes: ByteCount) -> &mut Self {
         self.0.SizeInBytes = size_in_bytes.0 as u32;
+        self
+    }
+
+    pub fn with_size_in_bytes(mut self, size_in_bytes: ByteCount) -> Self {
+        self.set_size_in_bytes(size_in_bytes);
         self
     }
 
@@ -1034,8 +1367,16 @@ impl VertexBufferView {
         ByteCount::from(self.0.SizeInBytes)
     }
 
-    pub fn set_stride_in_bytes(mut self, stride_in_bytes: ByteCount) -> Self {
+    pub fn set_stride_in_bytes(
+        &mut self,
+        stride_in_bytes: ByteCount,
+    ) -> &mut Self {
         self.0.StrideInBytes = stride_in_bytes.0 as u32;
+        self
+    }
+
+    pub fn with_stride_in_bytes(mut self, stride_in_bytes: ByteCount) -> Self {
+        self.set_stride_in_bytes(stride_in_bytes);
         self
     }
 

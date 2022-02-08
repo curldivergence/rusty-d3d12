@@ -65,6 +65,8 @@ def read_known_types():
 def replace_known_types(ty):
     if ty == "UINT64":
         return "u64"
+    elif ty == "SIZE_T":
+        return "u64"
     elif ty == "UINT16":
         return "u16"
     elif ty == "UINT8":
