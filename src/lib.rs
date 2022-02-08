@@ -1705,7 +1705,7 @@ impl GpuDescriptorHandle {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Hash, PartialOrd, Ord, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct Resource {
     this: *mut ID3D12Resource,

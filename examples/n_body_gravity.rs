@@ -1849,8 +1849,8 @@ fn create_compute_pso(
     .expect("Cannot compile compute shader");
     let cs_bytecode = ShaderBytecode::from_bytes(&compute_shader);
     let compute_pso_desc = ComputePipelineStateDesc::default()
-        .set_root_signature(compute_root_signature)
-        .set_cs_bytecode(&cs_bytecode);
+        .with_root_signature(compute_root_signature)
+        .with_cs_bytecode(&cs_bytecode);
     let compute_pso = device
         .create_compute_pipeline_state(&compute_pso_desc)
         .expect("Cannot create compute PSO");

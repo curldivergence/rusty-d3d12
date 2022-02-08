@@ -30,11 +30,11 @@ pub struct GpuVirtualAddress(pub D3D12_GPU_VIRTUAL_ADDRESS);
 /// Wrapper around DXGI_SWAP_CHAIN_DESC1 structure
 #[repr(transparent)]
 #[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Debug, Clone)]
-pub struct SwapchainDesc(pub(crate) DXGI_SWAP_CHAIN_DESC1);
+pub struct SwapChainDesc(pub(crate) DXGI_SWAP_CHAIN_DESC1);
 
-impl Default for SwapchainDesc {
+impl Default for SwapChainDesc {
     fn default() -> Self {
-        SwapchainDesc(DXGI_SWAP_CHAIN_DESC1 {
+        SwapChainDesc(DXGI_SWAP_CHAIN_DESC1 {
             Width: 0,
             Height: 0,
             Format: DXGI_FORMAT_DXGI_FORMAT_R8G8B8A8_UNORM,
@@ -51,9 +51,14 @@ impl Default for SwapchainDesc {
     }
 }
 
-impl SwapchainDesc {
-    pub fn set_width(mut self, width: u32) -> Self {
+impl SwapChainDesc {
+    pub fn set_width(&mut self, width: u32) -> &mut Self {
         self.0.Width = width;
+        self
+    }
+
+    pub fn with_width(mut self, width: u32) -> Self {
+        self.set_width(width);
         self
     }
 
@@ -61,8 +66,13 @@ impl SwapchainDesc {
         self.0.Width
     }
 
-    pub fn set_height(mut self, height: u32) -> Self {
+    pub fn set_height(&mut self, height: u32) -> &mut Self {
         self.0.Height = height;
+        self
+    }
+
+    pub fn with_height(mut self, height: u32) -> Self {
+        self.set_height(height);
         self
     }
 
@@ -70,8 +80,13 @@ impl SwapchainDesc {
         self.0.Height
     }
 
-    pub fn set_format(mut self, format: Format) -> Self {
-        self.0.Format = format as i32;
+    pub fn set_format(&mut self, format: Format) -> &mut Self {
+        unsafe { std::mem::transmute(self.0.Format) }
+        self
+    }
+
+    pub fn with_format(mut self, format: Format) -> Self {
+        self.set_format(format);
         self
     }
 
@@ -79,8 +94,13 @@ impl SwapchainDesc {
         unsafe { std::mem::transmute(self.0.Format) }
     }
 
-    pub fn set_stereo(mut self, stereo: bool) -> Self {
+    pub fn set_stereo(&mut self, stereo: bool) -> &mut Self {
         self.0.Stereo = stereo as i32;
+        self
+    }
+
+    pub fn with_stereo(mut self, stereo: bool) -> Self {
+        self.set_stereo(stereo);
         self
     }
 
@@ -88,8 +108,13 @@ impl SwapchainDesc {
         self.0.Stereo != 0
     }
 
-    pub fn set_sample_desc(mut self, sample_desc: &SampleDesc) -> Self {
+    pub fn set_sample_desc(&mut self, sample_desc: SampleDesc) -> &mut Self {
         self.0.SampleDesc = sample_desc.0;
+        self
+    }
+
+    pub fn with_sample_desc(mut self, sample_desc: SampleDesc) -> Self {
+        self.set_sample_desc(sample_desc);
         self
     }
 
@@ -97,8 +122,13 @@ impl SwapchainDesc {
         SampleDesc(self.0.SampleDesc)
     }
 
-    pub fn set_buffer_usage(mut self, buffer_usage: Usage) -> Self {
+    pub fn set_buffer_usage(&mut self, buffer_usage: Usage) -> &mut Self {
         self.0.BufferUsage = buffer_usage.bits();
+        self
+    }
+
+    pub fn with_buffer_usage(mut self, buffer_usage: Usage) -> Self {
+        self.set_buffer_usage(buffer_usage);
         self
     }
 
@@ -106,8 +136,13 @@ impl SwapchainDesc {
         unsafe { Usage::from_bits_unchecked(self.0.BufferUsage) }
     }
 
-    pub fn set_buffer_count(mut self, buffer_count: u32) -> Self {
-        self.0.BufferCount = buffer_count as u32;
+    pub fn set_buffer_count(&mut self, buffer_count: u32) -> &mut Self {
+        self.0.BufferCount = buffer_count;
+        self
+    }
+
+    pub fn with_buffer_count(mut self, buffer_count: u32) -> Self {
+        self.set_buffer_count(buffer_count);
         self
     }
 
@@ -115,8 +150,13 @@ impl SwapchainDesc {
         self.0.BufferCount
     }
 
-    pub fn set_scaling(mut self, scaling: Scaling) -> Self {
+    pub fn set_scaling(&mut self, scaling: Scaling) -> &mut Self {
         self.0.Scaling = scaling as i32;
+        self
+    }
+
+    pub fn with_scaling(mut self, scaling: Scaling) -> Self {
+        self.set_scaling(scaling);
         self
     }
 
@@ -124,8 +164,13 @@ impl SwapchainDesc {
         unsafe { std::mem::transmute(self.0.Scaling) }
     }
 
-    pub fn set_swap_effect(mut self, swap_effect: SwapEffect) -> Self {
+    pub fn set_swap_effect(&mut self, swap_effect: SwapEffect) -> &mut Self {
         self.0.SwapEffect = swap_effect as i32;
+        self
+    }
+
+    pub fn with_swap_effect(mut self, swap_effect: SwapEffect) -> Self {
+        self.set_swap_effect(swap_effect);
         self
     }
 
@@ -133,8 +178,13 @@ impl SwapchainDesc {
         unsafe { std::mem::transmute(self.0.SwapEffect) }
     }
 
-    pub fn set_alpha_mode(mut self, alpha_mode: AlphaMode) -> Self {
+    pub fn set_alpha_mode(&mut self, alpha_mode: AlphaMode) -> &mut Self {
         self.0.AlphaMode = alpha_mode as i32;
+        self
+    }
+
+    pub fn with_alpha_mode(mut self, alpha_mode: AlphaMode) -> Self {
+        self.set_alpha_mode(alpha_mode);
         self
     }
 
@@ -142,12 +192,17 @@ impl SwapchainDesc {
         unsafe { std::mem::transmute(self.0.AlphaMode) }
     }
 
-    pub fn set_flags(mut self, flags: SwapChainFlags) -> Self {
+    pub fn set_flags(&mut self, flags: SwapChainFlags) -> &mut Self {
         self.0.Flags = flags.bits() as u32;
         self
     }
 
-    pub fn flags(&self) -> SwapChainFlags {
+    pub fn with_flags(mut self, flags: SwapChainFlags) -> Self {
+        self.set_flags(flags);
+        self
+    }
+
+    pub fn flags(&self) -> u32 {
         unsafe { std::mem::transmute(self.0.Flags) }
     }
 }
@@ -224,7 +279,7 @@ impl std::fmt::Debug for AdapterDesc {
 }
 
 /// Wrapper around DXGI_SAMPLE_DESC structure
-#[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Clone, Debug)]
+#[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Clone, Copy, Debug)]
 #[repr(transparent)]
 pub struct SampleDesc(pub(crate) DXGI_SAMPLE_DESC);
 
@@ -238,8 +293,13 @@ impl Default for SampleDesc {
 }
 
 impl SampleDesc {
-    pub fn set_count(mut self, count: u32) -> Self {
+    pub fn set_count(&mut self, count: u32) -> &mut Self {
         self.0.Count = count;
+        self
+    }
+
+    pub fn with_count(mut self, count: u32) -> Self {
+        self.set_count(count);
         self
     }
 
@@ -247,8 +307,13 @@ impl SampleDesc {
         self.0.Count
     }
 
-    pub fn set_quality(mut self, quality: u32) -> Self {
+    pub fn set_quality(&mut self, quality: u32) -> &mut Self {
         self.0.Quality = quality;
+        self
+    }
+
+    pub fn with_quality(mut self, quality: u32) -> Self {
+        self.set_quality(quality);
         self
     }
 
@@ -361,8 +426,13 @@ impl ResourceDesc {
         unsafe { std::mem::transmute(self.0.Layout) }
     }
 
-    pub fn set_flags(mut self, flags: ResourceFlags) -> Self {
+    pub fn set_flags(&mut self, flags: ResourceFlags) -> &mut Self {
         self.0.Flags = flags.bits();
+        self
+    }
+
+    pub fn with_flags(mut self, flags: ResourceFlags) -> Self {
+        self.set_flags(flags);
         self
     }
 
@@ -2179,11 +2249,19 @@ pub struct ComputePipelineStateDesc<'rs, 'sh>(
 
 impl<'rs, 'sh> ComputePipelineStateDesc<'rs, 'sh> {
     pub fn set_root_signature(
+        &mut self,
+        root_signature: &'rs RootSignature,
+    ) -> &mut ComputePipelineStateDesc<'rs, 'sh> {
+        self.0.pRootSignature = root_signature.this;
+        self.1 = PhantomData;
+        self
+    }
+
+    pub fn with_root_signature(
         mut self,
         root_signature: &'rs RootSignature,
     ) -> ComputePipelineStateDesc<'rs, 'sh> {
-        self.0.pRootSignature = root_signature.this;
-        self.1 = PhantomData;
+        self.set_root_signature(root_signature);
         self
     }
 
@@ -2196,11 +2274,19 @@ impl<'rs, 'sh> ComputePipelineStateDesc<'rs, 'sh> {
     }
 
     pub fn set_cs_bytecode(
+        &mut self,
+        bytecode: &'sh ShaderBytecode,
+    ) -> &mut ComputePipelineStateDesc<'rs, 'sh> {
+        self.0.CS = bytecode.0;
+        self.2 = PhantomData;
+        self
+    }
+
+    pub fn with_cs_bytecode(
         mut self,
         bytecode: &'sh ShaderBytecode,
     ) -> ComputePipelineStateDesc<'rs, 'sh> {
-        self.0.CS = bytecode.0;
-        self.2 = PhantomData;
+        self.set_cs_bytecode(bytecode);
         self
     }
 
@@ -2211,8 +2297,13 @@ impl<'rs, 'sh> ComputePipelineStateDesc<'rs, 'sh> {
         }
     }
 
-    pub fn set_node_mask(mut self, node_mask: u32) -> Self {
+    pub fn set_node_mask(&mut self, node_mask: u32) -> &mut Self {
         self.0.NodeMask = node_mask;
+        self
+    }
+
+    pub fn with_node_mask(mut self, node_mask: u32) -> Self {
+        self.set_node_mask(node_mask);
         self
     }
 
@@ -2221,11 +2312,19 @@ impl<'rs, 'sh> ComputePipelineStateDesc<'rs, 'sh> {
     }
 
     pub fn set_cached_pso(
+        &mut self,
+        cached_pso: &'sh CachedPipelineState,
+    ) -> &mut ComputePipelineStateDesc<'rs, 'sh> {
+        self.0.CachedPSO = cached_pso.0;
+        self.2 = PhantomData;
+        self
+    }
+
+    pub fn with_cached_pso(
         mut self,
         cached_pso: &'sh CachedPipelineState,
     ) -> ComputePipelineStateDesc<'rs, 'sh> {
-        self.0.CachedPSO = cached_pso.0;
-        self.2 = PhantomData;
+        self.set_cached_pso(cached_pso);
         self
     }
 
@@ -2239,10 +2338,18 @@ impl<'rs, 'sh> ComputePipelineStateDesc<'rs, 'sh> {
     }
 
     pub fn set_flags(
+        &mut self,
+        pipeline_state_flags: PipelineStateFlags,
+    ) -> &mut Self {
+        self.0.Flags = pipeline_state_flags.bits();
+        self
+    }
+
+    pub fn with_flags(
         mut self,
         pipeline_state_flags: PipelineStateFlags,
     ) -> Self {
-        self.0.Flags = pipeline_state_flags.bits();
+        self.set_flags(pipeline_state_flags);
         self
     }
 
