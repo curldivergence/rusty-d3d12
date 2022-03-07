@@ -60,7 +60,7 @@ def read_known_types():
                 KNOWN_TYPES[m[0]] = TypeCategory.BitFlags
                 continue
 
-    print(KNOWN_TYPES)
+    # print(KNOWN_TYPES)
 
 def replace_known_types(ty):
     if ty == "UINT64":
@@ -71,8 +71,12 @@ def replace_known_types(ty):
         return "u16"
     elif ty == "UINT8":
         return "u8"
+    elif ty == "BYTE":
+        return "u8"
     elif ty == "UINT":
         return "u32"
+    elif ty == "INT":
+        return "i32"
     elif ty == "FLOAT":
         return "f32"
     elif ty == "LONG":
