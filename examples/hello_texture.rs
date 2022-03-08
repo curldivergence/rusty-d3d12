@@ -58,17 +58,17 @@ impl Vertex {
     fn make_desc() -> Vec<InputElementDesc<'static>> {
         vec![
             InputElementDesc::default()
-                .set_name("POSITION")
+                .with_semantic_name("POSITION")
                 .unwrap()
-                .set_format(Format::R32G32B32Float)
-                .set_input_slot(0)
-                .set_offset(ByteCount(offset_of!(Self, position) as u64)),
+                .with_format(Format::R32G32B32Float)
+                .with_input_slot(0)
+                .with_aligned_byte_offset(ByteCount(offset_of!(Self, position) as u64)),
             InputElementDesc::default()
-                .set_name("TEXCOORD")
+                .with_semantic_name("TEXCOORD")
                 .unwrap()
-                .set_format(Format::R32G32Float)
-                .set_input_slot(0)
-                .set_offset(ByteCount(offset_of!(Self, uv) as u64)),
+                .with_format(Format::R32G32Float)
+                .with_input_slot(0)
+                .with_aligned_byte_offset(ByteCount(offset_of!(Self, uv) as u64)),
         ]
     }
 }
@@ -148,12 +148,12 @@ impl HelloTextureSample {
         let frame_index = swapchain.get_current_back_buffer_index() as u32;
 
         let viewport_desc = Viewport::default()
-            .set_width(WINDOW_WIDTH as f32)
-            .set_height(WINDOW_HEIGHT as f32);
+            .with_width(WINDOW_WIDTH as f32)
+            .with_height(WINDOW_HEIGHT as f32);
 
         let scissor_desc = Rect::default()
-            .set_right(WINDOW_WIDTH as i32)
-            .set_bottom(WINDOW_HEIGHT as i32);
+            .with_right(WINDOW_WIDTH as i32)
+            .with_bottom(WINDOW_HEIGHT as i32);
 
         let (render_targets, rtv_heap, srv_heap) = setup_heaps(
             &device,
@@ -245,9 +245,9 @@ impl HelloTextureSample {
                 &HeapProperties::default().set_heap_type(HeapType::Upload),
                 HeapFlags::None,
                 &ResourceDesc::default()
-                    .set_dimension(ResourceDimension::Buffer)
-                    .set_width(vertex_buffer_size.0)
-                    .set_layout(TextureLayout::RowMajor),
+                    .with_dimension(ResourceDimension::Buffer)
+                    .with_width(vertex_buffer_size.0)
+                    .with_layout(TextureLayout::RowMajor),
                 ResourceStates::GenericRead,
                 None,
             )
@@ -270,13 +270,13 @@ impl HelloTextureSample {
         vertex_buffer.unmap(0, None);
         self.vertex_buffer_view = Some(
             VertexBufferView::default()
-                .set_buffer_location(vertex_buffer.get_gpu_virtual_address())
-                .set_size_in_bytes(ByteCount::from(
+                .with_buffer_location(vertex_buffer.get_gpu_virtual_address())
+                .with_size_in_bytes(ByteCount::from(
                     3 * std::mem::size_of::<Vertex>(),
                 ))
-                .set_stride_in_bytes(
-                    ByteCount::from(std::mem::size_of::<Vertex>()),
-                ),
+                .with_stride_in_bytes(ByteCount::from(std::mem::size_of::<
+                    Vertex,
+                >())),
         );
 
         self.vertex_buffer = Some(vertex_buffer);
@@ -293,13 +293,14 @@ impl HelloTextureSample {
         self.texture = Some(
             self.device
                 .create_committed_resource(
-                    &HeapProperties::default().set_heap_type(HeapType::Default),
+                    &HeapProperties::default()
+                        .with_heap_type(HeapType::Default),
                     HeapFlags::None,
                     &ResourceDesc::default()
-                        .set_format(Format::R8G8B8A8Unorm)
-                        .set_width(texture_width as u64)
-                        .set_height(texture_height)
-                        .set_dimension(ResourceDimension::Texture2D),
+                        .with_format(Format::R8G8B8A8Unorm)
+                        .with_width(texture_width as u64)
+                        .with_height(texture_height)
+                        .with_dimension(ResourceDimension::Texture2D),
                     ResourceStates::CopyDest,
                     None,
                 )
@@ -317,13 +318,13 @@ impl HelloTextureSample {
         self.command_list.resource_barrier(&vec![
             ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(
+                    .with_resource(
                         self.texture
                             .as_ref()
                             .expect("No texture has been created"),
                     )
-                    .set_state_before(ResourceStates::CopyDest)
-                    .set_state_after(ResourceStates::PixelShaderResource),
+                    .with_state_before(ResourceStates::CopyDest)
+                    .with_state_after(ResourceStates::PixelShaderResource),
             ),
         ]);
 
@@ -336,9 +337,9 @@ impl HelloTextureSample {
         self.flush_gpu();
 
         let srv_desc = ShaderResourceViewDesc::default()
-            .new_texture_2d(&Tex2DSrv::default().set_mip_levels(1))
-            .set_shader4_component_mapping(ShaderComponentMapping::default())
-            .set_format(Format::R8G8B8A8Unorm);
+            .new_texture_2d(&Tex2DSrv::default().with_mip_levels(1))
+            .with_shader_4_component_mapping(ShaderComponentMapping::default())
+            .with_format(Format::R8G8B8A8Unorm);
         self.device.create_shader_resource_view(
             &self.texture.as_ref().expect("No texture has been created"),
             Some(&srv_desc),
@@ -360,12 +361,12 @@ impl HelloTextureSample {
         self.texture_upload_heap = Some(
             self.device
                 .create_committed_resource(
-                    &HeapProperties::default().set_heap_type(HeapType::Upload),
+                    &HeapProperties::default().with_heap_type(HeapType::Upload),
                     HeapFlags::None,
                     &ResourceDesc::default()
-                        .set_dimension(ResourceDimension::Buffer)
-                        .set_width(upload_buffer_size.0)
-                        .set_layout(TextureLayout::RowMajor),
+                        .with_dimension(ResourceDimension::Buffer)
+                        .with_width(upload_buffer_size.0)
+                        .with_layout(TextureLayout::RowMajor),
                     ResourceStates::GenericRead,
                     None,
                 )
@@ -376,10 +377,10 @@ impl HelloTextureSample {
             generate_texture_data(texture_width, texture_height, pixel_size);
 
         let texture_subresource_data = SubresourceData::default()
-            .set_data(&texture_data)
+            .with_data(&texture_data)
             // ToDo: clean up these conversions
-            .set_row_pitch(ByteCount((pixel_size * texture_width).0 as u64))
-            .set_slice_pitch(ByteCount(
+            .with_row_pitch(ByteCount((pixel_size * texture_width).0 as u64))
+            .with_slice_pitch(ByteCount(
                 (pixel_size * texture_width * texture_height).0 as u64,
             ));
 
@@ -426,11 +427,11 @@ impl HelloTextureSample {
         self.command_list.resource_barrier(&vec![
             ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(
+                    .with_resource(
                         &self.render_targets[self.frame_index as usize],
                     )
-                    .set_state_before(ResourceStates::Common)
-                    .set_state_after(ResourceStates::RenderTarget),
+                    .with_state_before(ResourceStates::Common)
+                    .with_state_after(ResourceStates::RenderTarget),
             ),
         ]);
 
@@ -458,7 +459,7 @@ impl HelloTextureSample {
             .set_primitive_topology(PrimitiveTopology::TriangleList);
         self.command_list.set_vertex_buffers(
             0,
-            &vec![self.vertex_buffer_view.expect("No vertex buffer created")],
+            &[self.vertex_buffer_view.expect("No vertex buffer created")],
         );
 
         self.command_list.draw_instanced(3, 1, 0, 0);
@@ -466,11 +467,11 @@ impl HelloTextureSample {
         self.command_list
             .resource_barrier(&[ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(
+                    .with_resource(
                         &self.render_targets[self.frame_index as usize],
                     )
-                    .set_state_before(ResourceStates::RenderTarget)
-                    .set_state_after(ResourceStates::Common),
+                    .with_state_before(ResourceStates::RenderTarget)
+                    .with_state_after(ResourceStates::Common),
             )]);
 
         PIXSupport::end_event_cmd_list(&self.command_list);
@@ -528,23 +529,23 @@ fn create_pipeline_state(
     pixel_shader: Vec<u8>,
     device: &Device,
 ) -> PipelineState {
-    let vs_bytecode = ShaderBytecode::from_bytes(&vertex_shader);
-    let ps_bytecode = ShaderBytecode::from_bytes(&pixel_shader);
+    let vs_bytecode = ShaderBytecode::new(&vertex_shader);
+    let ps_bytecode = ShaderBytecode::new(&pixel_shader);
 
     let input_layout =
-        InputLayoutDesc::default().from_input_elements(&input_layout);
+        InputLayoutDesc::default().with_input_elements(&input_layout);
     let pso_desc = GraphicsPipelineStateDesc::default()
-        .set_input_layout(&input_layout)
-        .set_root_signature(root_signature)
-        .set_vs_bytecode(&vs_bytecode)
-        .set_ps_bytecode(&ps_bytecode)
-        .set_rasterizer_state(&RasterizerDesc::default())
-        .set_blend_state(&BlendDesc::default())
-        .set_depth_stencil_state(
-            &DepthStencilDesc::default().set_depth_enable(false),
+        .with_input_layout(&input_layout)
+        .with_root_signature(root_signature)
+        .with_vs_bytecode(&vs_bytecode)
+        .with_ps_bytecode(&ps_bytecode)
+        .with_rasterizer_state(RasterizerDesc::default())
+        .with_blend_state(BlendDesc::default())
+        .with_depth_stencil_state(
+            DepthStencilDesc::default().with_depth_enable(false),
         )
-        .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
-        .set_rtv_formats(&[Format::R8G8B8A8Unorm]);
+        .with_primitive_topology_type(PrimitiveTopologyType::Triangle)
+        .with_rtv_formats(&[Format::R8G8B8A8Unorm]);
 
     let pso = device
         .create_graphics_pipeline_state(&pso_desc)
@@ -615,7 +616,7 @@ fn setup_root_signature(device: &Device) -> RootSignature {
         .check_feature_support(Feature::RootSignature, &mut feature_data)
         .is_err()
     {
-        feature_data.set_highest_version(RootSignatureVersion::V1_0);
+        feature_data.with_highest_version(RootSignatureVersion::V1_0);
         unimplemented!(
             "To support v1.0 root signature serialization we'd need to bring \
 d3dx12.h as a dependency to have X12SerializeVersionedRootSignature"
@@ -623,31 +624,31 @@ d3dx12.h as a dependency to have X12SerializeVersionedRootSignature"
     }
 
     let ranges = vec![DescriptorRange::default()
-        .set_range_type(DescriptorRangeType::Srv)
-        .set_num_descriptors(1)
-        .set_flags(DescriptorRangeFlags::DataStatic)];
+        .with_range_type(DescriptorRangeType::Srv)
+        .with_num_descriptors(1)
+        .with_flags(DescriptorRangeFlags::DataStatic)];
 
     let descriptor_table =
-        RootDescriptorTable::default().set_descriptor_ranges(&ranges);
+        RootDescriptorTable::default().with_descriptor_ranges(&ranges);
     let root_parameters = vec![RootParameter::default()
         .new_descriptor_table(&descriptor_table)
-        .set_shader_visibility(ShaderVisibility::Pixel)];
+        .with_shader_visibility(ShaderVisibility::Pixel)];
 
     let sampler_desc = StaticSamplerDesc::default()
-        .set_filter(Filter::MinMagMipPoint)
-        .set_address_u(TextureAddressMode::Border)
-        .set_address_v(TextureAddressMode::Border)
-        .set_address_w(TextureAddressMode::Border)
-        .set_comparison_func(ComparisonFunc::Never)
-        .set_border_color(StaticBorderColor::TransparentBlack)
-        .set_shader_visibility(ShaderVisibility::Pixel);
+        .with_filter(Filter::MinMagMipPoint)
+        .with_address_u(TextureAddressMode::Border)
+        .with_address_v(TextureAddressMode::Border)
+        .with_address_w(TextureAddressMode::Border)
+        .with_comparison_func(ComparisonFunc::Never)
+        .with_border_color(StaticBorderColor::TransparentBlack)
+        .with_shader_visibility(ShaderVisibility::Pixel);
 
     let root_signature_desc = VersionedRootSignatureDesc::default()
-        .set_desc_1_1(
+        .with_desc_1_1(
             &RootSignatureDesc::default()
-                .set_parameters(&root_parameters)
-                .set_static_samplers(std::slice::from_ref(&sampler_desc))
-                .set_flags(RootSignatureFlags::AllowInputAssemblerInputLayout),
+                .with_parameters(&root_parameters)
+                .with_static_samplers(std::slice::from_ref(&sampler_desc))
+                .with_flags(RootSignatureFlags::AllowInputAssemblerInputLayout),
         );
 
     let (serialized_signature, serialization_result) =
@@ -661,7 +662,7 @@ d3dx12.h as a dependency to have X12SerializeVersionedRootSignature"
     let root_signature = device
         .create_root_signature(
             0,
-            &ShaderBytecode::from_bytes(serialized_signature.get_buffer()),
+            &ShaderBytecode::new(serialized_signature.get_buffer()),
         )
         .expect("Cannot create root signature");
     root_signature
@@ -675,8 +676,8 @@ fn setup_heaps(
     let rtv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_heap_type(DescriptorHeapType::Rtv)
-                .set_num_descriptors(FRAMES_IN_FLIGHT),
+                .with_heap_type(DescriptorHeapType::Rtv)
+                .with_num_descriptors(FRAMES_IN_FLIGHT),
         )
         .expect("Cannot create RTV heap");
     rtv_heap
@@ -686,9 +687,9 @@ fn setup_heaps(
     let srv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_heap_type(DescriptorHeapType::CbvSrvUav)
-                .set_flags(DescriptorHeapFlags::ShaderVisible)
-                .set_num_descriptors(1),
+                .with_heap_type(DescriptorHeapType::CbvSrvUav)
+                .with_flags(DescriptorHeapFlags::ShaderVisible)
+                .with_num_descriptors(1),
         )
         .expect("Cannot create SRV heap");
     srv_heap
@@ -716,10 +717,10 @@ fn create_swapchain(
     command_queue: &CommandQueue,
     hwnd: *mut std::ffi::c_void,
 ) -> Swapchain {
-    let swapchain_desc = SwapchainDesc::default()
-        .set_width(WINDOW_WIDTH)
-        .set_height(WINDOW_HEIGHT)
-        .set_buffer_count(FRAMES_IN_FLIGHT);
+    let swapchain_desc = SwapChainDesc::default()
+        .with_width(WINDOW_WIDTH)
+        .with_height(WINDOW_HEIGHT)
+        .with_buffer_count(FRAMES_IN_FLIGHT);
     let swapchain = factory
         .create_swapchain(&command_queue, hwnd as *mut HWND__, &swapchain_desc)
         .expect("Cannot create swapchain");
@@ -757,10 +758,7 @@ fn generate_texture_data(
     let cell_height = width >> 3;
     let texture_size = row_pitch * height as u32;
 
-    let mut data: Vec<u8> = Vec::with_capacity(texture_size as usize);
-    unsafe {
-        data.set_len(texture_size as usize);
-    }
+    let mut data: Vec<u8> = vec![0; texture_size as usize];
 
     for n in (0..texture_size as usize).step_by(pixel_size.0 as usize) {
         let x = n % row_pitch as usize;

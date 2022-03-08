@@ -1986,7 +1986,7 @@ fn create_swapchain(
     command_queue: &CommandQueue,
     hwnd: *mut std::ffi::c_void,
 ) -> Swapchain {
-    let swapchain_desc = SwapchainDesc::default()
+    let swapchain_desc = SwapChainDesc::default()
         .set_width(WINDOW_WIDTH)
         .set_height(WINDOW_HEIGHT)
         .set_buffer_count(FRAMES_IN_FLIGHT as u32);

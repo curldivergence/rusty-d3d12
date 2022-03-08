@@ -1038,7 +1038,7 @@ impl ResourceUavBarrier {
 }
 
 /// Wrapper around D3D12_VIEWPORT structure
-#[derive(Default, Debug, PartialOrd, PartialEq, Clone)]
+#[derive(Default, Debug, PartialOrd, PartialEq, Clone, Copy)]
 #[repr(transparent)]
 pub struct Viewport(pub(crate) D3D12_VIEWPORT);
 
@@ -4574,9 +4574,9 @@ impl ShaderResourceViewDesc {
     }
 
     pub fn set_shader_4_component_mapping(
-        mut self,
+        &mut self,
         shader4_component_mapping: ShaderComponentMapping,
-    ) -> Self {
+    ) -> &mut Self {
         self.0.Shader4ComponentMapping = shader4_component_mapping.into();
         self
     }
