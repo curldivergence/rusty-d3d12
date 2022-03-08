@@ -1246,9 +1246,22 @@ impl TextureCopyLocation {
 }
 
 /// Wrapper around D3D12_BOX structure
-#[derive(Default, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone)]
+#[derive(Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone)]
 #[repr(transparent)]
 pub struct Box(pub(crate) D3D12_BOX);
+
+impl Default for Box {
+    fn default() -> Self {
+        Self(D3D12_BOX {
+            left: 0,
+            top: 0,
+            front: 0,
+            right: 0,
+            bottom: 1,
+            back: 1,
+        })
+    }
+}
 
 impl Box {
     pub fn set_left(&mut self, left: u32) -> &mut Self {
@@ -3603,7 +3616,7 @@ impl FeatureDataRootSignature {
 
 /// Newtype around [u32] since it has a special value of [DESCRIPTOR_RANGE_OFFSET_APPEND]
 #[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Copy, Clone, Debug)]
-pub struct DescriptorRangeOffset(u32);
+pub struct DescriptorRangeOffset(pub(crate) u32);
 
 impl From<u32> for DescriptorRangeOffset {
     fn from(count: u32) -> Self {
@@ -3704,16 +3717,16 @@ impl DescriptorRange {
 
     pub fn set_offset_in_descriptors_from_table_start(
         &mut self,
-        offset_in_descriptors_from_table_start: u32,
+        offset_in_descriptors_from_table_start: DescriptorRangeOffset,
     ) -> &mut Self {
         self.0.OffsetInDescriptorsFromTableStart =
-            offset_in_descriptors_from_table_start;
+            offset_in_descriptors_from_table_start.0;
         self
     }
 
     pub fn with_offset_in_descriptors_from_table_start(
         mut self,
-        offset_in_descriptors_from_table_start: u32,
+        offset_in_descriptors_from_table_start: DescriptorRangeOffset,
     ) -> Self {
         self.set_offset_in_descriptors_from_table_start(
             offset_in_descriptors_from_table_start,
@@ -3721,8 +3734,10 @@ impl DescriptorRange {
         self
     }
 
-    pub fn offset_in_descriptors_from_table_start(&self) -> u32 {
-        self.0.OffsetInDescriptorsFromTableStart
+    pub fn offset_in_descriptors_from_table_start(
+        &self,
+    ) -> DescriptorRangeOffset {
+        self.0.OffsetInDescriptorsFromTableStart.into()
     }
 }
 
@@ -3902,7 +3917,10 @@ impl RootConstants {
         self.0.RegisterSpace
     }
 
-    pub fn set_num_32_bit_values(&mut self, num_32_bit_values: u32) -> &mut Self {
+    pub fn set_num_32_bit_values(
+        &mut self,
+        num_32_bit_values: u32,
+    ) -> &mut Self {
         self.0.Num32BitValues = num_32_bit_values;
         self
     }
@@ -6401,14 +6419,22 @@ impl<'a> PipelineStateStreamDesc<'a> {
     }
 
     pub fn set_pipeline_state_subobject_stream(
-        mut self,
+        &mut self,
         subobject_stream: &'a [u8],
-    ) -> Self {
+    ) -> &mut Self {
         self.0.SizeInBytes = subobject_stream.len() as u64;
         self.0.pPipelineStateSubobjectStream =
             subobject_stream.as_ptr() as *mut std::ffi::c_void;
         self.1 = PhantomData;
 
+        self
+    }
+
+    pub fn with_pipeline_state_subobject_stream(
+        mut self,
+        subobject_stream: &'a [u8],
+    ) -> Self {
+        self.set_pipeline_state_subobject_stream(subobject_stream);
         self
     }
 
@@ -6863,13 +6889,13 @@ impl Default for QueryHeapDesc {
 }
 
 impl QueryHeapDesc {
-    pub fn set_type(&mut self, heap_type: QueryHeapType) -> &mut Self {
+    pub fn set_heap_type(&mut self, heap_type: QueryHeapType) -> &mut Self {
         self.0.Type = heap_type as i32;
         self
     }
 
-    pub fn with_type(mut self, heap_type: QueryHeapType) -> Self {
-        self.set_type(heap_type);
+    pub fn with_heap_type(mut self, heap_type: QueryHeapType) -> Self {
+        self.set_heap_type(heap_type);
         self
     }
 
@@ -6909,10 +6935,10 @@ impl QueryHeapDesc {
 /// Wrapper around D3D12_FEATURE_DATA_D3D12_OPTIONS structure
 #[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Default, Debug, Copy, Clone)]
 #[repr(transparent)]
-pub struct FeatureDataD3D12Options(pub(crate) D3D12_FEATURE_DATA_D3D12_OPTIONS);
+pub struct FeatureDataOptions(pub(crate) D3D12_FEATURE_DATA_D3D12_OPTIONS);
 
 // ToDo: remove setters from here since they don't make sense?
-impl FeatureDataD3D12Options {
+impl FeatureDataOptions {
     pub fn set_double_precision_float_shader_ops(
         &mut self,
         double_precision_float_shader_ops: bool,

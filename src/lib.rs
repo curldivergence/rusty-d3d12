@@ -2472,33 +2472,26 @@ impl CommandList {
                 + std::mem::size_of::<u64>(),
         ) * num_subresources;
 
-        let mut allocated_memory: Vec<u8> = vec![0; allocation_size.0 as usize];
-
-        unsafe {
-            // let allocation =
-            //     allocated_memory.as_mut_ptr() as *mut std::ffi::c_void;
-
-            let destination_desc = destination_resource.get_desc();
-            let device = destination_resource.get_device()?;
-            let (layouts, num_rows, row_sizes_in_bytes, required_size) = device
-                .get_copyable_footprints(
-                    &destination_desc,
-                    first_subresouce,
-                    num_subresources,
-                    intermediate_offset,
-                );
-            self.update_subresources(
-                destination_resource,
-                intermediate_resource,
+        let destination_desc = destination_resource.get_desc();
+        let device = destination_resource.get_device()?;
+        let (layouts, num_rows, row_sizes_in_bytes, required_size) = device
+            .get_copyable_footprints(
+                &destination_desc,
                 first_subresouce,
                 num_subresources,
-                required_size,
-                &layouts,
-                &num_rows,
-                &row_sizes_in_bytes,
-                source_data,
-            )
-        }
+                intermediate_offset,
+            );
+        self.update_subresources(
+            destination_resource,
+            intermediate_resource,
+            first_subresouce,
+            num_subresources,
+            required_size,
+            &layouts,
+            &num_rows,
+            &row_sizes_in_bytes,
+            source_data,
+        )
     }
 }
 

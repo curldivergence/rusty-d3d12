@@ -964,7 +964,7 @@ fn create_pso(
     let ps_bytecode = ShaderBytecode::new(&pixel_shader);
 
     let input_layout =
-        InputLayoutDesc::default().from_input_elements(&input_layout);
+        InputLayoutDesc::default().with_input_elements(&input_layout);
     let pso_desc = GraphicsPipelineStateDesc::default()
         .set_input_layout(&input_layout)
         .set_root_signature(root_signature)
