@@ -2037,22 +2037,26 @@ impl RenderTargetBlendDesc {
 
     pub fn set_render_target_write_mask(
         &mut self,
-        render_target_write_mask: u8,
+        render_target_write_mask: ColorWriteEnable,
     ) -> &mut Self {
-        self.0.RenderTargetWriteMask = render_target_write_mask;
+        self.0.RenderTargetWriteMask = render_target_write_mask.bits() as u8;
         self
     }
 
     pub fn with_render_target_write_mask(
         mut self,
-        render_target_write_mask: u8,
+        render_target_write_mask: ColorWriteEnable,
     ) -> Self {
         self.set_render_target_write_mask(render_target_write_mask);
         self
     }
 
-    pub fn render_target_write_mask(&self) -> u8 {
-        self.0.RenderTargetWriteMask
+    pub fn render_target_write_mask(&self) -> ColorWriteEnable {
+        unsafe {
+            ColorWriteEnable::from_bits_unchecked(
+                self.0.RenderTargetWriteMask as i32,
+            )
+        }
     }
 }
 
