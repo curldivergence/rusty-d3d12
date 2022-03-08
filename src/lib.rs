@@ -3,8 +3,8 @@
 This project provides low-level bindings for D3D12 API. It utilizes `rust-bindgen` for generating raw bindings (unlike `d3d12-rs` crate), but aims for providing idiomatic APIs (unlike the raw D3D12 wrappers from `winapi` or `windows-rs` crates).
 
 ## Features
-- type-safe wrappers for D3D12 enumerations and bit flags
-- wrappers for `ID3D12*` interfaces and POD structs (the latter are marked as `#[repr(transparent)]` so that they can be used as a drop-in replacement for the native types, but expose type-safe getters and setters)
+- wrappers for `ID3D12*` interfaces and POD structs. The latter are marked as `#[repr(transparent)]` so that they can be used as a drop-in replacement for the native types, but expose type-safe getters and setters. The setters have two forms: `with_*(mut self, ...) -> Self` and `set_*(&mut self, ...) -> &mut Self` and are intended for building new structures and modifying the existing ones, respectively
+- type-safe wrappers for D3D12 enumerations and bit flags (see [enum_wrappers.rs](src/enum_wrappers.rs) for details)
 - `D3D12` and `DXGI` prefixes have been stripped from all types, functions and enum variants (e.g. this library exposes `CommandListType::Direct` instead of `D3D12_COMMAND_LIST_TYPE_DIRECT`) since it's very likely that people who use it already know the name of the API it wraps (it's mentioned in the crate name after all), and do not need to be constantly reminded about it :) Also all type and function names have been reshaped with respect to the official Rust code style (e.g. `get_gpu_descriptor_handle_for_heap_start` instead of `GetGPUDescriptorHandleForHeapStart`). Note that most, but *not* all the enum variant names have been converted yet, so some of them will be changed in future versions
 - D3D12 Agility SDK is integrated into the library and shipped along with it (see `heterogeneous_multiadapter.rs` for an example of exporting required symbols). Current SDK version is `1.600.10`
 - PIX markers (they require enabling `pix` feature which is off by default not to introduce a dependency on `WinPixEventRuntime.dll` for people who don't need it)
@@ -25,18 +25,20 @@ debug_controller.enable_object_auto_name();
 ```
 - create a descriptor heap:
 ```rust
-let heap = device.create_descriptor_heap(
+let rtv_heap = device
+    .create_descriptor_heap(
         &DescriptorHeapDesc::default()
-            .set_heap_type(heap_type)
-            .set_num_descriptors(descriptor_count)
-            .set_flags(flags),
-    ).expect("cannot create descriptor heap");
-
-heap.set_name(name).expect("cannot set name on descriptor heap");
+            .with_heap_type(DescriptorHeapType::Rtv)
+            .with_num_descriptors(FRAMES_IN_FLIGHT),
+    )
+    .expect("Cannot create RTV heap");
+rtv_heap
+    .set_name("RTV heap")
+    .expect("Cannot set RTV heap name");
 ```
 - check if cross-adapter textures are supported:
 ```rust
-let mut feature_data = FeatureDataD3DOptions::default();
+let mut feature_data = FeatureDataOptions::default();
 device
     .check_feature_support(Feature::D3D12Options, &mut feature_data)
     .expect("Cannot check feature support");
@@ -49,21 +51,21 @@ let ms_bytecode = ShaderBytecode::new(&mesh_shader);
 let ps_bytecode = ShaderBytecode::new(&pixel_shader);
 
 let pso_subobjects_desc = MeshShaderPipelineStateDesc::default()
-    .set_root_signature(root_signature)
-    .set_ms_bytecode(&ms_bytecode)
-    .set_ps_bytecode(&ps_bytecode)
-    .set_rasterizer_state(
-        &RasterizerDesc::default().set_depth_clip_enable(false),
+    .with_root_signature(root_signature)
+    .with_ms_bytecode(&ms_bytecode)
+    .with_ps_bytecode(&ps_bytecode)
+    .with_rasterizer_state(
+        RasterizerDesc::default().with_depth_clip_enable(false),
     )
-    .set_blend_state(&BlendDesc::default())
-    .set_depth_stencil_state(
-        &DepthStencilDesc::default().set_depth_enable(false),
+    .with_blend_state(BlendDesc::default())
+    .with_depth_stencil_state(
+        DepthStencilDesc::default().with_depth_enable(false),
     )
-    .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
-    .set_rtv_formats(&[Format::R8G8B8A8Unorm]);
+    .with_primitive_topology_type(PrimitiveTopologyType::Triangle)
+    .with_rtv_formats(&[Format::R8G8B8A8Unorm]);
 
 let pso_desc = PipelineStateStreamDesc::default()
-    .set_pipeline_state_subobject_stream(
+    .with_pipeline_state_subobject_stream(
         pso_subobjects_desc.as_byte_stream(),
     );
 
