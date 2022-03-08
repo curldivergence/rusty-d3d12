@@ -121,17 +121,21 @@ impl Vertex {
     pub fn make_desc() -> Vec<InputElementDesc<'static>> {
         vec![
             InputElementDesc::default()
-                .set_name("POSITION")
+                .with_semantic_name("POSITION")
                 .unwrap()
-                .set_format(Format::R32G32B32A32Float)
-                .set_input_slot(0)
-                .set_offset(ByteCount::from(offset_of!(Self, position))),
+                .with_format(Format::R32G32B32A32Float)
+                .with_input_slot(0)
+                .with_aligned_byte_offset(ByteCount::from(offset_of!(
+                    Self, position
+                ))),
             InputElementDesc::default()
-                .set_name("COLOR")
+                .with_semantic_name("COLOR")
                 .unwrap()
-                .set_format(Format::R32G32B32A32Float)
-                .set_input_slot(0)
-                .set_offset(ByteCount::from(offset_of!(Self, color))),
+                .with_format(Format::R32G32B32A32Float)
+                .with_input_slot(0)
+                .with_aligned_byte_offset(ByteCount::from(offset_of!(
+                    Self, color
+                ))),
         ]
     }
 }
@@ -271,7 +275,7 @@ impl Pipeline {
         let direct_command_queue = device
             .create_command_queue(
                 &CommandQueueDesc::default()
-                    .set_queue_type(CommandListType::Direct),
+                    .with_queue_type(CommandListType::Direct),
             )
             .expect("Cannot create direct command queue");
 
@@ -280,16 +284,16 @@ impl Pipeline {
         trace!("Swapchain returned frame index {}", frame_index);
 
         let viewport = Viewport::default()
-            .set_top_left_x(0.)
-            .set_top_left_y(0.)
-            .set_width(WINDOW_WIDTH as f32)
-            .set_height(WINDOW_HEIGHT as f32);
+            .with_top_left_x(0.)
+            .with_top_left_y(0.)
+            .with_width(WINDOW_WIDTH as f32)
+            .with_height(WINDOW_HEIGHT as f32);
 
         let scissor_rect = Rect::default()
-            .set_left(0)
-            .set_top(0)
-            .set_right(WINDOW_WIDTH as i32)
-            .set_bottom(WINDOW_HEIGHT as i32);
+            .with_left(0)
+            .with_top(0)
+            .with_right(WINDOW_WIDTH as i32)
+            .with_bottom(WINDOW_HEIGHT as i32);
 
         let (rtv_heap, cbv_srv_heap) =
             create_descriptor_heaps(&device, &swapchain);
@@ -312,12 +316,12 @@ impl Pipeline {
             shared_heap = device
                 .create_heap(
                     &HeapDesc::default()
-                        .set_properties(
-                            &HeapProperties::default()
-                                .set_heap_type(HeapType::Default),
+                        .with_properties(
+                            HeapProperties::default()
+                                .with_heap_type(HeapType::Default),
                         )
-                        .set_size_in_bytes(texture_size * FRAMES_IN_FLIGHT)
-                        .set_flags(
+                        .with_size_in_bytes(texture_size * FRAMES_IN_FLIGHT)
+                        .with_flags(
                             HeapFlags::Shared | HeapFlags::SharedCrossAdapter,
                         ),
                 )
@@ -478,9 +482,9 @@ impl Pipeline {
         self.direct_command_list.resource_barrier(slice::from_ref(
             &ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(&self.render_targets[self.frame_index])
-                    .set_state_before(ResourceStates::Common)
-                    .set_state_after(ResourceStates::RenderTarget),
+                    .with_resource(&self.render_targets[self.frame_index])
+                    .with_state_before(ResourceStates::Common)
+                    .with_state_after(ResourceStates::RenderTarget),
             ),
         ));
 
@@ -519,15 +523,15 @@ impl Pipeline {
         self.direct_command_list.resource_barrier(&[
             ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(&self.render_targets[self.frame_index])
-                    .set_state_before(ResourceStates::RenderTarget)
-                    .set_state_after(ResourceStates::CopySource),
+                    .with_resource(&self.render_targets[self.frame_index])
+                    .with_state_before(ResourceStates::RenderTarget)
+                    .with_state_after(ResourceStates::CopySource),
             ),
             ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(&self.cross_process_resource)
-                    .set_state_before(ResourceStates::Common)
-                    .set_state_after(ResourceStates::CopyDest),
+                    .with_resource(&self.cross_process_resource)
+                    .with_state_before(ResourceStates::Common)
+                    .with_state_after(ResourceStates::CopyDest),
             ),
         ]);
 
@@ -539,15 +543,15 @@ impl Pipeline {
         self.direct_command_list.resource_barrier(&[
             ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(&self.render_targets[self.frame_index])
-                    .set_state_before(ResourceStates::CopySource)
-                    .set_state_after(ResourceStates::Common),
+                    .with_resource(&self.render_targets[self.frame_index])
+                    .with_state_before(ResourceStates::CopySource)
+                    .with_state_after(ResourceStates::Common),
             ),
             ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(&self.cross_process_resource)
-                    .set_state_before(ResourceStates::CopyDest)
-                    .set_state_after(ResourceStates::Common),
+                    .with_resource(&self.cross_process_resource)
+                    .with_state_before(ResourceStates::CopyDest)
+                    .with_state_after(ResourceStates::Common),
             ),
         ]);
 
@@ -580,15 +584,15 @@ impl Pipeline {
         self.direct_command_list.resource_barrier(&[
             ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(&self.render_targets[self.frame_index])
-                    .set_state_before(ResourceStates::Common)
-                    .set_state_after(ResourceStates::CopyDest),
+                    .with_resource(&self.render_targets[self.frame_index])
+                    .with_state_before(ResourceStates::Common)
+                    .with_state_after(ResourceStates::CopyDest),
             ),
             ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(&self.cross_process_resource)
-                    .set_state_before(ResourceStates::Common)
-                    .set_state_after(ResourceStates::CopySource),
+                    .with_resource(&self.cross_process_resource)
+                    .with_state_before(ResourceStates::Common)
+                    .with_state_after(ResourceStates::CopySource),
             ),
         ]);
 
@@ -600,15 +604,15 @@ impl Pipeline {
         self.direct_command_list.resource_barrier(&[
             ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(&self.render_targets[self.frame_index])
-                    .set_state_before(ResourceStates::CopyDest)
-                    .set_state_after(ResourceStates::RenderTarget),
+                    .with_resource(&self.render_targets[self.frame_index])
+                    .with_state_before(ResourceStates::CopyDest)
+                    .with_state_after(ResourceStates::RenderTarget),
             ),
             ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(&self.cross_process_resource)
-                    .set_state_before(ResourceStates::CopySource)
-                    .set_state_after(ResourceStates::Common),
+                    .with_resource(&self.cross_process_resource)
+                    .with_state_before(ResourceStates::CopySource)
+                    .with_state_after(ResourceStates::Common),
             ),
         ]);
 
@@ -641,9 +645,9 @@ impl Pipeline {
         self.direct_command_list.resource_barrier(slice::from_ref(
             &ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(&self.render_targets[self.frame_index])
-                    .set_state_before(ResourceStates::RenderTarget)
-                    .set_state_after(ResourceStates::Common),
+                    .with_resource(&self.render_targets[self.frame_index])
+                    .with_state_before(ResourceStates::RenderTarget)
+                    .with_state_after(ResourceStates::Common),
             ),
         ));
 
@@ -792,12 +796,12 @@ fn create_scene_constant_buffer(
 
     let constant_buffer = device
         .create_committed_resource(
-            &HeapProperties::default().set_heap_type(HeapType::Upload),
+            &HeapProperties::default().with_heap_type(HeapType::Upload),
             HeapFlags::None,
             &ResourceDesc::default()
-                .set_dimension(ResourceDimension::Buffer)
-                .set_layout(TextureLayout::RowMajor)
-                .set_width(constant_buffer_size.0.into()),
+                .with_dimension(ResourceDimension::Buffer)
+                .with_layout(TextureLayout::RowMajor)
+                .with_width(constant_buffer_size.0.into()),
             ResourceStates::GenericRead,
             None,
         )
@@ -853,12 +857,12 @@ fn create_vertex_buffer(
 
     let vertex_buffer = device
         .create_committed_resource(
-            &HeapProperties::default().set_heap_type(HeapType::Default),
+            &HeapProperties::default().with_heap_type(HeapType::Default),
             HeapFlags::None,
             &ResourceDesc::default()
-                .set_dimension(ResourceDimension::Buffer)
-                .set_layout(TextureLayout::RowMajor)
-                .set_width(vertex_buffer_size.0),
+                .with_dimension(ResourceDimension::Buffer)
+                .with_layout(TextureLayout::RowMajor)
+                .with_width(vertex_buffer_size.0),
             ResourceStates::CopyDest,
             None,
         )
@@ -869,12 +873,12 @@ fn create_vertex_buffer(
 
     let vertex_buffer_upload = device
         .create_committed_resource(
-            &HeapProperties::default().set_heap_type(HeapType::Upload),
+            &HeapProperties::default().with_heap_type(HeapType::Upload),
             HeapFlags::None,
             &ResourceDesc::default()
-                .set_dimension(ResourceDimension::Buffer)
-                .set_layout(TextureLayout::RowMajor)
-                .set_width(vertex_buffer_size.0.into()),
+                .with_dimension(ResourceDimension::Buffer)
+                .with_layout(TextureLayout::RowMajor)
+                .with_width(vertex_buffer_size.0.into()),
             ResourceStates::GenericRead,
             None,
         )
@@ -884,9 +888,9 @@ fn create_vertex_buffer(
         .expect("Cannot set name on resource");
 
     let vertex_data = SubresourceData::default()
-        .set_data(&triangle_vertices)
-        .set_row_pitch(vertex_buffer_size)
-        .set_slice_pitch(vertex_buffer_size);
+        .with_data(&triangle_vertices)
+        .with_row_pitch(vertex_buffer_size)
+        .with_slice_pitch(vertex_buffer_size);
 
     direct_command_list
         .update_subresources_heap_alloc(
@@ -903,16 +907,16 @@ fn create_vertex_buffer(
     direct_command_list.resource_barrier(slice::from_ref(
         &ResourceBarrier::new_transition(
             &ResourceTransitionBarrier::default()
-                .set_resource(&vertex_buffer)
-                .set_state_before(ResourceStates::CopyDest)
-                .set_state_after(ResourceStates::VertexAndConstantBuffer),
+                .with_resource(&vertex_buffer)
+                .with_state_before(ResourceStates::CopyDest)
+                .with_state_after(ResourceStates::VertexAndConstantBuffer),
         ),
     ));
 
     let vertex_buffer_view = VertexBufferView::default()
-        .set_buffer_location(vertex_buffer.get_gpu_virtual_address())
-        .set_stride_in_bytes(ByteCount::from(std::mem::size_of::<Vertex>()))
-        .set_size_in_bytes(vertex_buffer_size);
+        .with_buffer_location(vertex_buffer.get_gpu_virtual_address())
+        .with_stride_in_bytes(ByteCount::from(std::mem::size_of::<Vertex>()))
+        .with_size_in_bytes(vertex_buffer_size);
     trace!("Created primary adapter vertex buffer");
 
     (vertex_buffer, vertex_buffer_upload, vertex_buffer_view)
@@ -966,18 +970,18 @@ fn create_pso(
     let input_layout =
         InputLayoutDesc::default().with_input_elements(&input_layout);
     let pso_desc = GraphicsPipelineStateDesc::default()
-        .set_input_layout(&input_layout)
-        .set_root_signature(root_signature)
-        .set_vs_bytecode(&vs_bytecode)
-        .set_ps_bytecode(&ps_bytecode)
-        .set_rasterizer_state(&RasterizerDesc::default())
-        .set_blend_state(&BlendDesc::default())
-        .set_depth_stencil_state(
-            &DepthStencilDesc::default().set_depth_enable(false),
+        .with_input_layout(&input_layout)
+        .with_root_signature(root_signature)
+        .with_vs_bytecode(&vs_bytecode)
+        .with_ps_bytecode(&ps_bytecode)
+        .with_rasterizer_state(RasterizerDesc::default())
+        .with_blend_state(BlendDesc::default())
+        .with_depth_stencil_state(
+            DepthStencilDesc::default().with_depth_enable(false),
         )
-        .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
-        .set_rtv_formats(&[Format::R8G8B8A8Unorm])
-        .set_dsv_format(Format::D32Float);
+        .with_primitive_topology_type(PrimitiveTopologyType::Triangle)
+        .with_rtv_formats(&[Format::R8G8B8A8Unorm])
+        .with_dsv_format(Format::D32Float);
 
     let pso = device
         .create_graphics_pipeline_state(&pso_desc)
@@ -991,17 +995,17 @@ fn create_pso(
 fn create_root_signature(device: &Device) -> RootSignature {
     let root_signature = {
         let root_parameters = [RootParameter::default()
-            .set_shader_visibility(ShaderVisibility::Vertex)
+            .with_shader_visibility(ShaderVisibility::Vertex)
             .new_descriptor(
-                &RootDescriptor::default().set_shader_register(0),
+                &RootDescriptor::default().with_shader_register(0),
                 RootParameterType::Cbv,
             )];
 
         let root_signature_desc = VersionedRootSignatureDesc::default()
-            .set_desc_1_1(
+            .with_desc_1_1(
                 &RootSignatureDesc::default()
-                    .set_parameters(&root_parameters)
-                    .set_flags(
+                    .with_parameters(&root_parameters)
+                    .with_flags(
                         RootSignatureFlags::AllowInputAssemblerInputLayout,
                     ),
             );
@@ -1028,12 +1032,12 @@ fn create_root_signature(device: &Device) -> RootSignature {
 fn create_shared_resource_desc(device: &Device) -> (ByteCount, ResourceDesc) {
     let texture_size: ByteCount;
     let cross_adapter_desc = ResourceDesc::default()
-        .set_dimension(ResourceDimension::Texture2D)
-        .set_layout(TextureLayout::RowMajor)
-        .set_format(Format::R8G8B8A8Unorm)
-        .set_width(WINDOW_WIDTH.into())
-        .set_height(WINDOW_HEIGHT.into())
-        .set_flags(ResourceFlags::AllowCrossAdapter);
+        .with_dimension(ResourceDimension::Texture2D)
+        .with_layout(TextureLayout::RowMajor)
+        .with_format(Format::R8G8B8A8Unorm)
+        .with_width(WINDOW_WIDTH.into())
+        .with_height(WINDOW_HEIGHT.into())
+        .with_flags(ResourceFlags::AllowCrossAdapter);
 
     let (layout, _, _, _) =
         device.get_copyable_footprints(&cross_adapter_desc, 0, 1, 0.into());
@@ -1054,15 +1058,15 @@ fn create_frame_resources(
     rtv_descriptor_handle_size: ByteCount,
 ) -> (Vec<Resource>, Vec<CommandAllocator>) {
     let clear_value = ClearValue::default()
-        .set_format(Format::R8G8B8A8Unorm)
-        .set_color(CLEAR_COLOR);
+        .with_format(Format::R8G8B8A8Unorm)
+        .with_color(CLEAR_COLOR);
 
     let render_target_desc = ResourceDesc::default()
-        .set_dimension(ResourceDimension::Texture2D)
-        .set_format(Format::R8G8B8A8Unorm)
-        .set_width(WINDOW_WIDTH.into())
-        .set_height(WINDOW_HEIGHT.into())
-        .set_flags(ResourceFlags::AllowRenderTarget);
+        .with_dimension(ResourceDimension::Texture2D)
+        .with_format(Format::R8G8B8A8Unorm)
+        .with_width(WINDOW_WIDTH.into())
+        .with_height(WINDOW_HEIGHT.into())
+        .with_flags(ResourceFlags::AllowRenderTarget);
 
     let mut render_targets = vec![];
 
@@ -1102,8 +1106,8 @@ fn create_descriptor_heaps(
     let mut rtv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_heap_type(DescriptorHeapType::Rtv)
-                .set_num_descriptors(num_descriptors),
+                .with_heap_type(DescriptorHeapType::Rtv)
+                .with_num_descriptors(num_descriptors),
         )
         .expect("Cannot create RTV heap");
     rtv_heap
@@ -1113,9 +1117,9 @@ fn create_descriptor_heaps(
     let cbv_srv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_heap_type(DescriptorHeapType::CbvSrvUav)
-                .set_num_descriptors(FRAMES_IN_FLIGHT as u32 + 1)
-                .set_flags(DescriptorHeapFlags::ShaderVisible),
+                .with_heap_type(DescriptorHeapType::CbvSrvUav)
+                .with_num_descriptors(FRAMES_IN_FLIGHT as u32 + 1)
+                .with_flags(DescriptorHeapFlags::ShaderVisible),
         )
         .expect("Cannot create CBV_SRV heap");
     cbv_srv_heap
@@ -1131,9 +1135,9 @@ fn create_swapchain(
     hwnd: *mut std::ffi::c_void,
 ) -> Swapchain {
     let swapchain_desc = SwapChainDesc::default()
-        .set_width(WINDOW_WIDTH)
-        .set_height(WINDOW_HEIGHT)
-        .set_buffer_count(FRAMES_IN_FLIGHT as u32);
+        .with_width(WINDOW_WIDTH)
+        .with_height(WINDOW_HEIGHT)
+        .with_buffer_count(FRAMES_IN_FLIGHT as u32);
     let swapchain = factory
         .create_swapchain(&command_queue, hwnd as *mut HWND__, &swapchain_desc)
         .expect("Cannot create swapchain");
