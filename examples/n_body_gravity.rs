@@ -221,11 +221,11 @@ pub struct Vertex {
 impl Vertex {
     pub fn make_desc() -> Vec<InputElementDesc<'static>> {
         vec![InputElementDesc::default()
-            .set_name("COLOR")
+            .with_semantic_name("COLOR")
             .unwrap()
-            .set_format(Format::R32G32B32A32Float)
-            .set_input_slot(0)
-            .set_offset(ByteCount::from(offset_of!(Self, color)))]
+            .with_format(Format::R32G32B32A32Float)
+            .with_input_slot(0)
+            .with_aligned_byte_offset(ByteCount::from(offset_of!(Self, color)))]
     }
 }
 
@@ -370,16 +370,16 @@ impl GraphicsContext {
                 constant_buffer_gs_mapped_data as *mut u8;
 
             let viewport = Viewport::default()
-                .set_top_left_x(0.)
-                .set_top_left_y(0.)
-                .set_width(WINDOW_WIDTH as f32)
-                .set_height(WINDOW_HEIGHT as f32);
+                .with_top_left_x(0.)
+                .with_top_left_y(0.)
+                .with_width(WINDOW_WIDTH as f32)
+                .with_height(WINDOW_HEIGHT as f32);
 
             let scissor_rect = Rect::default()
-                .set_left(0)
-                .set_top(0)
-                .set_right(WINDOW_WIDTH as i32)
-                .set_bottom(WINDOW_HEIGHT as i32);
+                .with_left(0)
+                .with_top(0)
+                .with_right(WINDOW_WIDTH as i32)
+                .with_bottom(WINDOW_HEIGHT as i32);
 
             let graphics_root_signature =
                 create_graphics_root_signature(&device);
@@ -506,11 +506,11 @@ impl GraphicsContext {
                     context.direct_command_list.resource_barrier(
                         slice::from_ref(&ResourceBarrier::new_transition(
                             &ResourceTransitionBarrier::default()
-                                .set_resource(
+                                .with_resource(
                                     &context.render_targets[frame_idx],
                                 )
-                                .set_state_before(ResourceStates::Common)
-                                .set_state_after(ResourceStates::RenderTarget),
+                                .with_state_before(ResourceStates::Common)
+                                .with_state_after(ResourceStates::RenderTarget),
                         )),
                     );
 
@@ -556,11 +556,11 @@ impl GraphicsContext {
                     context.direct_command_list.resource_barrier(
                         slice::from_ref(&ResourceBarrier::new_transition(
                             &ResourceTransitionBarrier::default()
-                                .set_resource(
+                                .with_resource(
                                     &context.render_targets[frame_idx],
                                 )
-                                .set_state_before(ResourceStates::RenderTarget)
-                                .set_state_after(ResourceStates::Common),
+                                .with_state_before(ResourceStates::RenderTarget)
+                                .with_state_after(ResourceStates::Common),
                         )),
                     );
 
@@ -673,7 +673,7 @@ impl ComputeContext {
             let compute_command_queue = device
                 .create_command_queue(
                     &CommandQueueDesc::default()
-                        .set_queue_type(CommandListType::Compute),
+                        .with_queue_type(CommandListType::Compute),
                 )
                 .expect("Cannot create compute command queue");
 
@@ -813,39 +813,39 @@ impl ComputeContext {
 
 fn create_compute_root_signature(device: &Device) -> RootSignature {
     let srv_range = DescriptorRange::default()
-        .set_range_type(DescriptorRangeType::Srv)
-        .set_num_descriptors(1)
-        .set_base_shader_register(0)
-        .set_flags(DescriptorRangeFlags::DescriptorsVolatile);
+        .with_range_type(DescriptorRangeType::Srv)
+        .with_num_descriptors(1)
+        .with_base_shader_register(0)
+        .with_flags(DescriptorRangeFlags::DescriptorsVolatile);
 
     let srv_table = RootDescriptorTable::default()
-        .set_descriptor_ranges(slice::from_ref(&srv_range));
+        .with_descriptor_ranges(slice::from_ref(&srv_range));
 
     let uav_range = DescriptorRange::default()
-        .set_range_type(DescriptorRangeType::Uav)
-        .set_num_descriptors(1)
-        .set_base_shader_register(0)
-        .set_flags(DescriptorRangeFlags::DataVolatile);
+        .with_range_type(DescriptorRangeType::Uav)
+        .with_num_descriptors(1)
+        .with_base_shader_register(0)
+        .with_flags(DescriptorRangeFlags::DataVolatile);
 
     let uav_table = RootDescriptorTable::default()
-        .set_descriptor_ranges(slice::from_ref(&uav_range));
+        .with_descriptor_ranges(slice::from_ref(&uav_range));
     let root_parameters = [
         RootParameter::default()
             .new_descriptor(
                 &RootDescriptor::default()
-                    .set_shader_register(0)
-                    .set_flags(RootDescriptorFlags::DataStatic),
+                    .with_shader_register(0)
+                    .with_flags(RootDescriptorFlags::DataStatic),
                 RootParameterType::Cbv,
             )
-            .set_shader_visibility(ShaderVisibility::All),
+            .with_shader_visibility(ShaderVisibility::All),
         RootParameter::default().new_descriptor_table(&srv_table),
         RootParameter::default().new_descriptor_table(&uav_table),
     ];
     let root_signature_desc = VersionedRootSignatureDesc::default()
-        .set_desc_1_1(
+        .with_desc_1_1(
             &RootSignatureDesc::default()
-                .set_parameters(&root_parameters)
-                .set_flags(RootSignatureFlags::AllowInputAssemblerInputLayout),
+                .with_parameters(&root_parameters)
+                .with_flags(RootSignatureFlags::AllowInputAssemblerInputLayout),
         );
     let (serialized_signature, serialization_result) =
         RootSignature::serialize_versioned(&root_signature_desc);
@@ -965,7 +965,7 @@ impl Pipeline {
         let direct_command_queue = device
             .create_command_queue(
                 &CommandQueueDesc::default()
-                    .set_queue_type(CommandListType::Direct),
+                    .with_queue_type(CommandListType::Direct),
             )
             .expect("Cannot create direct command queue");
         let swapchain = create_swapchain(factory, &direct_command_queue, hwnd);
@@ -1250,9 +1250,9 @@ fn simulate(
     compute_command_list.resource_barrier(slice::from_ref(
         &ResourceBarrier::new_transition(
             &ResourceTransitionBarrier::default()
-                .set_resource(curr_uav)
-                .set_state_before(ResourceStates::NonPixelShaderResource)
-                .set_state_after(ResourceStates::UnorderedAccess),
+                .with_resource(curr_uav)
+                .with_state_before(ResourceStates::NonPixelShaderResource)
+                .with_state_after(ResourceStates::UnorderedAccess),
         ),
     ));
     compute_command_list.set_pipeline_state(pso);
@@ -1280,9 +1280,9 @@ fn simulate(
     compute_command_list.resource_barrier(slice::from_ref(
         &ResourceBarrier::new_transition(
             &ResourceTransitionBarrier::default()
-                .set_resource(curr_uav)
-                .set_state_before(ResourceStates::UnorderedAccess)
-                .set_state_after(ResourceStates::NonPixelShaderResource),
+                .with_resource(curr_uav)
+                .with_state_before(ResourceStates::UnorderedAccess)
+                .with_state_after(ResourceStates::NonPixelShaderResource),
         ),
     ));
 }
@@ -1332,12 +1332,12 @@ fn create_gs_constant_buffer(
 
     let constant_buffer_gs = device
         .create_committed_resource(
-            &HeapProperties::default().set_heap_type(HeapType::Upload),
+            &HeapProperties::default().with_heap_type(HeapType::Upload),
             HeapFlags::None,
             &ResourceDesc::default()
-                .set_dimension(ResourceDimension::Buffer)
-                .set_layout(TextureLayout::RowMajor)
-                .set_width(buffer_size.0.into()),
+                .with_dimension(ResourceDimension::Buffer)
+                .with_layout(TextureLayout::RowMajor)
+                .with_width(buffer_size.0.into()),
             ResourceStates::GenericRead,
             None,
         )
@@ -1368,12 +1368,12 @@ fn create_cs_constant_buffer(
 
     let constant_buffer_cs = device
         .create_committed_resource(
-            &HeapProperties::default().set_heap_type(HeapType::Default),
+            &HeapProperties::default().with_heap_type(HeapType::Default),
             HeapFlags::None,
             &ResourceDesc::default()
-                .set_dimension(ResourceDimension::Buffer)
-                .set_layout(TextureLayout::RowMajor)
-                .set_width(buffer_size.0.into()),
+                .with_dimension(ResourceDimension::Buffer)
+                .with_layout(TextureLayout::RowMajor)
+                .with_width(buffer_size.0.into()),
             ResourceStates::CopyDest,
             None,
         )
@@ -1384,12 +1384,12 @@ fn create_cs_constant_buffer(
 
     let constant_buffer_cs_upload = device
         .create_committed_resource(
-            &HeapProperties::default().set_heap_type(HeapType::Upload),
+            &HeapProperties::default().with_heap_type(HeapType::Upload),
             HeapFlags::None,
             &ResourceDesc::default()
-                .set_dimension(ResourceDimension::Buffer)
-                .set_layout(TextureLayout::RowMajor)
-                .set_width(buffer_size.0.into()),
+                .with_dimension(ResourceDimension::Buffer)
+                .with_layout(TextureLayout::RowMajor)
+                .with_width(buffer_size.0.into()),
             ResourceStates::GenericRead,
             None,
         )
@@ -1409,9 +1409,9 @@ fn create_cs_constant_buffer(
     };
 
     let subresource_data = SubresourceData::default()
-        .set_data(slice::from_ref(&cb_data))
-        .set_row_pitch(size_of!(ConstantBufferCs))
-        .set_slice_pitch(size_of!(ConstantBufferCs));
+        .with_data(slice::from_ref(&cb_data))
+        .with_row_pitch(size_of!(ConstantBufferCs))
+        .with_slice_pitch(size_of!(ConstantBufferCs));
 
     direct_command_list
         .update_subresources_heap_alloc(
@@ -1428,9 +1428,9 @@ fn create_cs_constant_buffer(
     direct_command_list.resource_barrier(slice::from_ref(
         &ResourceBarrier::new_transition(
             &ResourceTransitionBarrier::default()
-                .set_resource(&constant_buffer_cs)
-                .set_state_before(ResourceStates::CopyDest)
-                .set_state_after(ResourceStates::VertexAndConstantBuffer),
+                .with_resource(&constant_buffer_cs)
+                .with_state_before(ResourceStates::CopyDest)
+                .with_state_after(ResourceStates::VertexAndConstantBuffer),
         ),
     ));
 
@@ -1489,13 +1489,13 @@ fn create_particle_buffers(
 
     let particle_buffer_0 = device
         .create_committed_resource(
-            &HeapProperties::default().set_heap_type(HeapType::Default),
+            &HeapProperties::default().with_heap_type(HeapType::Default),
             HeapFlags::None,
             &ResourceDesc::default()
-                .set_dimension(ResourceDimension::Buffer)
-                .set_layout(TextureLayout::RowMajor)
-                .set_width(data_size.0)
-                .set_flags(ResourceFlags::AllowUnorderedAccess),
+                .with_dimension(ResourceDimension::Buffer)
+                .with_layout(TextureLayout::RowMajor)
+                .with_width(data_size.0)
+                .with_flags(ResourceFlags::AllowUnorderedAccess),
             ResourceStates::CopyDest,
             None,
         )
@@ -1506,13 +1506,13 @@ fn create_particle_buffers(
 
     let particle_buffer_1 = device
         .create_committed_resource(
-            &HeapProperties::default().set_heap_type(HeapType::Default),
+            &HeapProperties::default().with_heap_type(HeapType::Default),
             HeapFlags::None,
             &ResourceDesc::default()
-                .set_dimension(ResourceDimension::Buffer)
-                .set_layout(TextureLayout::RowMajor)
-                .set_width(data_size.0)
-                .set_flags(ResourceFlags::AllowUnorderedAccess),
+                .with_dimension(ResourceDimension::Buffer)
+                .with_layout(TextureLayout::RowMajor)
+                .with_width(data_size.0)
+                .with_flags(ResourceFlags::AllowUnorderedAccess),
             ResourceStates::CopyDest,
             None,
         )
@@ -1523,12 +1523,12 @@ fn create_particle_buffers(
 
     let particle_buffer_0_upload = device
         .create_committed_resource(
-            &HeapProperties::default().set_heap_type(HeapType::Upload),
+            &HeapProperties::default().with_heap_type(HeapType::Upload),
             HeapFlags::None,
             &ResourceDesc::default()
-                .set_dimension(ResourceDimension::Buffer)
-                .set_layout(TextureLayout::RowMajor)
-                .set_width(data_size.0),
+                .with_dimension(ResourceDimension::Buffer)
+                .with_layout(TextureLayout::RowMajor)
+                .with_width(data_size.0),
             ResourceStates::GenericRead,
             None,
         )
@@ -1539,12 +1539,12 @@ fn create_particle_buffers(
 
     let particle_buffer_1_upload = device
         .create_committed_resource(
-            &HeapProperties::default().set_heap_type(HeapType::Upload),
+            &HeapProperties::default().with_heap_type(HeapType::Upload),
             HeapFlags::None,
             &ResourceDesc::default()
-                .set_dimension(ResourceDimension::Buffer)
-                .set_layout(TextureLayout::RowMajor)
-                .set_width(data_size.0),
+                .with_dimension(ResourceDimension::Buffer)
+                .with_layout(TextureLayout::RowMajor)
+                .with_width(data_size.0),
             ResourceStates::GenericRead,
             None,
         )
@@ -1554,9 +1554,9 @@ fn create_particle_buffers(
         .expect("Cannot set name on resource");
 
     let particle_data = SubresourceData::default()
-        .set_data(&data)
-        .set_row_pitch(data_size)
-        .set_slice_pitch(data_size);
+        .with_data(&data)
+        .with_row_pitch(data_size)
+        .with_slice_pitch(data_size);
 
     direct_command_list
         .update_subresources_heap_alloc(
@@ -1584,29 +1584,29 @@ fn create_particle_buffers(
     direct_command_list.resource_barrier(slice::from_ref(
         &ResourceBarrier::new_transition(
             &ResourceTransitionBarrier::default()
-                .set_resource(&particle_buffer_0)
-                .set_state_before(ResourceStates::CopyDest)
-                .set_state_after(ResourceStates::NonPixelShaderResource),
+                .with_resource(&particle_buffer_0)
+                .with_state_before(ResourceStates::CopyDest)
+                .with_state_after(ResourceStates::NonPixelShaderResource),
         ),
     ));
 
     direct_command_list.resource_barrier(slice::from_ref(
         &ResourceBarrier::new_transition(
             &ResourceTransitionBarrier::default()
-                .set_resource(&particle_buffer_1)
-                .set_state_before(ResourceStates::CopyDest)
-                .set_state_after(ResourceStates::NonPixelShaderResource),
+                .with_resource(&particle_buffer_1)
+                .with_state_before(ResourceStates::CopyDest)
+                .with_state_after(ResourceStates::NonPixelShaderResource),
         ),
     ));
 
     let srv_desc = ShaderResourceViewDesc::default()
         .new_buffer(
             &BufferSrv::default()
-                .set_first_element(0)
-                .set_num_elements(PARTICLE_COUNT)
-                .set_structure_byte_stride(size_of!(Particle)),
+                .with_first_element(0)
+                .with_num_elements(PARTICLE_COUNT)
+                .with_structure_byte_stride(size_of!(Particle)),
         )
-        .set_shader4_component_mapping(ShaderComponentMapping::default());
+        .with_shader_4_component_mapping(ShaderComponentMapping::default());
 
     device.create_shader_resource_view(
         &particle_buffer_0,
@@ -1625,10 +1625,10 @@ fn create_particle_buffers(
 
     let uav_desc = UnorderedAccessViewDesc::default().new_buffer(
         &BufferUav::default()
-            .set_first_element(0)
-            .set_num_elements(PARTICLE_COUNT)
-            .set_structure_byte_stride(size_of!(Particle))
-            .set_counter_offset_in_bytes(ByteCount(0)),
+            .with_first_element(0)
+            .with_num_elements(PARTICLE_COUNT)
+            .with_structure_byte_stride(size_of!(Particle))
+            .with_counter_offset_in_bytes(ByteCount(0)),
     );
 
     device.create_unordered_access_view(
@@ -1672,12 +1672,12 @@ fn create_vertex_buffer(
 
     let vertex_buffer = device
         .create_committed_resource(
-            &HeapProperties::default().set_heap_type(HeapType::Default),
+            &HeapProperties::default().with_heap_type(HeapType::Default),
             HeapFlags::None,
             &ResourceDesc::default()
-                .set_dimension(ResourceDimension::Buffer)
-                .set_layout(TextureLayout::RowMajor)
-                .set_width(vertex_buffer_size.0),
+                .with_dimension(ResourceDimension::Buffer)
+                .with_layout(TextureLayout::RowMajor)
+                .with_width(vertex_buffer_size.0),
             ResourceStates::CopyDest,
             None,
         )
@@ -1688,12 +1688,12 @@ fn create_vertex_buffer(
 
     let vertex_buffer_upload = device
         .create_committed_resource(
-            &HeapProperties::default().set_heap_type(HeapType::Upload),
+            &HeapProperties::default().with_heap_type(HeapType::Upload),
             HeapFlags::None,
             &ResourceDesc::default()
-                .set_dimension(ResourceDimension::Buffer)
-                .set_layout(TextureLayout::RowMajor)
-                .set_width(vertex_buffer_size.0.into()),
+                .with_dimension(ResourceDimension::Buffer)
+                .with_layout(TextureLayout::RowMajor)
+                .with_width(vertex_buffer_size.0.into()),
             ResourceStates::GenericRead,
             None,
         )
@@ -1703,9 +1703,9 @@ fn create_vertex_buffer(
         .expect("Cannot set name on resource");
 
     let vertex_data = SubresourceData::default()
-        .set_data(&particle_vertices)
-        .set_row_pitch(vertex_buffer_size)
-        .set_slice_pitch(vertex_buffer_size);
+        .with_data(&particle_vertices)
+        .with_row_pitch(vertex_buffer_size)
+        .with_slice_pitch(vertex_buffer_size);
 
     direct_command_list
         .update_subresources_heap_alloc(
@@ -1722,16 +1722,16 @@ fn create_vertex_buffer(
     direct_command_list.resource_barrier(slice::from_ref(
         &ResourceBarrier::new_transition(
             &ResourceTransitionBarrier::default()
-                .set_resource(&vertex_buffer)
-                .set_state_before(ResourceStates::CopyDest)
-                .set_state_after(ResourceStates::VertexAndConstantBuffer),
+                .with_resource(&vertex_buffer)
+                .with_state_before(ResourceStates::CopyDest)
+                .with_state_after(ResourceStates::VertexAndConstantBuffer),
         ),
     ));
 
     let vertex_buffer_view = VertexBufferView::default()
-        .set_buffer_location(vertex_buffer.get_gpu_virtual_address())
-        .set_stride_in_bytes(size_of!(Vertex))
-        .set_size_in_bytes(vertex_buffer_size);
+        .with_buffer_location(vertex_buffer.get_gpu_virtual_address())
+        .with_stride_in_bytes(size_of!(Vertex))
+        .with_size_in_bytes(vertex_buffer_size);
     trace!("Created primary adapter vertex buffer");
 
     (vertex_buffer, vertex_buffer_upload, vertex_buffer_view)
@@ -1797,30 +1797,30 @@ fn create_graphics_pso(
     let input_layout =
         InputLayoutDesc::default().with_input_elements(&input_layout);
     let graphics_pso_desc = GraphicsPipelineStateDesc::default()
-        .set_input_layout(&input_layout)
-        .set_root_signature(graphics_root_signature)
-        .set_vs_bytecode(&vs_bytecode)
-        .set_gs_bytecode(&gs_bytecode)
-        .set_ps_bytecode(&ps_bytecode)
-        .set_rasterizer_state(
-            &RasterizerDesc::default().set_depth_clip_enable(false),
+        .with_input_layout(&input_layout)
+        .with_root_signature(graphics_root_signature)
+        .with_vs_bytecode(&vs_bytecode)
+        .with_gs_bytecode(&gs_bytecode)
+        .with_ps_bytecode(&ps_bytecode)
+        .with_rasterizer_state(
+            RasterizerDesc::default().with_depth_clip_enable(false),
         )
-        .set_blend_state(
-            &BlendDesc::default().set_render_targets(slice::from_ref(
+        .with_blend_state(
+            BlendDesc::default().with_render_targets(slice::from_ref(
                 &RenderTargetBlendDesc::default()
-                    .set_blend_enable(true)
-                    .set_src_blend(Blend::SrcAlpha)
-                    .set_dest_blend(Blend::One)
-                    .set_src_blend_alpha(Blend::Zero)
-                    .set_dest_blend_alpha(Blend::Zero),
+                    .with_blend_enable(true)
+                    .with_src_blend(Blend::SrcAlpha)
+                    .with_dest_blend(Blend::One)
+                    .with_src_blend_alpha(Blend::Zero)
+                    .with_dest_blend_alpha(Blend::Zero),
             )),
         )
-        .set_depth_stencil_state(
-            &DepthStencilDesc::default().set_depth_enable(false),
+        .with_depth_stencil_state(
+            DepthStencilDesc::default().with_depth_enable(false),
         )
-        .set_primitive_topology_type(PrimitiveTopologyType::Point)
-        .set_rtv_formats(&[Format::R8G8B8A8Unorm])
-        .set_dsv_format(Format::D32Float);
+        .with_primitive_topology_type(PrimitiveTopologyType::Point)
+        .with_rtv_formats(&[Format::R8G8B8A8Unorm])
+        .with_dsv_format(Format::D32Float);
 
     let graphics_pso = device
         .create_graphics_pipeline_state(&graphics_pso_desc)
@@ -1861,30 +1861,30 @@ fn create_compute_pso(
 fn create_graphics_root_signature(device: &Device) -> RootSignature {
     let graphics_root_signature = {
         let ranges = [DescriptorRange::default()
-            .set_range_type(DescriptorRangeType::Srv)
-            .set_num_descriptors(1)
-            .set_base_shader_register(0)
-            .set_flags(DescriptorRangeFlags::DataStatic)];
+            .with_range_type(DescriptorRangeType::Srv)
+            .with_num_descriptors(1)
+            .with_base_shader_register(0)
+            .with_flags(DescriptorRangeFlags::DataStatic)];
 
         let table =
-            RootDescriptorTable::default().set_descriptor_ranges(&ranges);
+            RootDescriptorTable::default().with_descriptor_ranges(&ranges);
         let root_parameters = [
             RootParameter::default()
                 .new_descriptor(
                     &RootDescriptor::default()
-                        .set_shader_register(0)
-                        .set_flags(RootDescriptorFlags::DataStatic),
+                        .with_shader_register(0)
+                        .with_flags(RootDescriptorFlags::DataStatic),
                     RootParameterType::Cbv,
                 )
-                .set_shader_visibility(ShaderVisibility::All),
+                .with_shader_visibility(ShaderVisibility::All),
             RootParameter::default().new_descriptor_table(&table),
         ];
 
         let root_signature_desc = VersionedRootSignatureDesc::default()
-            .set_desc_1_1(
+            .with_desc_1_1(
                 &RootSignatureDesc::default()
-                    .set_parameters(&root_parameters)
-                    .set_flags(
+                    .with_parameters(&root_parameters)
+                    .with_flags(
                         RootSignatureFlags::AllowInputAssemblerInputLayout,
                     ),
             );
@@ -1918,15 +1918,15 @@ fn create_render_targets(
     rtv_uav_descriptor_handle_size: ByteCount,
 ) -> Vec<Resource> {
     let clear_value = ClearValue::default()
-        .set_format(Format::R8G8B8A8Unorm)
-        .set_color(CLEAR_COLOR);
+        .with_format(Format::R8G8B8A8Unorm)
+        .with_color(CLEAR_COLOR);
 
     let render_target_desc = ResourceDesc::default()
-        .set_dimension(ResourceDimension::Texture2D)
-        .set_format(Format::R8G8B8A8Unorm)
-        .set_width(WINDOW_WIDTH.into())
-        .set_height(WINDOW_HEIGHT)
-        .set_flags(ResourceFlags::AllowRenderTarget);
+        .with_dimension(ResourceDimension::Texture2D)
+        .with_format(Format::R8G8B8A8Unorm)
+        .with_width(WINDOW_WIDTH.into())
+        .with_height(WINDOW_HEIGHT)
+        .with_flags(ResourceFlags::AllowRenderTarget);
 
     let mut render_targets = vec![];
 
@@ -1958,8 +1958,8 @@ fn create_descriptor_heaps(
     let rtv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_heap_type(DescriptorHeapType::Rtv)
-                .set_num_descriptors(FRAMES_IN_FLIGHT as u32),
+                .with_heap_type(DescriptorHeapType::Rtv)
+                .with_num_descriptors(FRAMES_IN_FLIGHT as u32),
         )
         .expect("Cannot create RTV heap");
     rtv_heap
@@ -1969,9 +1969,9 @@ fn create_descriptor_heaps(
     let srv_uav_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_heap_type(DescriptorHeapType::CbvSrvUav)
-                .set_num_descriptors(DESCRIPTOR_COUNT)
-                .set_flags(DescriptorHeapFlags::ShaderVisible),
+                .with_heap_type(DescriptorHeapType::CbvSrvUav)
+                .with_num_descriptors(DESCRIPTOR_COUNT)
+                .with_flags(DescriptorHeapFlags::ShaderVisible),
         )
         .expect("Cannot create srv_uav_heap");
     srv_uav_heap
@@ -1987,9 +1987,9 @@ fn create_swapchain(
     hwnd: *mut std::ffi::c_void,
 ) -> Swapchain {
     let swapchain_desc = SwapChainDesc::default()
-        .set_width(WINDOW_WIDTH)
-        .set_height(WINDOW_HEIGHT)
-        .set_buffer_count(FRAMES_IN_FLIGHT as u32);
+        .with_width(WINDOW_WIDTH)
+        .with_height(WINDOW_HEIGHT)
+        .with_buffer_count(FRAMES_IN_FLIGHT as u32);
     let swapchain = factory
         .create_swapchain(&command_queue, hwnd as *mut HWND__, &swapchain_desc)
         .expect("Cannot create swapchain");
