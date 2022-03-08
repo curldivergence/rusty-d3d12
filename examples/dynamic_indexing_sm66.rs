@@ -63,29 +63,29 @@ mod sample_assets {
         pub fn make_desc() -> Vec<InputElementDesc<'static>> {
             vec![
                 InputElementDesc::default()
-                    .set_name("POSITION")
+                    .with_semantic_name("POSITION")
                     .unwrap()
-                    .set_format(Format::R32G32B32Float)
-                    .set_input_slot(0)
-                    .set_offset(ByteCount::from(offset_of!(Self, position))),
+                    .with_format(Format::R32G32B32Float)
+                    .with_input_slot(0)
+                    .with_aligned_byte_offset(ByteCount::from(offset_of!(Self, position))),
                 InputElementDesc::default()
-                    .set_name("NORMAL")
+                    .with_semantic_name("NORMAL")
                     .unwrap()
-                    .set_format(Format::R32G32B32Float)
-                    .set_input_slot(0)
-                    .set_offset(ByteCount::from(offset_of!(Self, normal))),
+                    .with_format(Format::R32G32B32Float)
+                    .with_input_slot(0)
+                    .with_aligned_byte_offset(ByteCount::from(offset_of!(Self, normal))),
                 InputElementDesc::default()
-                    .set_name("TEXCOORD")
+                    .with_semantic_name("TEXCOORD")
                     .unwrap()
-                    .set_format(Format::R32G32Float)
-                    .set_input_slot(0)
-                    .set_offset(ByteCount::from(offset_of!(Self, uv))),
+                    .with_format(Format::R32G32Float)
+                    .with_input_slot(0)
+                    .with_aligned_byte_offset(ByteCount::from(offset_of!(Self, uv))),
                 InputElementDesc::default()
-                    .set_name("TANGENT")
+                    .with_semantic_name("TANGENT")
                     .unwrap()
-                    .set_format(Format::R32G32B32Float)
-                    .set_input_slot(0)
-                    .set_offset(ByteCount::from(offset_of!(Self, tangent))),
+                    .with_format(Format::R32G32B32Float)
+                    .with_input_slot(0)
+                    .with_aligned_byte_offset(ByteCount::from(offset_of!(Self, tangent))),
             ]
         }
     }
@@ -186,7 +186,7 @@ impl Drop for ScopedDebugMessagePrinter {
 
 macro_rules! make_debug_printer {
     ($info_queue:expr) => {
-        ScopedDebugMessagePrinter::new(Rc::clone(&$info_queue));
+        ScopedDebugMessagePrinter::new(Rc::clone(&$info_queue))
     };
 }
 
@@ -288,12 +288,12 @@ impl DynamicIndexingSample {
         let frame_index = swapchain.get_current_back_buffer_index() as u32;
 
         let viewport_desc = Viewport::default()
-            .set_width(WINDOW_WIDTH as f32)
-            .set_height(WINDOW_HEIGHT as f32);
+            .with_width(WINDOW_WIDTH as f32)
+            .with_height(WINDOW_HEIGHT as f32);
 
         let scissor_desc = Rect::default()
-            .set_right(WINDOW_WIDTH as i32)
-            .set_bottom(WINDOW_HEIGHT as i32);
+            .with_right(WINDOW_WIDTH as i32)
+            .with_bottom(WINDOW_HEIGHT as i32);
 
         let cbv_srv_descriptor_handle_size = device
             .get_descriptor_handle_increment_size(
@@ -451,14 +451,14 @@ impl DynamicIndexingSample {
             for _ in 0..CITY_ROW_COUNT {
                 for _ in 0..CITY_COLUMN_COUNT {
                     let cbv_desc = ConstantBufferViewDesc::default()
-                        .set_buffer_location(GpuVirtualAddress(
+                        .with_buffer_location(GpuVirtualAddress(
                             frame_resource
                                 .cbv_staging_buffer
                                 .get_gpu_virtual_address()
                                 .0
                                 + cb_offset.0,
                         ))
-                        .set_size_in_bytes(cb_size);
+                        .with_size_in_bytes(cb_size);
 
                     cb_offset += cb_size;
 
@@ -495,32 +495,32 @@ impl DynamicIndexingSample {
         let _debug_printer = make_debug_printer!(&self.info_queue);
 
         let depth_stencil_desc = DepthStencilViewDesc::default()
-            .set_format(Format::D32Float)
-            .set_view_dimension(DsvDimension::Texture2D)
-            .set_flags(DsvFlags::None);
+            .with_format(Format::D32Float)
+            .with_view_dimension(DsvDimension::Texture2D)
+            .with_flags(DsvFlags::None);
 
         let depth_stencil = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_heap_type(HeapType::Default),
+                &HeapProperties::default().with_heap_type(HeapType::Default),
                 HeapFlags::None,
                 &ResourceDesc::default()
-                    .set_dimension(ResourceDimension::Texture2D)
-                    .set_width(WINDOW_WIDTH.into())
-                    .set_height(WINDOW_HEIGHT.into())
-                    .set_format(Format::D32Float)
-                    .set_flags(
+                    .with_dimension(ResourceDimension::Texture2D)
+                    .with_width(WINDOW_WIDTH.into())
+                    .with_height(WINDOW_HEIGHT.into())
+                    .with_format(Format::D32Float)
+                    .with_flags(
                         ResourceFlags::AllowDepthStencil
                             | ResourceFlags::DenyShaderResource,
                     ),
                 ResourceStates::DepthWrite,
                 Some(
                     &ClearValue::default()
-                        .set_format(Format::D32Float)
-                        .set_depth_stencil(
+                        .with_format(Format::D32Float)
+                        .with_depth_stencil(
                             &DepthStencilValue::default()
-                                .set_depth(1.)
-                                .set_stencil(0),
+                                .with_depth(1.)
+                                .with_stencil(0),
                         ),
                 ),
             )
@@ -545,12 +545,12 @@ impl DynamicIndexingSample {
         let vertex_buffer = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_heap_type(HeapType::Default),
+                &HeapProperties::default().with_heap_type(HeapType::Default),
                 HeapFlags::None,
                 &ResourceDesc::default()
-                    .set_dimension(ResourceDimension::Buffer)
-                    .set_width(VERTEX_DATA_SIZE.0.into())
-                    .set_layout(TextureLayout::RowMajor),
+                    .with_dimension(ResourceDimension::Buffer)
+                    .with_width(VERTEX_DATA_SIZE.0.into())
+                    .with_layout(TextureLayout::RowMajor),
                 ResourceStates::CopyDest,
                 None,
             )
@@ -563,12 +563,12 @@ impl DynamicIndexingSample {
         let vertex_staging_buffer = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_heap_type(HeapType::Upload),
+                &HeapProperties::default().with_heap_type(HeapType::Upload),
                 HeapFlags::None,
                 &ResourceDesc::default()
-                    .set_dimension(ResourceDimension::Buffer)
-                    .set_width(VERTEX_DATA_SIZE.0.into())
-                    .set_layout(TextureLayout::RowMajor),
+                    .with_dimension(ResourceDimension::Buffer)
+                    .with_width(VERTEX_DATA_SIZE.0.into())
+                    .with_layout(TextureLayout::RowMajor),
                 ResourceStates::GenericRead,
                 None,
             )
@@ -579,12 +579,12 @@ impl DynamicIndexingSample {
             .expect("Cannot set name on vertex staging buffer");
 
         let vertex_subresource_data = SubresourceData::default()
-            .set_data(
+            .with_data(
                 &self.mesh_data[VERTEX_DATA_OFFSET.into()
                     ..(VERTEX_DATA_OFFSET + VERTEX_DATA_SIZE).into()],
             )
-            .set_row_pitch(ByteCount(VERTEX_DATA_SIZE.0))
-            .set_slice_pitch(ByteCount(VERTEX_DATA_SIZE.0));
+            .with_row_pitch(ByteCount(VERTEX_DATA_SIZE.0))
+            .with_slice_pitch(ByteCount(VERTEX_DATA_SIZE.0));
 
         self.command_list
             .update_subresources_heap_alloc(
@@ -600,9 +600,9 @@ impl DynamicIndexingSample {
         self.command_list
             .resource_barrier(&[ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(&vertex_buffer)
-                    .set_state_before(ResourceStates::CopyDest)
-                    .set_state_after(ResourceStates::VertexAndConstantBuffer),
+                    .with_resource(&vertex_buffer)
+                    .with_state_before(ResourceStates::CopyDest)
+                    .with_state_after(ResourceStates::VertexAndConstantBuffer),
             )]);
 
         let vertex_count = VERTEX_DATA_SIZE.0 / size_of::<Vertex>() as u64;
@@ -611,11 +611,11 @@ impl DynamicIndexingSample {
 
         self.vertex_buffer_view = Some(
             VertexBufferView::default()
-                .set_buffer_location(vertex_buffer.get_gpu_virtual_address())
-                .set_size_in_bytes(ByteCount::from(
+                .with_buffer_location(vertex_buffer.get_gpu_virtual_address())
+                .with_size_in_bytes(ByteCount::from(
                     vertex_count * size_of::<Vertex>() as u64,
                 ))
-                .set_stride_in_bytes(ByteCount::from(size_of::<Vertex>())),
+                .with_stride_in_bytes(ByteCount::from(size_of::<Vertex>())),
         );
 
         self.vertex_buffer = Some(vertex_buffer);
@@ -632,12 +632,12 @@ impl DynamicIndexingSample {
         let index_buffer = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_heap_type(HeapType::Default),
+                &HeapProperties::default().with_heap_type(HeapType::Default),
                 HeapFlags::None,
                 &ResourceDesc::default()
-                    .set_dimension(ResourceDimension::Buffer)
-                    .set_width(INDEX_DATA_SIZE.0.into())
-                    .set_layout(TextureLayout::RowMajor),
+                    .with_dimension(ResourceDimension::Buffer)
+                    .with_width(INDEX_DATA_SIZE.0.into())
+                    .with_layout(TextureLayout::RowMajor),
                 ResourceStates::CopyDest,
                 None,
             )
@@ -650,12 +650,12 @@ impl DynamicIndexingSample {
         let index_staging_buffer = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_heap_type(HeapType::Upload),
+                &HeapProperties::default().with_heap_type(HeapType::Upload),
                 HeapFlags::None,
                 &ResourceDesc::default()
-                    .set_dimension(ResourceDimension::Buffer)
-                    .set_width(INDEX_DATA_SIZE.0.into())
-                    .set_layout(TextureLayout::RowMajor),
+                    .with_dimension(ResourceDimension::Buffer)
+                    .with_width(INDEX_DATA_SIZE.0.into())
+                    .with_layout(TextureLayout::RowMajor),
                 ResourceStates::GenericRead,
                 None,
             )
@@ -666,12 +666,12 @@ impl DynamicIndexingSample {
             .expect("Cannot set name on idnex staging buffer");
 
         let index_subresource_data = SubresourceData::default()
-            .set_data(
+            .with_data(
                 &self.mesh_data[INDEX_DATA_OFFSET.into()
                     ..(INDEX_DATA_OFFSET + INDEX_DATA_SIZE).into()],
             )
-            .set_row_pitch(ByteCount(INDEX_DATA_SIZE.0))
-            .set_slice_pitch(ByteCount(INDEX_DATA_SIZE.0));
+            .with_row_pitch(ByteCount(INDEX_DATA_SIZE.0))
+            .with_slice_pitch(ByteCount(INDEX_DATA_SIZE.0));
 
         self.command_list
             .update_subresources_heap_alloc(
@@ -687,18 +687,18 @@ impl DynamicIndexingSample {
         self.command_list
             .resource_barrier(&[ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(&index_buffer)
-                    .set_state_before(ResourceStates::CopyDest)
-                    .set_state_after(ResourceStates::IndexBuffer),
+                    .with_resource(&index_buffer)
+                    .with_state_before(ResourceStates::CopyDest)
+                    .with_state_after(ResourceStates::IndexBuffer),
             )]);
 
         self.index_count = (INDEX_DATA_SIZE / size_of::<u32>()).0 as u32;
 
         self.index_buffer_view = Some(
             IndexBufferView::default()
-                .set_buffer_location(index_buffer.get_gpu_virtual_address())
-                .set_size_in_bytes(self.index_count * ByteCount(4))
-                .set_format(Format::R32Uint),
+                .with_buffer_location(index_buffer.get_gpu_virtual_address())
+                .with_size_in_bytes(self.index_count * ByteCount(4))
+                .with_format(Format::R32Uint),
         );
 
         self.index_buffer = Some(index_buffer);
@@ -713,10 +713,10 @@ impl DynamicIndexingSample {
         let _debug_printer = make_debug_printer!(&self.info_queue);
 
         let texture_desc = ResourceDesc::default()
-            .set_format(Format::R8G8B8A8Unorm)
-            .set_width(CITY_MATERIAL_TEXTURE_WIDTH as u64)
-            .set_height(CITY_MATERIAL_TEXTURE_HEIGHT)
-            .set_dimension(ResourceDimension::Texture2D);
+            .with_format(Format::R8G8B8A8Unorm)
+            .with_width(CITY_MATERIAL_TEXTURE_WIDTH as u64)
+            .with_height(CITY_MATERIAL_TEXTURE_HEIGHT)
+            .with_dimension(ResourceDimension::Texture2D);
 
         let texture_data = self.generate_texture_data(&texture_desc);
         self.upload_textures(&texture_desc, &texture_data);
@@ -726,15 +726,15 @@ impl DynamicIndexingSample {
 
     fn setup_sampler(&mut self) {
         let sampler_desc = SamplerDesc::default()
-            .set_filter(Filter::MinMagMipLinear)
-            .set_address_u(TextureAddressMode::Wrap)
-            .set_address_v(TextureAddressMode::Wrap)
-            .set_address_w(TextureAddressMode::Wrap)
-            .set_comparison_func(ComparisonFunc::Always)
-            .set_min_lod(0.)
-            .set_max_lod(std::f32::MAX)
-            .set_mip_lod_bias(0.)
-            .set_max_anisotropy(1);
+            .with_filter(Filter::MinMagMipLinear)
+            .with_address_u(TextureAddressMode::Wrap)
+            .with_address_v(TextureAddressMode::Wrap)
+            .with_address_w(TextureAddressMode::Wrap)
+            .with_comparison_func(ComparisonFunc::Always)
+            .with_min_lod(0.)
+            .with_max_lod(std::f32::MAX)
+            .with_mip_lod_bias(0.)
+            .with_max_anisotropy(1);
 
         self.device.create_sampler(
             &sampler_desc,
@@ -745,9 +745,9 @@ impl DynamicIndexingSample {
             self.cbv_srv_heap.get_cpu_descriptor_handle_for_heap_start();
 
         let srv_desc = ShaderResourceViewDesc::default()
-            .set_shader4_component_mapping(ShaderComponentMapping::default())
-            .set_format(TEXTURES[0].format)
-            .new_texture_2d(&Tex2DSrv::default().set_mip_levels(1));
+            .with_shader_4_component_mapping(ShaderComponentMapping::default())
+            .with_format(TEXTURES[0].format)
+            .new_texture_2d(&Tex2DSrv::default().with_mip_levels(1));
         self.device.create_shader_resource_view(
             &self
                 .city_diffuse_texture
@@ -762,11 +762,11 @@ impl DynamicIndexingSample {
         for mat_idx in 0..CITY_MATERIAL_COUNT as usize {
             let mat_srv_desc =
                 ShaderResourceViewDesc::default()
-                    .set_shader4_component_mapping(
+                    .with_shader_4_component_mapping(
                         ShaderComponentMapping::default(),
                     )
-                    .set_format(Format::R8G8B8A8Unorm)
-                    .new_texture_2d(&Tex2DSrv::default().set_mip_levels(1));
+                    .with_format(Format::R8G8B8A8Unorm)
+                    .new_texture_2d(&Tex2DSrv::default().with_mip_levels(1));
 
             self.device.create_shader_resource_view(
                 &self.city_material_textures[mat_idx],
@@ -783,16 +783,16 @@ impl DynamicIndexingSample {
         let _debug_printer = make_debug_printer!(&self.info_queue);
 
         let texture_desc = ResourceDesc::default()
-            .set_dimension(ResourceDimension::Texture2D)
-            .set_mip_levels(TEXTURES[0].mip_levels.into())
-            .set_format(TEXTURES[0].format)
-            .set_width(TEXTURES[0].width.into())
-            .set_height(TEXTURES[0].height.into());
+            .with_dimension(ResourceDimension::Texture2D)
+            .with_mip_levels(TEXTURES[0].mip_levels.into())
+            .with_format(TEXTURES[0].format)
+            .with_width(TEXTURES[0].width.into())
+            .with_height(TEXTURES[0].height.into());
 
         let city_diffuse_texture = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_heap_type(HeapType::Default),
+                &HeapProperties::default().with_heap_type(HeapType::Default),
                 HeapFlags::None,
                 &texture_desc,
                 ResourceStates::CopyDest,
@@ -815,12 +815,12 @@ impl DynamicIndexingSample {
         let texture_staging_buffer = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_heap_type(HeapType::Upload),
+                &HeapProperties::default().with_heap_type(HeapType::Upload),
                 HeapFlags::None,
                 &ResourceDesc::default()
-                    .set_dimension(ResourceDimension::Buffer)
-                    .set_width(upload_buffer_size.0.into())
-                    .set_layout(TextureLayout::RowMajor),
+                    .with_dimension(ResourceDimension::Buffer)
+                    .with_width(upload_buffer_size.0.into())
+                    .with_layout(TextureLayout::RowMajor),
                 ResourceStates::GenericRead,
                 None,
             )
@@ -831,13 +831,13 @@ impl DynamicIndexingSample {
             .expect("Cannot set texture staging buffer name");
 
         let texture_subresource_data = SubresourceData::default()
-            .set_data(
+            .with_data(
                 &self.mesh_data[TEXTURES[0].data[0].offset as usize
                     ..TEXTURES[0].data[0].offset as usize
                         + TEXTURES[0].data[0].size as usize],
             )
-            .set_row_pitch(TEXTURES[0].data[0].pitch.into())
-            .set_slice_pitch(TEXTURES[0].data[0].size.into());
+            .with_row_pitch(TEXTURES[0].data[0].pitch.into())
+            .with_slice_pitch(TEXTURES[0].data[0].size.into());
 
         self.command_list
             .update_subresources_heap_alloc(
@@ -853,9 +853,9 @@ impl DynamicIndexingSample {
         self.command_list
             .resource_barrier(&[ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(&city_diffuse_texture)
-                    .set_state_before(ResourceStates::CopyDest)
-                    .set_state_after(ResourceStates::PixelShaderResource),
+                    .with_resource(&city_diffuse_texture)
+                    .with_state_before(ResourceStates::CopyDest)
+                    .with_state_after(ResourceStates::PixelShaderResource),
             )]);
 
         self.city_diffuse_texture = Some(city_diffuse_texture);
@@ -882,12 +882,12 @@ impl DynamicIndexingSample {
         let materials_staging_buffer = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_heap_type(HeapType::Upload),
+                &HeapProperties::default().with_heap_type(HeapType::Upload),
                 HeapFlags::None,
                 &ResourceDesc::default()
-                    .set_dimension(ResourceDimension::Buffer)
-                    .set_width(upload_buffer_size.0)
-                    .set_layout(TextureLayout::RowMajor),
+                    .with_dimension(ResourceDimension::Buffer)
+                    .with_width(upload_buffer_size.0)
+                    .with_layout(TextureLayout::RowMajor),
                 ResourceStates::GenericRead,
                 None,
             )
@@ -898,12 +898,12 @@ impl DynamicIndexingSample {
 
         for mat_idx in 0..CITY_MATERIAL_COUNT as usize {
             let texture_subresource_data = SubresourceData::default()
-                .set_data(&texture_data[mat_idx])
-                .set_row_pitch(ByteCount(
+                .with_data(&texture_data[mat_idx])
+                .with_row_pitch(ByteCount(
                     CITY_MATERIAL_TEXTURE_CHANNEL_COUNT as u64
                         * texture_desc.width(),
                 ))
-                .set_slice_pitch(ByteCount(
+                .with_slice_pitch(ByteCount(
                     CITY_MATERIAL_TEXTURE_CHANNEL_COUNT as u64
                         * texture_desc.width()
                         * texture_desc.height() as u64,
@@ -923,9 +923,9 @@ impl DynamicIndexingSample {
             self.command_list.resource_barrier(slice::from_ref(
                 &ResourceBarrier::new_transition(
                     &ResourceTransitionBarrier::default()
-                        .set_resource(&self.city_material_textures[mat_idx])
-                        .set_state_before(ResourceStates::CopyDest)
-                        .set_state_after(ResourceStates::PixelShaderResource),
+                        .with_resource(&self.city_material_textures[mat_idx])
+                        .with_state_before(ResourceStates::CopyDest)
+                        .with_state_after(ResourceStates::PixelShaderResource),
                 ),
             ));
         }
@@ -1031,11 +1031,11 @@ impl DynamicIndexingSample {
         self.command_list
             .resource_barrier(&[ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(
+                    .with_resource(
                         &self.render_targets[self.frame_index as usize],
                     )
-                    .set_state_before(ResourceStates::Common)
-                    .set_state_after(ResourceStates::RenderTarget),
+                    .with_state_before(ResourceStates::Common)
+                    .with_state_after(ResourceStates::RenderTarget),
             )]);
 
         let mut rtv_handle = self
@@ -1101,11 +1101,11 @@ impl DynamicIndexingSample {
         self.command_list
             .resource_barrier(&[ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(
+                    .with_resource(
                         &self.render_targets[self.frame_index as usize],
                     )
-                    .set_state_before(ResourceStates::RenderTarget)
-                    .set_state_after(ResourceStates::Common),
+                    .with_state_before(ResourceStates::RenderTarget)
+                    .with_state_after(ResourceStates::Common),
             )]);
 
         self.command_list
@@ -1217,24 +1217,24 @@ fn create_pipeline_state(
     pixel_shader: Vec<u8>,
     device: &Device,
 ) -> PipelineState {
-    let vs_bytecode = ShaderBytecode::from_bytes(&vertex_shader);
-    let ps_bytecode = ShaderBytecode::from_bytes(&pixel_shader);
+    let vs_bytecode = ShaderBytecode::new(&vertex_shader);
+    let ps_bytecode = ShaderBytecode::new(&pixel_shader);
 
     let input_layout =
-        InputLayoutDesc::default().from_input_elements(&input_layout);
+        InputLayoutDesc::default().with_input_elements(&input_layout);
     let pso_desc = GraphicsPipelineStateDesc::default()
-        .set_input_layout(&input_layout)
-        .set_root_signature(root_signature)
-        .set_vs_bytecode(&vs_bytecode)
-        .set_ps_bytecode(&ps_bytecode)
-        .set_rasterizer_state(
-            &RasterizerDesc::default().set_cull_mode(CullMode::None),
+        .with_input_layout(&input_layout)
+        .with_root_signature(root_signature)
+        .with_vs_bytecode(&vs_bytecode)
+        .with_ps_bytecode(&ps_bytecode)
+        .with_rasterizer_state(
+            RasterizerDesc::default().with_cull_mode(CullMode::None),
         )
-        .set_blend_state(&BlendDesc::default())
-        .set_depth_stencil_state(&DepthStencilDesc::default())
-        .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
-        .set_rtv_formats(&[Format::R8G8B8A8Unorm])
-        .set_dsv_format(Format::D32Float);
+        .with_blend_state(BlendDesc::default())
+        .with_depth_stencil_state(DepthStencilDesc::default())
+        .with_primitive_topology_type(PrimitiveTopologyType::Triangle)
+        .with_rtv_formats(&[Format::R8G8B8A8Unorm])
+        .with_dsv_format(Format::D32Float);
 
     let pso = device
         .create_graphics_pipeline_state(&pso_desc)
@@ -1332,36 +1332,36 @@ d3dx12.h as a dependency to have DX12SerializeVersionedRootSignature"
 
     let ranges = vec![
         DescriptorRange::default()
-            .set_range_type(DescriptorRangeType::Srv)
-            .set_num_descriptors(1)
-            .set_flags(DescriptorRangeFlags::DataStatic),
+            .with_range_type(DescriptorRangeType::Srv)
+            .with_num_descriptors(1)
+            .with_flags(DescriptorRangeFlags::DataStatic),
         DescriptorRange::default()
-            .set_range_type(DescriptorRangeType::Cbv)
-            .set_num_descriptors(1)
-            .set_flags(DescriptorRangeFlags::DataStatic),
+            .with_range_type(DescriptorRangeType::Cbv)
+            .with_num_descriptors(1)
+            .with_flags(DescriptorRangeFlags::DataStatic),
     ];
 
     let srv_table = RootDescriptorTable::default()
-        .set_descriptor_ranges(slice::from_ref(&ranges[0]));
+        .with_descriptor_ranges(slice::from_ref(&ranges[0]));
 
     let cbv_table = RootDescriptorTable::default()
-        .set_descriptor_ranges(slice::from_ref(&ranges[1]));
+        .with_descriptor_ranges(slice::from_ref(&ranges[1]));
     let root_parameters = vec![
         RootParameter::default()
             .new_descriptor_table(&srv_table)
-            .set_shader_visibility(ShaderVisibility::Pixel),
+            .with_shader_visibility(ShaderVisibility::Pixel),
         RootParameter::default()
             .new_descriptor_table(&cbv_table)
-            .set_shader_visibility(ShaderVisibility::Vertex),
+            .with_shader_visibility(ShaderVisibility::Vertex),
         RootParameter::default()
-            .set_shader_visibility(ShaderVisibility::Pixel)
-            .new_constants(&RootConstants::default().set_num_32_bit_values(1)),
+            .with_shader_visibility(ShaderVisibility::Pixel)
+            .new_constants(&RootConstants::default().with_num_32_bit_values(1)),
     ];
     let root_signature_desc = VersionedRootSignatureDesc::default()
-        .set_desc_1_1(
+        .with_desc_1_1(
             &RootSignatureDesc::default()
-                .set_parameters(&root_parameters)
-                .set_flags(
+                .with_parameters(&root_parameters)
+                .with_flags(
                     RootSignatureFlags::AllowInputAssemblerInputLayout
                         | RootSignatureFlags::CbvSrvUavHeapDirectlyIndexed
                         | RootSignatureFlags::SamplerHeapDirectlyIndexed,
@@ -1379,7 +1379,7 @@ d3dx12.h as a dependency to have DX12SerializeVersionedRootSignature"
     let root_signature = device
         .create_root_signature(
             0,
-            &ShaderBytecode::from_bytes(serialized_signature.get_buffer()),
+            &ShaderBytecode::new(serialized_signature.get_buffer()),
         )
         .expect("Cannot create root signature");
     root_signature
@@ -1399,8 +1399,8 @@ fn setup_heaps(
     let rtv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_heap_type(DescriptorHeapType::Rtv)
-                .set_num_descriptors(FRAMES_IN_FLIGHT.into()),
+                .with_heap_type(DescriptorHeapType::Rtv)
+                .with_num_descriptors(FRAMES_IN_FLIGHT.into()),
         )
         .expect("Cannot create RTV heap");
     rtv_heap
@@ -1410,8 +1410,8 @@ fn setup_heaps(
     let dsv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_heap_type(DescriptorHeapType::Dsv)
-                .set_num_descriptors(1),
+                .with_heap_type(DescriptorHeapType::Dsv)
+                .with_num_descriptors(1),
         )
         .expect("Cannot create RTV heap");
     dsv_heap
@@ -1421,9 +1421,9 @@ fn setup_heaps(
     let cbv_srv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_heap_type(DescriptorHeapType::CbvSrvUav)
-                .set_flags(DescriptorHeapFlags::ShaderVisible)
-                .set_num_descriptors(u32::from(
+                .with_heap_type(DescriptorHeapType::CbvSrvUav)
+                .with_flags(DescriptorHeapFlags::ShaderVisible)
+                .with_num_descriptors(u32::from(
                     FRAMES_IN_FLIGHT * CITY_ROW_COUNT * CITY_COLUMN_COUNT
                         + CITY_MATERIAL_COUNT
                         + 1,
@@ -1437,9 +1437,9 @@ fn setup_heaps(
     let sampler_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_heap_type(DescriptorHeapType::Sampler)
-                .set_flags(DescriptorHeapFlags::ShaderVisible)
-                .set_num_descriptors(1),
+                .with_heap_type(DescriptorHeapType::Sampler)
+                .with_flags(DescriptorHeapFlags::ShaderVisible)
+                .with_num_descriptors(1),
         )
         .expect("Cannot create sampler heap");
     sampler_heap
@@ -1475,9 +1475,9 @@ fn create_swapchain(
     hwnd: *mut std::ffi::c_void,
 ) -> Swapchain {
     let swapchain_desc = SwapChainDesc::default()
-        .set_width(WINDOW_WIDTH)
-        .set_height(WINDOW_HEIGHT)
-        .set_buffer_count(u32::from(FRAMES_IN_FLIGHT));
+        .with_width(WINDOW_WIDTH)
+        .with_height(WINDOW_HEIGHT)
+        .with_buffer_count(u32::from(FRAMES_IN_FLIGHT));
     let swapchain = factory
         .create_swapchain(&command_queue, hwnd as *mut HWND__, &swapchain_desc)
         .expect("Cannot create swapchain");
@@ -1538,16 +1538,16 @@ impl FrameResource {
 
         let cbv_staging_buffer = device
             .create_committed_resource(
-                &HeapProperties::default().set_heap_type(HeapType::Upload),
+                &HeapProperties::default().with_heap_type(HeapType::Upload),
                 HeapFlags::None,
                 &ResourceDesc::default()
-                    .set_dimension(ResourceDimension::Buffer)
-                    .set_width(
+                    .with_dimension(ResourceDimension::Buffer)
+                    .with_width(
                         (size_of::<SceneConstantBuffer>() as u32
                             * (CITY_ROW_COUNT * CITY_COLUMN_COUNT))
                             as u64,
                     )
-                    .set_layout(TextureLayout::RowMajor),
+                    .with_layout(TextureLayout::RowMajor),
                 ResourceStates::GenericRead,
                 None,
             )

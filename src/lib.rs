@@ -45,8 +45,8 @@ let cross_adapter_textures_supported = feature_data.cross_adapter_row_major_text
 ```
 - create mesh shader PSO:
 ```rust
-let ms_bytecode = ShaderBytecode::from_bytes(&mesh_shader);
-let ps_bytecode = ShaderBytecode::from_bytes(&pixel_shader);
+let ms_bytecode = ShaderBytecode::new(&mesh_shader);
+let ps_bytecode = ShaderBytecode::new(&pixel_shader);
 
 let pso_subobjects_desc = MeshShaderPipelineStateDesc::default()
     .set_root_signature(root_signature)

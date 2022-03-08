@@ -960,8 +960,8 @@ fn create_pso(
     .expect("Cannot compile pixel shader");
 
     let input_layout = Vertex::make_desc();
-    let vs_bytecode = ShaderBytecode::from_bytes(&vertex_shader);
-    let ps_bytecode = ShaderBytecode::from_bytes(&pixel_shader);
+    let vs_bytecode = ShaderBytecode::new(&vertex_shader);
+    let ps_bytecode = ShaderBytecode::new(&pixel_shader);
 
     let input_layout =
         InputLayoutDesc::default().from_input_elements(&input_layout);
@@ -1017,7 +1017,7 @@ fn create_root_signature(device: &Device) -> RootSignature {
         let root_signature = device
             .create_root_signature(
                 0,
-                &ShaderBytecode::from_bytes(serialized_signature.get_buffer()),
+                &ShaderBytecode::new(serialized_signature.get_buffer()),
             )
             .expect("Cannot create root signature on device 0");
         root_signature

@@ -2608,6 +2608,7 @@ impl Default for InputLayoutDesc<'_> {
     }
 }
 
+// ToDo: ShaderBytecode is a similar struct, but it uses new() method
 impl<'a> InputLayoutDesc<'a> {
     pub fn set_input_elements(
         &mut self,
@@ -3901,17 +3902,17 @@ impl RootConstants {
         self.0.RegisterSpace
     }
 
-    pub fn set_num32_bit_values(&mut self, num32_bit_values: u32) -> &mut Self {
-        self.0.Num32BitValues = num32_bit_values;
+    pub fn set_num_32_bit_values(&mut self, num_32_bit_values: u32) -> &mut Self {
+        self.0.Num32BitValues = num_32_bit_values;
         self
     }
 
-    pub fn with_num32_bit_values(mut self, num32_bit_values: u32) -> Self {
-        self.set_num32_bit_values(num32_bit_values);
+    pub fn with_num_32_bit_values(mut self, num_32_bit_values: u32) -> Self {
+        self.set_num_32_bit_values(num_32_bit_values);
         self
     }
 
-    pub fn num32_bit_values(&self) -> u32 {
+    pub fn num_32_bit_values(&self) -> u32 {
         self.0.Num32BitValues
     }
 }

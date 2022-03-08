@@ -2144,8 +2144,8 @@ fn create_psos(
     .expect("Cannot compile pixel shader");
 
     let input_layout = Vertex::make_desc();
-    let vs_bytecode = ShaderBytecode::from_bytes(&vertex_shader);
-    let ps_bytecode = ShaderBytecode::from_bytes(&pixel_shader);
+    let vs_bytecode = ShaderBytecode::new(&vertex_shader);
+    let ps_bytecode = ShaderBytecode::new(&pixel_shader);
 
     let vsps_layout =
         InputLayoutDesc::default().from_input_elements(&input_layout);
@@ -2205,9 +2205,9 @@ fn create_psos(
     let blur_input_layout = BlurVertex::make_desc();
     let blur_layout =
         InputLayoutDesc::default().from_input_elements(&blur_input_layout);
-    let blur_vs_bytecode = ShaderBytecode::from_bytes(&blur_vertex_shader);
-    let blur_ps_bytecode_u = ShaderBytecode::from_bytes(&blur_pixel_shader_u);
-    let blur_ps_bytecode_v = ShaderBytecode::from_bytes(&blur_pixel_shader_v);
+    let blur_vs_bytecode = ShaderBytecode::new(&blur_vertex_shader);
+    let blur_ps_bytecode_u = ShaderBytecode::new(&blur_pixel_shader_u);
+    let blur_ps_bytecode_v = ShaderBytecode::new(&blur_pixel_shader_v);
     let blur_pso_desc_u = GraphicsPipelineStateDesc::default()
         .set_input_layout(&blur_layout)
         .set_root_signature(blur_root_signature)
@@ -2290,7 +2290,7 @@ fn create_root_signatures(
         let root_signature = devices[0]
             .create_root_signature(
                 0,
-                &ShaderBytecode::from_bytes(serialized_signature.get_buffer()),
+                &ShaderBytecode::new(serialized_signature.get_buffer()),
             )
             .expect("Cannot create root signature on device 0");
 
@@ -2357,7 +2357,7 @@ fn create_root_signatures(
         let blur_root_signature = devices[1]
             .create_root_signature(
                 0,
-                &ShaderBytecode::from_bytes(serialized_signature.get_buffer()),
+                &ShaderBytecode::new(serialized_signature.get_buffer()),
             )
             .expect("Cannot create root signature on device 1");
 

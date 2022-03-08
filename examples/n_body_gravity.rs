@@ -857,7 +857,7 @@ fn create_compute_root_signature(device: &Device) -> RootSignature {
     let root_signature = device
         .create_root_signature(
             0,
-            &ShaderBytecode::from_bytes(serialized_signature.get_buffer()),
+            &ShaderBytecode::new(serialized_signature.get_buffer()),
         )
         .expect("Cannot create root signature on device 0");
     root_signature
@@ -1790,9 +1790,9 @@ fn create_graphics_pso(
 
     let input_layout = Vertex::make_desc();
 
-    let vs_bytecode = ShaderBytecode::from_bytes(&vertex_shader);
-    let gs_bytecode = ShaderBytecode::from_bytes(&geometry_shader);
-    let ps_bytecode = ShaderBytecode::from_bytes(&pixel_shader);
+    let vs_bytecode = ShaderBytecode::new(&vertex_shader);
+    let gs_bytecode = ShaderBytecode::new(&geometry_shader);
+    let ps_bytecode = ShaderBytecode::new(&pixel_shader);
 
     let input_layout =
         InputLayoutDesc::default().from_input_elements(&input_layout);
@@ -1847,7 +1847,7 @@ fn create_compute_pso(
         &[],
     )
     .expect("Cannot compile compute shader");
-    let cs_bytecode = ShaderBytecode::from_bytes(&compute_shader);
+    let cs_bytecode = ShaderBytecode::new(&compute_shader);
     let compute_pso_desc = ComputePipelineStateDesc::default()
         .with_root_signature(compute_root_signature)
         .with_cs_bytecode(&cs_bytecode);
@@ -1900,7 +1900,7 @@ fn create_graphics_root_signature(device: &Device) -> RootSignature {
         let root_signature = device
             .create_root_signature(
                 0,
-                &ShaderBytecode::from_bytes(serialized_signature.get_buffer()),
+                &ShaderBytecode::new(serialized_signature.get_buffer()),
             )
             .expect("Cannot create root signature on device 0");
         root_signature

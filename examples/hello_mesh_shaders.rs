@@ -72,11 +72,11 @@ struct Vertex {
 impl Vertex {
     fn make_desc() -> Vec<InputElementDesc<'static>> {
         vec![InputElementDesc::default()
-            .set_name("POSITION")
+            .with_semantic_name("POSITION")
             .unwrap()
-            .set_format(Format::R32G32B32Float)
-            .set_input_slot(0)
-            .set_offset(ByteCount(offset_of!(Self, position) as u64))]
+            .with_format(Format::R32G32B32Float)
+            .with_input_slot(0)
+            .with_aligned_byte_offset(ByteCount(offset_of!(Self, position) as u64))]
     }
 }
 
@@ -193,12 +193,12 @@ impl HelloMeshShadersSample {
         let swapchain = create_swapchain(factory, &command_queue, hwnd);
 
         let viewport_desc = Viewport::default()
-            .set_width(WINDOW_WIDTH as f32)
-            .set_height(WINDOW_HEIGHT as f32);
+            .with_width(WINDOW_WIDTH as f32)
+            .with_height(WINDOW_HEIGHT as f32);
 
         let scissor_desc = Rect::default()
-            .set_right(WINDOW_WIDTH as i32)
-            .set_bottom(WINDOW_HEIGHT as i32);
+            .with_right(WINDOW_WIDTH as i32)
+            .with_bottom(WINDOW_HEIGHT as i32);
 
         let rtv_descriptor_handle_size = device
             .get_descriptor_handle_increment_size(DescriptorHeapType::Rtv);
@@ -338,12 +338,12 @@ impl HelloMeshShadersSample {
         let staging_buffer = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_heap_type(HeapType::Upload),
+                &HeapProperties::default().with_heap_type(HeapType::Upload),
                 HeapFlags::None,
                 &ResourceDesc::default()
-                    .set_dimension(ResourceDimension::Buffer)
-                    .set_width(size.0)
-                    .set_layout(TextureLayout::RowMajor),
+                    .with_dimension(ResourceDimension::Buffer)
+                    .with_width(size.0)
+                    .with_layout(TextureLayout::RowMajor),
                 ResourceStates::GenericRead,
                 None,
             )
@@ -369,12 +369,12 @@ impl HelloMeshShadersSample {
         let default_buffer = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_heap_type(HeapType::Default),
+                &HeapProperties::default().with_heap_type(HeapType::Default),
                 HeapFlags::None,
                 &ResourceDesc::default()
-                    .set_dimension(ResourceDimension::Buffer)
-                    .set_width(size.0)
-                    .set_layout(TextureLayout::RowMajor),
+                    .with_dimension(ResourceDimension::Buffer)
+                    .with_width(size.0)
+                    .with_layout(TextureLayout::RowMajor),
                 ResourceStates::CopyDest,
                 None,
             )
@@ -403,9 +403,9 @@ impl HelloMeshShadersSample {
         self.command_list
             .resource_barrier(&[ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(&default_buffer)
-                    .set_state_before(ResourceStates::CopyDest)
-                    .set_state_after(ResourceStates::GenericRead),
+                    .with_resource(&default_buffer)
+                    .with_state_before(ResourceStates::CopyDest)
+                    .with_state_after(ResourceStates::GenericRead),
             )]);
 
         self.command_list
@@ -473,11 +473,11 @@ impl HelloMeshShadersSample {
         self.command_list
             .resource_barrier(&[ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(
+                    .with_resource(
                         &self.render_targets[self.frame_index as usize],
                     )
-                    .set_state_before(ResourceStates::Common)
-                    .set_state_after(ResourceStates::RenderTarget),
+                    .with_state_before(ResourceStates::Common)
+                    .with_state_after(ResourceStates::RenderTarget),
             )]);
 
         let rtv_handle = self
@@ -508,11 +508,11 @@ impl HelloMeshShadersSample {
         self.command_list
             .resource_barrier(&[ResourceBarrier::new_transition(
                 &ResourceTransitionBarrier::default()
-                    .set_resource(
+                    .with_resource(
                         &self.render_targets[self.frame_index as usize],
                     )
-                    .set_state_before(ResourceStates::RenderTarget)
-                    .set_state_after(ResourceStates::Common),
+                    .with_state_before(ResourceStates::RenderTarget)
+                    .with_state_after(ResourceStates::Common),
             )]);
 
         self.command_list
@@ -588,32 +588,32 @@ impl HelloMeshShadersSample {
         let _debug_printer = make_debug_printer!(&self.info_queue);
 
         let depth_stencil_desc = DepthStencilViewDesc::default()
-            .set_format(Format::D32Float)
-            .set_view_dimension(DsvDimension::Texture2D)
-            .set_flags(DsvFlags::None);
+            .with_format(Format::D32Float)
+            .with_view_dimension(DsvDimension::Texture2D)
+            .with_flags(DsvFlags::None);
 
         let depth_stencil = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_heap_type(HeapType::Default),
+                &HeapProperties::default().with_heap_type(HeapType::Default),
                 HeapFlags::None,
                 &ResourceDesc::default()
-                    .set_dimension(ResourceDimension::Texture2D)
-                    .set_width(WINDOW_WIDTH.into())
-                    .set_height(WINDOW_HEIGHT.into())
-                    .set_format(Format::D32Float)
-                    .set_flags(
+                    .with_dimension(ResourceDimension::Texture2D)
+                    .with_width(WINDOW_WIDTH.into())
+                    .with_height(WINDOW_HEIGHT.into())
+                    .with_format(Format::D32Float)
+                    .with_flags(
                         ResourceFlags::AllowDepthStencil
                             | ResourceFlags::DenyShaderResource,
                     ),
                 ResourceStates::DepthWrite,
                 Some(
                     &ClearValue::default()
-                        .set_format(Format::D32Float)
-                        .set_depth_stencil(
+                        .with_format(Format::D32Float)
+                        .with_depth_stencil(
                             &DepthStencilValue::default()
-                                .set_depth(1.)
-                                .set_stencil(0),
+                                .with_depth(1.)
+                                .with_stencil(0),
                         ),
                 ),
             )
@@ -636,12 +636,12 @@ impl HelloMeshShadersSample {
         let constant_buffer = self
             .device
             .create_committed_resource(
-                &HeapProperties::default().set_heap_type(HeapType::Upload),
+                &HeapProperties::default().with_heap_type(HeapType::Upload),
                 HeapFlags::None,
                 &ResourceDesc::default()
-                    .set_dimension(ResourceDimension::Buffer)
-                    .set_width(size_of::<MeshletConstantBuffer>() as u64)
-                    .set_layout(TextureLayout::RowMajor),
+                    .with_dimension(ResourceDimension::Buffer)
+                    .with_width(size_of::<MeshletConstantBuffer>() as u64)
+                    .with_layout(TextureLayout::RowMajor),
                 ResourceStates::GenericRead,
                 None,
             )
@@ -690,25 +690,25 @@ fn create_pipeline_state(
     pixel_shader: Vec<u8>,
     device: &Device,
 ) -> PipelineState {
-    let ms_bytecode = ShaderBytecode::from_bytes(&mesh_shader);
-    let ps_bytecode = ShaderBytecode::from_bytes(&pixel_shader);
+    let ms_bytecode = ShaderBytecode::new(&mesh_shader);
+    let ps_bytecode = ShaderBytecode::new(&pixel_shader);
 
     let pso_subobjects_desc = MeshShaderPipelineStateDesc::default()
-        .set_root_signature(root_signature)
-        .set_ms_bytecode(&ms_bytecode)
-        .set_ps_bytecode(&ps_bytecode)
-        .set_rasterizer_state(
-            &RasterizerDesc::default().set_depth_clip_enable(false),
+        .with_root_signature(root_signature)
+        .with_ms_bytecode(&ms_bytecode)
+        .with_ps_bytecode(&ps_bytecode)
+        .with_rasterizer_state(
+            &RasterizerDesc::default().with_depth_clip_enable(false),
         )
-        .set_blend_state(&BlendDesc::default())
-        .set_depth_stencil_state(
-            &DepthStencilDesc::default().set_depth_enable(false),
+        .with_blend_state(&BlendDesc::default())
+        .with_depth_stencil_state(
+            &DepthStencilDesc::default().with_depth_enable(false),
         )
-        .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
-        .set_rtv_formats(&[Format::R8G8B8A8Unorm]);
+        .with_primitive_topology_type(PrimitiveTopologyType::Triangle)
+        .with_rtv_formats(&[Format::R8G8B8A8Unorm]);
 
     let pso_desc = PipelineStateStreamDesc::default()
-        .set_pipeline_state_subobject_stream(
+        .with_pipeline_state_subobject_stream(
             pso_subobjects_desc.as_byte_stream(),
         );
 
@@ -750,7 +750,7 @@ fn setup_root_signature(
     let root_signature = device
         .create_root_signature(
             0,
-            &ShaderBytecode::from_bytes(mesh_shader_bytecode),
+            &ShaderBytecode::new(mesh_shader_bytecode),
         )
         .expect("Cannot create root signature");
     root_signature
@@ -764,8 +764,8 @@ fn setup_heaps(
     let rtv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_heap_type(DescriptorHeapType::Rtv)
-                .set_num_descriptors(u32::from(FRAMES_IN_FLIGHT)),
+                .with_heap_type(DescriptorHeapType::Rtv)
+                .with_num_descriptors(u32::from(FRAMES_IN_FLIGHT)),
         )
         .expect("Cannot create RTV heap");
     rtv_heap
@@ -775,8 +775,8 @@ fn setup_heaps(
     let dsv_heap = device
         .create_descriptor_heap(
             &DescriptorHeapDesc::default()
-                .set_heap_type(DescriptorHeapType::Dsv)
-                .set_num_descriptors(1),
+                .with_heap_type(DescriptorHeapType::Dsv)
+                .with_num_descriptors(1),
         )
         .expect("Cannot create RTV heap");
     dsv_heap
@@ -806,9 +806,9 @@ fn create_swapchain(
     hwnd: *mut std::ffi::c_void,
 ) -> Swapchain {
     let swapchain_desc = SwapChainDesc::default()
-        .set_width(WINDOW_WIDTH)
-        .set_height(WINDOW_HEIGHT)
-        .set_buffer_count(u32::from(FRAMES_IN_FLIGHT));
+        .with_width(WINDOW_WIDTH)
+        .with_height(WINDOW_HEIGHT)
+        .with_buffer_count(u32::from(FRAMES_IN_FLIGHT));
     let swapchain = factory
         .create_swapchain(&command_queue, hwnd as *mut HWND__, &swapchain_desc)
         .expect("Cannot create swapchain");
