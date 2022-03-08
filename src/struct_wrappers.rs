@@ -409,9 +409,18 @@ impl std::fmt::Debug for AdapterDesc {
 }
 
 /// Wrapper around DXGI_SAMPLE_DESC structure
-#[derive(Default, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone, Copy)]
 #[repr(transparent)]
 pub struct SampleDesc(pub(crate) DXGI_SAMPLE_DESC);
+
+impl Default for SampleDesc {
+    fn default() -> Self {
+        Self(DXGI_SAMPLE_DESC {
+            Count: 1,
+            Quality: 0,
+        })
+    }
+}
 
 impl SampleDesc {
     pub fn set_count(&mut self, count: u32) -> &mut Self {
@@ -882,7 +891,7 @@ impl ResourceTransitionBarrier {
         self
     }
 
-    pub fn with_p_resource(mut self, resource: &Resource) -> Self {
+    pub fn with_resource(mut self, resource: &Resource) -> Self {
         self.set_resource(resource);
         self
     }
@@ -1328,7 +1337,7 @@ impl Box {
 }
 
 /// Wrapper around D3D12_VERTEX_BUFFER_VIEW structure
-#[derive(Default, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone)]
+#[derive(Default, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone, Copy)]
 #[repr(transparent)]
 pub struct VertexBufferView(pub(crate) D3D12_VERTEX_BUFFER_VIEW);
 
@@ -1555,7 +1564,7 @@ impl<'a> Drop for InputElementDesc<'a> {
 }
 
 /// Wrapper around D3D12_INDEX_BUFFER_VIEW structure
-#[derive(Default, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone)]
+#[derive(Default, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone, Copy)]
 #[repr(transparent)]
 pub struct IndexBufferView(pub(crate) D3D12_INDEX_BUFFER_VIEW);
 
@@ -1580,18 +1589,18 @@ impl IndexBufferView {
         GpuVirtualAddress(self.0.BufferLocation)
     }
 
-    pub fn set_size_in_bytes(&mut self, size_in_bytes: u32) -> &mut Self {
-        self.0.SizeInBytes = size_in_bytes;
+    pub fn set_size_in_bytes(&mut self, size_in_bytes: ByteCount) -> &mut Self {
+        self.0.SizeInBytes = size_in_bytes.0 as u32;
         self
     }
 
-    pub fn with_size_in_bytes(mut self, size_in_bytes: u32) -> Self {
+    pub fn with_size_in_bytes(mut self, size_in_bytes: ByteCount) -> Self {
         self.set_size_in_bytes(size_in_bytes);
         self
     }
 
-    pub fn size_in_bytes(&self) -> u32 {
-        self.0.SizeInBytes
+    pub fn size_in_bytes(&self) -> ByteCount {
+        ByteCount::from(self.0.SizeInBytes)
     }
 
     pub fn set_format(&mut self, format: Format) -> &mut Self {
@@ -4438,9 +4447,9 @@ impl<'a, 'b> RootSignatureDesc<'a, 'b> {
     }
 
     pub fn set_static_samplers(
-        mut self,
+        &mut self,
         static_samplers: &'b [StaticSamplerDesc],
-    ) -> Self {
+    ) -> &mut Self {
         self.0.NumStaticSamplers = static_samplers.len() as u32;
         self.0.pStaticSamplers =
             static_samplers.as_ptr() as *const D3D12_STATIC_SAMPLER_DESC;
@@ -4511,7 +4520,7 @@ impl<'a> SubresourceData<'a> {
     //     }
     // }
 
-    pub fn set_row_pitch(mut self, row_pitch: ByteCount) -> Self {
+    pub fn set_row_pitch(&mut self, row_pitch: ByteCount) -> &mut Self {
         self.0.RowPitch = row_pitch.0 as i64;
         self
     }
@@ -4525,7 +4534,7 @@ impl<'a> SubresourceData<'a> {
         ByteCount::from(self.0.RowPitch)
     }
 
-    pub fn set_slice_pitch(mut self, slice_pitch: ByteCount) -> Self {
+    pub fn set_slice_pitch(&mut self, slice_pitch: ByteCount) -> &mut Self {
         self.0.SlicePitch = slice_pitch.0 as i64;
         self
     }
@@ -6596,7 +6605,10 @@ impl<'rs, 'sh> MeshShaderPipelineStateDesc<'rs, 'sh> {
         )
     }
 
-    pub fn set_ms_bytecode(mut self, bytecode: &'sh ShaderBytecode) -> Self {
+    pub fn set_ms_bytecode(
+        &mut self,
+        bytecode: &'sh ShaderBytecode,
+    ) -> &mut Self {
         self.mesh_shader = PipelineStateSubobject::new(
             PipelineStateSubobjectType::MS,
             bytecode.0,
@@ -6620,7 +6632,10 @@ impl<'rs, 'sh> MeshShaderPipelineStateDesc<'rs, 'sh> {
         )
     }
 
-    pub fn set_ps_bytecode(mut self, bytecode: &'sh ShaderBytecode) -> Self {
+    pub fn set_ps_bytecode(
+        &mut self,
+        bytecode: &'sh ShaderBytecode,
+    ) -> &mut Self {
         self.pixel_shader = PipelineStateSubobject::new(
             PipelineStateSubobjectType::PS,
             bytecode.0,
@@ -6710,9 +6725,9 @@ impl<'rs, 'sh> MeshShaderPipelineStateDesc<'rs, 'sh> {
     }
 
     pub fn set_primitive_topology_type(
-        mut self,
+        &mut self,
         primitive_topology_type: PrimitiveTopologyType,
-    ) -> Self {
+    ) -> &mut Self {
         self.primitive_topology_type = PipelineStateSubobject::new(
             PipelineStateSubobjectType::PrimitiveTopology,
             primitive_topology_type as i32,
@@ -6734,7 +6749,7 @@ impl<'rs, 'sh> MeshShaderPipelineStateDesc<'rs, 'sh> {
 
     pub fn set_rtv_formats(&mut self, rtv_formats: &[Format]) -> &mut Self {
         let rt_format_struct =
-            RtFormatArray::default().set_rt_formats(rtv_formats);
+            RtFormatArray::default().with_rt_formats(rtv_formats);
         self.rtv_formats = PipelineStateSubobject::new(
             PipelineStateSubobjectType::RenderTargetFormats,
             rt_format_struct.0,

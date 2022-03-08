@@ -770,7 +770,7 @@ impl Factory {
         &self,
         command_queue: &CommandQueue,
         window_handle: HWND,
-        desc: &SwapchainDesc,
+        desc: &SwapChainDesc,
     ) -> DxResult<Swapchain> {
         let mut temp_hw_swapchain: *mut IDXGISwapChain1 = std::ptr::null_mut();
         unsafe {
@@ -1337,18 +1337,15 @@ impl Device {
         ByteCount,
     ) {
         let mut placed_subresource_footprints: Vec<PlacedSubresourceFootprint> =
-            Vec::with_capacity(num_subresources as usize);
-        unsafe {
-            placed_subresource_footprints.set_len(num_subresources as usize)
-        }
+            vec![
+                PlacedSubresourceFootprint::default();
+                num_subresources as usize
+            ];
 
-        let mut num_rows: Vec<u32> =
-            Vec::with_capacity(num_subresources as usize);
-        unsafe { num_rows.set_len(num_subresources as usize) }
+        let mut num_rows: Vec<u32> = vec![0; num_subresources as usize];
 
         let mut row_sizes: Vec<ByteCount> =
-            Vec::with_capacity(num_subresources as usize);
-        unsafe { row_sizes.set_len(num_subresources as usize) }
+            vec![ByteCount(0); num_subresources as usize];
 
         let mut total_bytes = 0u64;
 
@@ -2475,11 +2472,9 @@ impl CommandList {
                 + std::mem::size_of::<u64>(),
         ) * num_subresources;
 
-        let mut allocated_memory: Vec<u8> =
-            Vec::with_capacity(allocation_size.0 as usize);
-        unsafe {
-            allocated_memory.set_len(allocation_size.0 as usize);
+        let mut allocated_memory: Vec<u8> = vec![0; allocation_size.0 as usize];
 
+        unsafe {
             // let allocation =
             //     allocated_memory.as_mut_ptr() as *mut std::ffi::c_void;
 

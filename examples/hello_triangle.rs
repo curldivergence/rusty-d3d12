@@ -53,17 +53,21 @@ impl Vertex {
     fn make_desc() -> Vec<InputElementDesc<'static>> {
         vec![
             InputElementDesc::default()
-                .set_name("Position")
+                .with_semantic_name("Position")
                 .unwrap()
-                .set_format(Format::R32G32B32Float)
-                .set_input_slot(0)
-                .set_offset(ByteCount(offset_of!(Self, position) as u64)),
+                .with_format(Format::R32G32B32Float)
+                .with_input_slot(0)
+                .with_aligned_byte_offset(ByteCount(
+                    offset_of!(Self, position) as u64,
+                )),
             InputElementDesc::default()
-                .set_name("Color")
+                .with_semantic_name("Color")
                 .unwrap()
-                .set_format(Format::R32G32B32A32Float)
-                .set_input_slot(0)
-                .set_offset(ByteCount(offset_of!(Self, color) as u64)),
+                .with_format(Format::R32G32B32A32Float)
+                .with_input_slot(0)
+                .with_aligned_byte_offset(ByteCount(
+                    offset_of!(Self, color) as u64
+                )),
         ]
     }
 }
@@ -94,9 +98,9 @@ impl TypedBuffer for VertexBuffer {
     ) -> Self {
         let size = element_size * element_count;
         let view = VertexBufferView::default()
-            .set_buffer_location(buffer.get_gpu_virtual_address())
-            .set_size_in_bytes(size)
-            .set_stride_in_bytes(element_size);
+            .with_buffer_location(buffer.get_gpu_virtual_address())
+            .with_size_in_bytes(size)
+            .with_stride_in_bytes(element_size);
         VertexBuffer {
             buffer: buffer,
             view: view,
@@ -121,9 +125,9 @@ impl TypedBuffer for IndexBuffer {
     ) -> Self {
         let size = element_size * element_count;
         let view = IndexBufferView::default()
-            .set_buffer_location(buffer.get_gpu_virtual_address())
-            .set_size_in_bytes(element_count * element_size)
-            .set_format(match element_size {
+            .with_buffer_location(buffer.get_gpu_virtual_address())
+            .with_size_in_bytes(element_count * element_size)
+            .with_format(match element_size {
                 ByteCount(2) => Format::R16Uint,
                 ByteCount(4) => Format::R32Uint,
                 _ => panic!("wrong index type"),
@@ -203,24 +207,22 @@ impl HelloTriangleSample {
             .expect("Cannot create command list");
         command_list.close().expect("Cannot close command list");
 
-        let swapchain_desc = SwapchainDesc::default()
-            .set_width(WINDOW_WIDTH)
-            .set_height(WINDOW_HEIGHT)
-            .set_buffer_count(FRAMES_IN_FLIGHT);
+        let swapchain_desc = SwapChainDesc::default()
+            .with_width(WINDOW_WIDTH)
+            .with_height(WINDOW_HEIGHT)
+            .with_buffer_count(FRAMES_IN_FLIGHT);
+
+        println!("swapchain_desc: {:?}", &swapchain_desc);
 
         let swapchain = factory
-            .create_swapchain(
-                &command_queue,
-                hwnd as *mut HWND__,
-                &swapchain_desc,
-            )
+            .create_swapchain(&command_queue, hwnd as HWND, &swapchain_desc)
             .expect("Cannot create swapchain");
 
         let rtv_heap = device
             .create_descriptor_heap(
                 &DescriptorHeapDesc::default()
-                    .set_heap_type(DescriptorHeapType::Rtv)
-                    .set_num_descriptors(FRAMES_IN_FLIGHT),
+                    .with_heap_type(DescriptorHeapType::Rtv)
+                    .with_num_descriptors(FRAMES_IN_FLIGHT),
             )
             .expect("Cannot create RTV heap");
 
@@ -303,8 +305,7 @@ VertexOut VS(VertexIn input)
             "vs_6_0",
         )
         .expect("Cannot compile vertex shader");
-        let vertex_bytecode =
-            ShaderBytecode::from_bytes(&raw_vertex_shader_bytecode);
+        let vertex_bytecode = ShaderBytecode::new(&raw_vertex_shader_bytecode);
 
         let raw_pixel_shader_bytecode = HelloTriangleSample::compile_shader(
             "PixelShader",
@@ -325,8 +326,7 @@ float4 PS(VertexOut input) : SV_Target
             "ps_6_0",
         )
         .expect("Cannot compile pixel shader");
-        let pixel_bytecode =
-            ShaderBytecode::from_bytes(&raw_pixel_shader_bytecode);
+        let pixel_bytecode = ShaderBytecode::new(&raw_pixel_shader_bytecode);
 
         let root_signature = renderer
             .device
@@ -339,22 +339,22 @@ float4 PS(VertexOut input) : SV_Target
 
         let vertex_desc = Vertex::make_desc();
         let input_layout =
-            InputLayoutDesc::default().from_input_elements(&vertex_desc);
+            InputLayoutDesc::default().with_input_elements(&vertex_desc);
 
         debug!("Created input layout");
 
         let pso_desc = GraphicsPipelineStateDesc::default()
-            .set_vs_bytecode(&vertex_bytecode)
-            .set_ps_bytecode(&pixel_bytecode)
-            .set_blend_state(&BlendDesc::default())
-            .set_rasterizer_state(&RasterizerDesc::default())
-            .set_depth_stencil_state(
-                &DepthStencilDesc::default().set_depth_enable(false),
+            .with_vs_bytecode(&vertex_bytecode)
+            .with_ps_bytecode(&pixel_bytecode)
+            .with_blend_state(BlendDesc::default())
+            .with_rasterizer_state(RasterizerDesc::default())
+            .with_depth_stencil_state(
+                DepthStencilDesc::default().with_depth_enable(false),
             )
-            .set_input_layout(&input_layout)
-            .set_primitive_topology_type(PrimitiveTopologyType::Triangle)
-            .set_rtv_formats(&[Format::R8G8B8A8Unorm])
-            .set_dsv_format(Format::D24UnormS8Uint);
+            .with_input_layout(&input_layout)
+            .with_primitive_topology_type(PrimitiveTopologyType::Triangle)
+            .with_rtv_formats(&[Format::R8G8B8A8Unorm])
+            .with_dsv_format(Format::D24UnormS8Uint);
 
         let pso = renderer
             .device
@@ -399,8 +399,8 @@ float4 PS(VertexOut input) : SV_Target
         );
 
         let viewport_desc = Viewport::default()
-            .set_width(WINDOW_WIDTH as f32)
-            .set_height(WINDOW_HEIGHT as f32);
+            .with_width(WINDOW_WIDTH as f32)
+            .with_height(WINDOW_HEIGHT as f32);
         self.command_list.set_pipeline_state(
             self.pipeline_state
                 .as_ref()
@@ -414,8 +414,8 @@ float4 PS(VertexOut input) : SV_Target
         self.command_list.set_viewports(&[viewport_desc]);
 
         let scissor_desc = Rect::default()
-            .set_right(WINDOW_WIDTH as i32)
-            .set_bottom(WINDOW_HEIGHT as i32);
+            .with_right(WINDOW_WIDTH as i32)
+            .with_bottom(WINDOW_HEIGHT as i32);
 
         self.command_list.set_scissor_rects(&[scissor_desc]);
         self.command_list.clear_render_target_view(
@@ -500,11 +500,11 @@ impl HelloTriangleSample {
         heap_type: HeapType,
         initial_state: ResourceStates,
     ) -> DxResult<Resource> {
-        let heap_props = HeapProperties::default().set_heap_type(heap_type);
+        let heap_props = HeapProperties::default().with_heap_type(heap_type);
         let resource_desc = ResourceDesc::default()
-            .set_dimension(ResourceDimension::Buffer)
-            .set_width(size.0)
-            .set_layout(TextureLayout::RowMajor);
+            .with_dimension(ResourceDimension::Buffer)
+            .with_width(size.0)
+            .with_layout(TextureLayout::RowMajor);
 
         device.create_committed_resource(
             &heap_props,
@@ -523,9 +523,9 @@ impl HelloTriangleSample {
     ) {
         command_list.resource_barrier(&[ResourceBarrier::new_transition(
             &ResourceTransitionBarrier::default()
-                .set_resource(resource)
-                .set_state_before(from)
-                .set_state_after(to),
+                .with_resource(resource)
+                .with_state_before(from)
+                .with_state_after(to),
         )]);
     }
 
