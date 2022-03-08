@@ -698,11 +698,11 @@ fn create_pipeline_state(
         .with_ms_bytecode(&ms_bytecode)
         .with_ps_bytecode(&ps_bytecode)
         .with_rasterizer_state(
-            &RasterizerDesc::default().with_depth_clip_enable(false),
+            RasterizerDesc::default().with_depth_clip_enable(false),
         )
-        .with_blend_state(&BlendDesc::default())
+        .with_blend_state(BlendDesc::default())
         .with_depth_stencil_state(
-            &DepthStencilDesc::default().with_depth_enable(false),
+            DepthStencilDesc::default().with_depth_enable(false),
         )
         .with_primitive_topology_type(PrimitiveTopologyType::Triangle)
         .with_rtv_formats(&[Format::R8G8B8A8Unorm]);

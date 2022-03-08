@@ -6687,7 +6687,7 @@ impl<'rs, 'sh> MeshShaderPipelineStateDesc<'rs, 'sh> {
         )
     }
 
-    pub fn set_blend_state(&mut self, blend_state: &BlendDesc) -> &mut Self {
+    pub fn set_blend_state(&mut self, blend_state: BlendDesc) -> &mut Self {
         self.blend_state = PipelineStateSubobject::new(
             PipelineStateSubobjectType::Blend,
             blend_state.0,
@@ -6695,7 +6695,7 @@ impl<'rs, 'sh> MeshShaderPipelineStateDesc<'rs, 'sh> {
         self
     }
 
-    pub fn with_blend_state(mut self, blend_state: &BlendDesc) -> Self {
+    pub fn with_blend_state(mut self, blend_state: BlendDesc) -> Self {
         self.set_blend_state(blend_state);
         self
     }
@@ -6706,7 +6706,7 @@ impl<'rs, 'sh> MeshShaderPipelineStateDesc<'rs, 'sh> {
 
     pub fn set_rasterizer_state(
         &mut self,
-        rasterizer_state: &RasterizerDesc,
+        rasterizer_state: RasterizerDesc,
     ) -> &mut Self {
         self.rasterizer_state = PipelineStateSubobject::new(
             PipelineStateSubobjectType::Rasterizer,
@@ -6717,7 +6717,7 @@ impl<'rs, 'sh> MeshShaderPipelineStateDesc<'rs, 'sh> {
 
     pub fn with_rasterizer_state(
         mut self,
-        rasterizer_state: &RasterizerDesc,
+        rasterizer_state: RasterizerDesc,
     ) -> Self {
         self.set_rasterizer_state(rasterizer_state);
         self
@@ -6730,7 +6730,7 @@ impl<'rs, 'sh> MeshShaderPipelineStateDesc<'rs, 'sh> {
 
     pub fn set_depth_stencil_state(
         &mut self,
-        depth_stencil_state: &DepthStencilDesc,
+        depth_stencil_state: DepthStencilDesc,
     ) -> &mut Self {
         self.depth_stencil_state = PipelineStateSubobject::new(
             PipelineStateSubobjectType::DepthStencil,
@@ -6741,7 +6741,7 @@ impl<'rs, 'sh> MeshShaderPipelineStateDesc<'rs, 'sh> {
 
     pub fn with_depth_stencil_state(
         mut self,
-        depth_stencil_state: &DepthStencilDesc,
+        depth_stencil_state: DepthStencilDesc,
     ) -> Self {
         self.set_depth_stencil_state(depth_stencil_state);
         self
