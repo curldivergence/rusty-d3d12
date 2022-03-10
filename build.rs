@@ -172,17 +172,31 @@ fn main() {
             examples_bin_path.join(pix_dll_name),
         )
         .unwrap_or_else(|err| {
-            eprintln!("cannot copy WinPixEventRuntime.dll: {:?}", err);
+            eprintln!("cannot copy {}: {:?}", pix_dll_name, err);
             0
         });
+
+        // Copy PIX libs to OUT dir
+        let pix_wrapper_lib_name = "pix_wrapper.lib";
         let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
 
+        // dll
         std::fs::copy(
             &format!("{}\\{}", PIX_LIB_PATH, pix_dll_name),
             out_path.join(pix_dll_name),
         )
         .unwrap_or_else(|err| {
-            eprintln!("cannot copy WinPixEventRuntime.dll: {:?}", err);
+            eprintln!("cannot copy {}: {:?}", pix_dll_name, err);
+            0
+        });
+
+        // static wrapper lib
+        std::fs::copy(
+            &format!("{}\\{}", PIX_LIB_PATH, pix_wrapper_lib_name),
+            out_path.join(pix_wrapper_lib_name),
+        )
+        .unwrap_or_else(|err| {
+            eprintln!("cannot copy {}: {:?}", pix_wrapper_lib_name, err);
             0
         });
     }
