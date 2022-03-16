@@ -777,22 +777,6 @@ impl Range {
 pub struct ResourceBarrier(pub(crate) D3D12_RESOURCE_BARRIER);
 
 impl ResourceBarrier {
-    pub fn set_barrier_type(
-        &mut self,
-        barrier_type: ResourceBarrierType,
-    ) -> &mut Self {
-        self.0.Type = barrier_type as i32;
-        self
-    }
-
-    pub fn with_barrier_type(
-        mut self,
-        barrier_type: ResourceBarrierType,
-    ) -> Self {
-        self.set_barrier_type(barrier_type);
-        self
-    }
-
     pub fn barrier_type(&self) -> ResourceBarrierType {
         unsafe { std::mem::transmute(self.0.Type) }
     }
@@ -1038,9 +1022,22 @@ impl ResourceUavBarrier {
 }
 
 /// Wrapper around D3D12_VIEWPORT structure
-#[derive(Default, Debug, PartialOrd, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialOrd, PartialEq, Clone, Copy)]
 #[repr(transparent)]
 pub struct Viewport(pub(crate) D3D12_VIEWPORT);
+
+impl Default for Viewport {
+    fn default() -> Self {
+        Viewport(D3D12_VIEWPORT {
+            TopLeftX: 0.,
+            TopLeftY: 0.,
+            Width: 0.,
+            Height: 0.,
+            MinDepth: 0.,
+            MaxDepth: 1.,
+        })
+    }
+}
 
 impl Viewport {
     pub fn set_top_left_x(&mut self, top_left_x: f32) -> &mut Self {
@@ -6055,19 +6052,6 @@ impl DepthStencilViewDesc {
 
     pub fn format(&self) -> Format {
         unsafe { std::mem::transmute(self.0.Format) }
-    }
-
-    pub fn set_view_dimension(
-        &mut self,
-        view_dimension: DsvDimension,
-    ) -> &mut Self {
-        self.0.ViewDimension = view_dimension as i32;
-        self
-    }
-
-    pub fn with_view_dimension(mut self, view_dimension: DsvDimension) -> Self {
-        self.set_view_dimension(view_dimension);
-        self
     }
 
     pub fn view_dimension(&self) -> DsvDimension {
