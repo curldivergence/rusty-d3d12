@@ -1,4 +1,4 @@
-use log::{error, trace};
+use log::{error, trace, info};
 use std::{
     borrow::Borrow,
     ffi::CString,
@@ -67,25 +67,33 @@ mod sample_assets {
                     .unwrap()
                     .with_format(Format::R32G32B32Float)
                     .with_input_slot(0)
-                    .with_aligned_byte_offset(ByteCount::from(offset_of!(Self, position))),
+                    .with_aligned_byte_offset(ByteCount::from(offset_of!(
+                        Self, position
+                    ))),
                 InputElementDesc::default()
                     .with_semantic_name("NORMAL")
                     .unwrap()
                     .with_format(Format::R32G32B32Float)
                     .with_input_slot(0)
-                    .with_aligned_byte_offset(ByteCount::from(offset_of!(Self, normal))),
+                    .with_aligned_byte_offset(ByteCount::from(offset_of!(
+                        Self, normal
+                    ))),
                 InputElementDesc::default()
                     .with_semantic_name("TEXCOORD")
                     .unwrap()
                     .with_format(Format::R32G32Float)
                     .with_input_slot(0)
-                    .with_aligned_byte_offset(ByteCount::from(offset_of!(Self, uv))),
+                    .with_aligned_byte_offset(ByteCount::from(offset_of!(
+                        Self, uv
+                    ))),
                 InputElementDesc::default()
                     .with_semantic_name("TANGENT")
                     .unwrap()
                     .with_format(Format::R32G32B32Float)
                     .with_input_slot(0)
-                    .with_aligned_byte_offset(ByteCount::from(offset_of!(Self, tangent))),
+                    .with_aligned_byte_offset(ByteCount::from(offset_of!(
+                        Self, tangent
+                    ))),
             ]
         }
     }
@@ -495,8 +503,9 @@ impl DynamicIndexingSample {
         let _debug_printer = make_debug_printer!(&self.info_queue);
 
         let depth_stencil_desc = DepthStencilViewDesc::default()
+            .new_texture_2d(Tex2DDsv::default().with_mip_slice(0))
             .with_format(Format::D32Float)
-            .with_view_dimension(DsvDimension::Texture2D)
+            // .with_view_dimension(DsvDimension::Texture2D)
             .with_flags(DsvFlags::None);
 
         let depth_stencil = self
@@ -760,13 +769,12 @@ impl DynamicIndexingSample {
         srv_handle = srv_handle.advance(1, self.cbv_srv_descriptor_handle_size);
 
         for mat_idx in 0..CITY_MATERIAL_COUNT as usize {
-            let mat_srv_desc =
-                ShaderResourceViewDesc::default()
-                    .with_shader_4_component_mapping(
-                        ShaderComponentMapping::default(),
-                    )
-                    .with_format(Format::R8G8B8A8Unorm)
-                    .new_texture_2d(&Tex2DSrv::default().with_mip_levels(1));
+            let mat_srv_desc = ShaderResourceViewDesc::default()
+                .with_shader_4_component_mapping(
+                    ShaderComponentMapping::default(),
+                )
+                .with_format(Format::R8G8B8A8Unorm)
+                .new_texture_2d(&Tex2DSrv::default().with_mip_levels(1));
 
             self.device.create_shader_resource_view(
                 &self.city_material_textures[mat_idx],
@@ -1500,6 +1508,8 @@ fn create_device(factory: &Factory) -> Device {
             .enum_adapters_by_gpu_preference(GpuPreference::HighPerformance)
             .expect("Cannot enumerate adapters")
             .remove(0);
+
+        info!("adapter desc: {:?}", &hw_adapter.get_desc());
         device = Device::new(&hw_adapter).expect("Cannot create device");
     }
     device
@@ -1716,7 +1726,7 @@ impl FrameResource {
 }
 
 fn main() {
-    simple_logger::init_with_level(log::Level::Warn).unwrap();
+    simple_logger::init_with_level(log::Level::Info).unwrap();
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()

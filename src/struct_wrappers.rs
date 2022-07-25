@@ -454,7 +454,7 @@ impl SampleDesc {
 
 /// Wrapper around D3D12_RESOURCE_DESC structure
 #[repr(transparent)]
-#[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Clone, Debug)]
+#[derive(Hash, PartialOrd, Ord, PartialEq, Eq, Copy, Clone, Debug)]
 pub struct ResourceDesc(pub(crate) D3D12_RESOURCE_DESC);
 
 impl Default for ResourceDesc {

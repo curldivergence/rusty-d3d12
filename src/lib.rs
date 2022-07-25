@@ -1086,7 +1086,7 @@ impl Device {
         })
     }
 
-    pub fn create_heap(&self, heap_desc: &HeapDesc) -> DxResult<Heap> {
+    pub fn create_heap(&self, heap_desc: HeapDesc) -> DxResult<Heap> {
         let mut hw_heap: *mut ID3D12Heap = std::ptr::null_mut();
 
         unsafe {
@@ -1684,6 +1684,15 @@ impl CpuDescriptorHandle {
                     + (distance * handle_size.0 as u32) as u64,
             },
         }
+    }
+
+    #[must_use]
+    pub fn get_heap_index(
+        &self,
+        heap_start: CpuDescriptorHandle,
+        handle_size: ByteCount,
+    ) -> u32 {
+        ((self.hw_handle.ptr - heap_start.hw_handle.ptr) / handle_size.0) as u32
     }
 }
 
@@ -2556,6 +2565,7 @@ impl Fence {
     }
 }
 
+// ToDo: use windows events from a different crate?
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Win32Event {
