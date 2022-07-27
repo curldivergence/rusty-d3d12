@@ -39,7 +39,7 @@ fn wait_for_debugger() {
 }
 
 #[no_mangle]
-pub static D3D12SDKVersion: u32 = 600;
+pub static D3D12SDKVersion: u32 = 606;
 
 #[no_mangle]
 pub static D3D12SDKPath: &[u8; 9] = b".\\D3D12\\\0";
@@ -215,7 +215,9 @@ impl Vertex {
             .unwrap()
             .with_format(Format::R32G32B32Float)
             .with_input_slot(0)
-            .with_aligned_byte_offset(ByteCount::from(offset_of!(Self, position)))]
+            .with_aligned_byte_offset(ByteCount::from(offset_of!(
+                Self, position
+            )))]
     }
 }
 
@@ -233,13 +235,17 @@ impl BlurVertex {
                 .unwrap()
                 .with_format(Format::R32G32B32Float)
                 .with_input_slot(0)
-                .with_aligned_byte_offset(ByteCount::from(offset_of!(Self, position))),
+                .with_aligned_byte_offset(ByteCount::from(offset_of!(
+                    Self, position
+                ))),
             InputElementDesc::default()
                 .with_semantic_name("TEXCOORD")
                 .unwrap()
                 .with_format(Format::R32G32Float)
                 .with_input_slot(0)
-                .with_aligned_byte_offset(ByteCount::from(offset_of!(Self, uv))),
+                .with_aligned_byte_offset(ByteCount::from(offset_of!(
+                    Self, uv
+                ))),
         ]
     }
 }
@@ -554,7 +560,7 @@ impl Pipeline {
 
         let heap_primary = devices[0]
             .create_heap(
-                &HeapDesc::default()
+                HeapDesc::default()
                     .with_properties(
                         HeapProperties::default()
                             .with_heap_type(HeapType::Default),
@@ -1860,8 +1866,9 @@ fn create_depth_stencil(
     dsv_heap: &DescriptorHeap,
 ) -> Resource {
     let depth_stencil_desc = DepthStencilViewDesc::default()
-        .with_format(Format::D32Float)
-        .with_view_dimension(DsvDimension::Texture2D);
+        .new_texture_2d(Tex2DDsv::default().with_mip_slice(0))
+        .with_format(Format::D32Float);
+
     let clear_value = ClearValue::default()
         .with_format(Format::D32Float)
         .with_depth_stencil(
@@ -1972,9 +1979,9 @@ fn create_blur_vertex_buffer(
     let quad_vertex_buffer_view = VertexBufferView::default()
         .with_buffer_location(quad_vertex_buffer.get_gpu_virtual_address())
         .with_size_in_bytes(quad_vertex_buffer_size)
-        .with_stride_in_bytes(
-            ByteCount::from(std::mem::size_of::<BlurVertex>()),
-        );
+        .with_stride_in_bytes(ByteCount::from(
+            std::mem::size_of::<BlurVertex>(),
+        ));
     (
         quad_vertex_buffer,
         quad_vertex_buffer_upload,

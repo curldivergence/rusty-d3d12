@@ -207,15 +207,11 @@ fn generate_bindings() {
     // Tell cargo to invalidate the built crate whenever the wrapper changes
     println!("cargo:rerun-if-changed=generation\\d3d12_wrapper.h");
 
-    let workspace_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
-        .to_str()
-        .expect("Workspace path is not valid UTF-8")
-        .to_owned();
     let bindings = bindgen::Builder::default()
         .clang_arg("-std=c99")
-        // .clang_arg(&format!("-Igeneration"))
-        .header_contents("d3d12_patched.h", &patch_d3d12_header())
+        .clang_arg("-DD3D12_IGNORE_SDK_LAYERS")
         .header("generation\\d3d12_wrapper.h")
+        .header_contents("d3d12_patched.h", &patch_d3d12_header())
         .layout_tests(false)
         .derive_debug(true)
         .impl_debug(true)

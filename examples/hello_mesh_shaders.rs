@@ -14,7 +14,7 @@ use memoffset::offset_of;
 use rusty_d3d12::*;
 
 #[no_mangle]
-pub static D3D12SDKVersion: u32 = 600;
+pub static D3D12SDKVersion: u32 = 606;
 
 #[no_mangle]
 pub static D3D12SDKPath: &[u8; 9] = b".\\D3D12\\\0";
@@ -76,7 +76,9 @@ impl Vertex {
             .unwrap()
             .with_format(Format::R32G32B32Float)
             .with_input_slot(0)
-            .with_aligned_byte_offset(ByteCount(offset_of!(Self, position) as u64))]
+            .with_aligned_byte_offset(ByteCount(
+                offset_of!(Self, position) as u64
+            ))]
     }
 }
 
@@ -588,8 +590,8 @@ impl HelloMeshShadersSample {
         let _debug_printer = make_debug_printer!(&self.info_queue);
 
         let depth_stencil_desc = DepthStencilViewDesc::default()
+            .new_texture_2d(Tex2DDsv::default().with_mip_slice(0))
             .with_format(Format::D32Float)
-            .with_view_dimension(DsvDimension::Texture2D)
             .with_flags(DsvFlags::None);
 
         let depth_stencil = self
@@ -748,10 +750,7 @@ fn setup_root_signature(
     mesh_shader_bytecode: &Vec<u8>,
 ) -> RootSignature {
     let root_signature = device
-        .create_root_signature(
-            0,
-            &ShaderBytecode::new(mesh_shader_bytecode),
-        )
+        .create_root_signature(0, &ShaderBytecode::new(mesh_shader_bytecode))
         .expect("Cannot create root signature");
     root_signature
 }
@@ -828,7 +827,7 @@ fn create_device(factory: &Factory) -> Device {
             .expect("Cannot create device on WARP adapter");
     } else {
         let hw_adapter = factory
-            .enum_adapters()
+            .enum_adapters_by_gpu_preference(GpuPreference::HighPerformance)
             .expect("Cannot enumerate adapters")
             .remove(0);
         device = Device::new(&hw_adapter).expect("Cannot create device");

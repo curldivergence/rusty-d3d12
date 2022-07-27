@@ -41,7 +41,7 @@ fn wait_for_debugger() {
 }
 
 #[no_mangle]
-pub static D3D12SDKVersion: u32 = 600;
+pub static D3D12SDKVersion: u32 = 606;
 
 #[no_mangle]
 pub static D3D12SDKPath: &[u8; 9] = b".\\D3D12\\\0";
@@ -315,7 +315,7 @@ impl Pipeline {
         if is_producer_process {
             shared_heap = device
                 .create_heap(
-                    &HeapDesc::default()
+                    HeapDesc::default()
                         .with_properties(
                             HeapProperties::default()
                                 .with_heap_type(HeapType::Default),
