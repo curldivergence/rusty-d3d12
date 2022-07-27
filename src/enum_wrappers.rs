@@ -24,8 +24,11 @@ bitflags! {
 }
 
 // ToDo: implement Debug for all types
-#[derive(Debug, Copy, Clone)]
+
 #[repr(i32)]
+#[derive(Debug, Copy, Clone)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum DescriptorHeapType {
     CbvSrvUav =
         D3D12_DESCRIPTOR_HEAP_TYPE_D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
@@ -67,8 +70,10 @@ bitflags! {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
 #[repr(i32)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum ResourceDimension {
     Unknown = D3D12_RESOURCE_DIMENSION_D3D12_RESOURCE_DIMENSION_UNKNOWN,
     Buffer = D3D12_RESOURCE_DIMENSION_D3D12_RESOURCE_DIMENSION_BUFFER,
@@ -76,8 +81,11 @@ pub enum ResourceDimension {
     Texture2D = D3D12_RESOURCE_DIMENSION_D3D12_RESOURCE_DIMENSION_TEXTURE2D,
     Texture3D = D3D12_RESOURCE_DIMENSION_D3D12_RESOURCE_DIMENSION_TEXTURE3D,
 }
-#[derive(Debug, Copy, Clone)]
+
 #[repr(i32)]
+#[derive(Debug, Copy, Clone)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum Format {
     Unknown = DXGI_FORMAT_DXGI_FORMAT_UNKNOWN,
     R32G32B32A32Typeless = DXGI_FORMAT_DXGI_FORMAT_R32G32B32A32_TYPELESS,
@@ -215,8 +223,10 @@ impl Format {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
 #[repr(i32)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum TextureLayout {
     Unknown = D3D12_TEXTURE_LAYOUT_D3D12_TEXTURE_LAYOUT_UNKNOWN,
     RowMajor = D3D12_TEXTURE_LAYOUT_D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
@@ -246,8 +256,10 @@ bitflags! {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
 #[repr(i32)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum HeapType {
     Default = D3D12_HEAP_TYPE_D3D12_HEAP_TYPE_DEFAULT,
     Upload = D3D12_HEAP_TYPE_D3D12_HEAP_TYPE_UPLOAD,
@@ -255,8 +267,10 @@ pub enum HeapType {
     Custom = D3D12_HEAP_TYPE_D3D12_HEAP_TYPE_CUSTOM,
 }
 
-#[derive(Debug, Clone, Copy)]
 #[repr(i32)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum CpuPageProperty {
     Unknown = D3D12_CPU_PAGE_PROPERTY_D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
     NotAvailable =
@@ -266,8 +280,10 @@ pub enum CpuPageProperty {
     WriteBack = D3D12_CPU_PAGE_PROPERTY_D3D12_CPU_PAGE_PROPERTY_WRITE_BACK,
 }
 
-#[derive(Debug, Clone, Copy)]
 #[repr(i32)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum MemoryPool {
     Unknown = D3D12_MEMORY_POOL_D3D12_MEMORY_POOL_UNKNOWN,
     L0 = D3D12_MEMORY_POOL_D3D12_MEMORY_POOL_L0,
@@ -276,6 +292,8 @@ pub enum MemoryPool {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum InputClassification {
     PerVertex =
         D3D12_INPUT_CLASSIFICATION_D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
@@ -283,8 +301,10 @@ pub enum InputClassification {
         D3D12_INPUT_CLASSIFICATION_D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA,
 }
 
-#[derive(Debug, Copy, Clone)]
 #[repr(i32)]
+#[derive(Debug, Copy, Clone)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum PrimitiveTopology {
     Undefined = D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED,
     PointList = D3D_PRIMITIVE_TOPOLOGY_D3D11_PRIMITIVE_TOPOLOGY_POINTLIST,
@@ -336,6 +356,8 @@ pub enum PrimitiveTopology {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum IndexBufferStripCutValue {
     Disabled = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED,
     I16Bits = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFF,
@@ -344,6 +366,8 @@ pub enum IndexBufferStripCutValue {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum PrimitiveTopologyType {
     Undefined =
         D3D12_PRIMITIVE_TOPOLOGY_TYPE_D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED,
@@ -363,6 +387,8 @@ bitflags! {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum Blend {
     Zero = D3D12_BLEND_D3D12_BLEND_ZERO,
     One = D3D12_BLEND_D3D12_BLEND_ONE,
@@ -385,6 +411,8 @@ pub enum Blend {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum BlendOp {
     Add = D3D12_BLEND_OP_D3D12_BLEND_OP_ADD,
     Subtract = D3D12_BLEND_OP_D3D12_BLEND_OP_SUBTRACT,
@@ -395,6 +423,8 @@ pub enum BlendOp {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum LogicOp {
     Clear = D3D12_LOGIC_OP_D3D12_LOGIC_OP_CLEAR,
     Set = D3D12_LOGIC_OP_D3D12_LOGIC_OP_SET,
@@ -416,6 +446,8 @@ pub enum LogicOp {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum FillMode {
     Wireframe = D3D12_FILL_MODE_D3D12_FILL_MODE_WIREFRAME,
     Solid = D3D12_FILL_MODE_D3D12_FILL_MODE_SOLID,
@@ -423,6 +455,8 @@ pub enum FillMode {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum CullMode {
     None = D3D12_CULL_MODE_D3D12_CULL_MODE_NONE,
     Front = D3D12_CULL_MODE_D3D12_CULL_MODE_FRONT,
@@ -431,6 +465,8 @@ pub enum CullMode {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum ConservativeRasterizationMode {
     Off = D3D12_CONSERVATIVE_RASTERIZATION_MODE_D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF,
     On = D3D12_CONSERVATIVE_RASTERIZATION_MODE_D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON,
@@ -438,6 +474,8 @@ pub enum ConservativeRasterizationMode {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum DepthWriteMask {
     Zero = D3D12_DEPTH_WRITE_MASK_D3D12_DEPTH_WRITE_MASK_ZERO,
     All = D3D12_DEPTH_WRITE_MASK_D3D12_DEPTH_WRITE_MASK_ALL,
@@ -445,6 +483,8 @@ pub enum DepthWriteMask {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum ComparisonFunc {
     Never = D3D12_COMPARISON_FUNC_D3D12_COMPARISON_FUNC_NEVER,
     Less = D3D12_COMPARISON_FUNC_D3D12_COMPARISON_FUNC_LESS,
@@ -458,6 +498,8 @@ pub enum ComparisonFunc {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum StencilOp {
     Keep = D3D12_STENCIL_OP_D3D12_STENCIL_OP_KEEP,
     Zero = D3D12_STENCIL_OP_D3D12_STENCIL_OP_ZERO,
@@ -471,6 +513,8 @@ pub enum StencilOp {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum TextureCopyType {
     SubresourceIndex =
         D3D12_TEXTURE_COPY_TYPE_D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
@@ -501,6 +545,8 @@ bitflags! {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum CommandListType {
     Direct = D3D12_COMMAND_LIST_TYPE_D3D12_COMMAND_LIST_TYPE_DIRECT,
     Bundle = D3D12_COMMAND_LIST_TYPE_D3D12_COMMAND_LIST_TYPE_BUNDLE,
@@ -514,6 +560,8 @@ pub enum CommandListType {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum CommandQueuePriority {
     Normal = D3D12_COMMAND_QUEUE_PRIORITY_D3D12_COMMAND_QUEUE_PRIORITY_NORMAL,
     High = D3D12_COMMAND_QUEUE_PRIORITY_D3D12_COMMAND_QUEUE_PRIORITY_HIGH,
@@ -531,14 +579,18 @@ bitflags! {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum RootSignatureVersion {
     // V1 = D3D_ROOT_SIGNATURE_VERSION_D3D_ROOT_SIGNATURE_VERSION_1,
     V1_0 = D3D_ROOT_SIGNATURE_VERSION_D3D_ROOT_SIGNATURE_VERSION_1,
     V1_1 = D3D_ROOT_SIGNATURE_VERSION_D3D_ROOT_SIGNATURE_VERSION_1_1,
 }
 
-#[derive(Debug, Copy, Clone)]
 #[repr(i32)]
+#[derive(Debug, Copy, Clone)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum Feature {
     D3D12Options = D3D12_FEATURE_D3D12_FEATURE_D3D12_OPTIONS,
     Architecture = D3D12_FEATURE_D3D12_FEATURE_ARCHITECTURE,
@@ -581,6 +633,8 @@ pub enum Feature {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum DescriptorRangeType {
     Srv = D3D12_DESCRIPTOR_RANGE_TYPE_D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
     Uav = D3D12_DESCRIPTOR_RANGE_TYPE_D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
@@ -598,9 +652,10 @@ bitflags! {
     }
 }
 
-#[derive(PartialEq)]
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum RootParameterType {
     DescriptorTable =
         D3D12_ROOT_PARAMETER_TYPE_D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
@@ -621,6 +676,8 @@ bitflags! {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum ShaderVisibility {
     All = D3D12_SHADER_VISIBILITY_D3D12_SHADER_VISIBILITY_ALL,
     Vertex = D3D12_SHADER_VISIBILITY_D3D12_SHADER_VISIBILITY_VERTEX,
@@ -635,6 +692,8 @@ pub enum ShaderVisibility {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum Filter {
     MinMagMipPoint = D3D12_FILTER_D3D12_FILTER_MIN_MAG_MIP_POINT,
     MinMagPointMipLinear = D3D12_FILTER_D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR,
@@ -700,6 +759,8 @@ pub enum Filter {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum TextureAddressMode {
     Wrap = D3D12_TEXTURE_ADDRESS_MODE_D3D12_TEXTURE_ADDRESS_MODE_WRAP,
     Mirror = D3D12_TEXTURE_ADDRESS_MODE_D3D12_TEXTURE_ADDRESS_MODE_MIRROR,
@@ -711,6 +772,8 @@ pub enum TextureAddressMode {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum StaticBorderColor {
     TransparentBlack =
         D3D12_STATIC_BORDER_COLOR_D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK,
@@ -768,6 +831,8 @@ bitflags! {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum SrvDimension {
     Unknown = D3D12_SRV_DIMENSION_D3D12_SRV_DIMENSION_UNKNOWN,
     Buffer = D3D12_SRV_DIMENSION_D3D12_SRV_DIMENSION_BUFFER,
@@ -785,6 +850,8 @@ pub enum SrvDimension {
 
 #[repr(u32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum ShaderComponentMappingOptions {
     FromMemoryComponent0 = D3D12_SHADER_COMPONENT_MAPPING_D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_0 as u32,
     FromMemoryComponent1 = D3D12_SHADER_COMPONENT_MAPPING_D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_1 as u32,
@@ -841,6 +908,8 @@ impl ShaderComponentMapping {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum ResourceBarrierType {
     Transition =
         D3D12_RESOURCE_BARRIER_TYPE_D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
@@ -858,6 +927,8 @@ bitflags! {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum DsvDimension {
     Unknown = D3D12_DSV_DIMENSION_D3D12_DSV_DIMENSION_UNKNOWN,
     Texture1D = D3D12_DSV_DIMENSION_D3D12_DSV_DIMENSION_TEXTURE1D,
@@ -885,6 +956,8 @@ bitflags! {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum ShaderModel {
     SM_5_1 = D3D_SHADER_MODEL_D3D_SHADER_MODEL_5_1,
     SM_6_0 = D3D_SHADER_MODEL_D3D_SHADER_MODEL_6_0,
@@ -898,6 +971,8 @@ pub enum ShaderModel {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum PipelineStateSubobjectType {
     RootSignature = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE,
     VS = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_VS,
@@ -935,6 +1010,8 @@ impl Default for PipelineStateSubobjectType {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum GpuPreference {
     Unspecified = DXGI_GPU_PREFERENCE_DXGI_GPU_PREFERENCE_UNSPECIFIED,
     MinimumPower = DXGI_GPU_PREFERENCE_DXGI_GPU_PREFERENCE_MINIMUM_POWER,
@@ -943,6 +1020,8 @@ pub enum GpuPreference {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum MessageCategory {
     ApplicationDefined =
         D3D12_MESSAGE_CATEGORY_D3D12_MESSAGE_CATEGORY_APPLICATION_DEFINED,
@@ -982,6 +1061,8 @@ impl std::fmt::Display for MessageCategory {
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum MessageSeverity {
     Corruption = D3D12_MESSAGE_SEVERITY_D3D12_MESSAGE_SEVERITY_CORRUPTION,
     Error = D3D12_MESSAGE_SEVERITY_D3D12_MESSAGE_SEVERITY_ERROR,
@@ -1005,6 +1086,8 @@ impl std::fmt::Display for MessageSeverity {
 // ToDo: fix capital letters
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum MessageId {
     Unknown = D3D12_MESSAGE_ID_D3D12_MESSAGE_ID_UNKNOWN,
     StringFromApplication =
@@ -2320,18 +2403,20 @@ pub enum MessageId {
     D3D12MessagesEnd = D3D12_MESSAGE_ID_D3D12_MESSAGE_ID_D3D12_MESSAGES_END,
 }
 
-#[derive(Copy, Clone)]
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum MessageCallbackFlags {
     FlagNone = D3D12_MESSAGE_CALLBACK_FLAGS_D3D12_MESSAGE_CALLBACK_FLAG_NONE,
     IgnoreFilters =
         D3D12_MESSAGE_CALLBACK_FLAGS_D3D12_MESSAGE_CALLBACK_IGNORE_FILTERS,
 }
 
-#[derive(Copy, Clone)]
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum QueryHeapType {
     Occlusion = D3D12_QUERY_HEAP_TYPE_D3D12_QUERY_HEAP_TYPE_OCCLUSION,
     Timestamp = D3D12_QUERY_HEAP_TYPE_D3D12_QUERY_HEAP_TYPE_TIMESTAMP,
@@ -2346,18 +2431,20 @@ pub enum QueryHeapType {
         D3D12_QUERY_HEAP_TYPE_D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS1,
 }
 
-#[derive(Copy, Clone)]
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum ShaderMinPrecisionSupport {
     None = D3D12_SHADER_MIN_PRECISION_SUPPORT_D3D12_SHADER_MIN_PRECISION_SUPPORT_NONE,
     P10Bit = D3D12_SHADER_MIN_PRECISION_SUPPORT_D3D12_SHADER_MIN_PRECISION_SUPPORT_10_BIT,
     P16Bit = D3D12_SHADER_MIN_PRECISION_SUPPORT_D3D12_SHADER_MIN_PRECISION_SUPPORT_16_BIT,
 }
 
-#[derive(Copy, Clone)]
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum TiledResourcesTier {
     NotSupported =
         D3D12_TILED_RESOURCES_TIER_D3D12_TILED_RESOURCES_TIER_NOT_SUPPORTED,
@@ -2367,18 +2454,20 @@ pub enum TiledResourcesTier {
     Tier4 = D3D12_TILED_RESOURCES_TIER_D3D12_TILED_RESOURCES_TIER_4,
 }
 
-#[derive(Copy, Clone)]
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum ResourceBindingTier {
     Tier1 = D3D12_RESOURCE_BINDING_TIER_D3D12_RESOURCE_BINDING_TIER_1,
     Tier2 = D3D12_RESOURCE_BINDING_TIER_D3D12_RESOURCE_BINDING_TIER_2,
     Tier3 = D3D12_RESOURCE_BINDING_TIER_D3D12_RESOURCE_BINDING_TIER_3,
 }
 
-#[derive(Copy, Clone)]
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum ConservativeRasterizationTier {
     NotSupported = D3D12_CONSERVATIVE_RASTERIZATION_TIER_D3D12_CONSERVATIVE_RASTERIZATION_TIER_NOT_SUPPORTED,
     Tier1 = D3D12_CONSERVATIVE_RASTERIZATION_TIER_D3D12_CONSERVATIVE_RASTERIZATION_TIER_1,
@@ -2386,9 +2475,10 @@ pub enum ConservativeRasterizationTier {
     Tier3 = D3D12_CONSERVATIVE_RASTERIZATION_TIER_D3D12_CONSERVATIVE_RASTERIZATION_TIER_3,
 }
 
-#[derive(Copy, Clone)]
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum CrossNodeSharingTier {
     NotSupported = D3D12_CROSS_NODE_SHARING_TIER_D3D12_CROSS_NODE_SHARING_TIER_NOT_SUPPORTED,
     Tier1Emulated =
@@ -2398,9 +2488,10 @@ pub enum CrossNodeSharingTier {
     Tier3 = D3D12_CROSS_NODE_SHARING_TIER_D3D12_CROSS_NODE_SHARING_TIER_3,
 }
 
-#[derive(Copy, Clone)]
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum ResourceHeapTier {
     Tier1 = D3D12_RESOURCE_HEAP_TIER_D3D12_RESOURCE_HEAP_TIER_1,
     Tier2 = D3D12_RESOURCE_HEAP_TIER_D3D12_RESOURCE_HEAP_TIER_2,
@@ -2421,18 +2512,20 @@ bitflags! {
     }
 }
 
-#[derive(Copy, Clone)]
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum Scaling {
     Stretch = DXGI_SCALING_DXGI_SCALING_STRETCH,
     None = DXGI_SCALING_DXGI_SCALING_NONE,
     AspectRatioStretch = DXGI_SCALING_DXGI_SCALING_ASPECT_RATIO_STRETCH,
 }
 
-#[derive(Copy, Clone)]
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum SwapEffect {
     Discard = DXGI_SWAP_EFFECT_DXGI_SWAP_EFFECT_DISCARD,
     Sequential = DXGI_SWAP_EFFECT_DXGI_SWAP_EFFECT_SEQUENTIAL,
@@ -2440,9 +2533,10 @@ pub enum SwapEffect {
     FlipDiscard = DXGI_SWAP_EFFECT_DXGI_SWAP_EFFECT_FLIP_DISCARD,
 }
 
-#[derive(Copy, Clone)]
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum AlphaMode {
     Unspecified = DXGI_ALPHA_MODE_DXGI_ALPHA_MODE_UNSPECIFIED,
     Premultiplied = DXGI_ALPHA_MODE_DXGI_ALPHA_MODE_PREMULTIPLIED,
@@ -2451,9 +2545,10 @@ pub enum AlphaMode {
     ForceDword = DXGI_ALPHA_MODE_DXGI_ALPHA_MODE_FORCE_DWORD,
 }
 
-#[derive(Copy, Clone)]
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum AdapterFlag {
     None = DXGI_ADAPTER_FLAG_DXGI_ADAPTER_FLAG_NONE,
     Remote = DXGI_ADAPTER_FLAG_DXGI_ADAPTER_FLAG_REMOTE,
@@ -2461,9 +2556,10 @@ pub enum AdapterFlag {
     ForceDword = DXGI_ADAPTER_FLAG_DXGI_ADAPTER_FLAG_FORCE_DWORD,
 }
 
-#[derive(Copy, Clone)]
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum QueryType {
     Occlusion = D3D12_QUERY_TYPE_D3D12_QUERY_TYPE_OCCLUSION,
     BinaryOcclusion = D3D12_QUERY_TYPE_D3D12_QUERY_TYPE_BINARY_OCCLUSION,
@@ -2501,17 +2597,19 @@ bitflags! {
     }
 }
 
-#[derive(Copy, Clone)]
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum BufferUavFlags {
     None = D3D12_BUFFER_UAV_FLAGS_D3D12_BUFFER_UAV_FLAG_NONE,
     Raw = D3D12_BUFFER_UAV_FLAGS_D3D12_BUFFER_UAV_FLAG_RAW,
 }
 
-#[derive(Copy, Clone)]
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum UavDimension {
     Unknown = D3D12_UAV_DIMENSION_D3D12_UAV_DIMENSION_UNKNOWN,
     Buffer = D3D12_UAV_DIMENSION_D3D12_UAV_DIMENSION_BUFFER,

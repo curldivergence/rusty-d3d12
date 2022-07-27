@@ -768,35 +768,36 @@ impl Factory {
         Ok(Adapter { this: hw_adapter })
     }
 
-    pub fn create_swapchain(
+    /// # Safety
+    ///
+    /// window_handle must be valid
+    pub unsafe fn create_swapchain(
         &self,
         command_queue: &CommandQueue,
         window_handle: HWND,
         desc: &SwapChainDesc,
     ) -> DxResult<Swapchain> {
         let mut temp_hw_swapchain: *mut IDXGISwapChain1 = std::ptr::null_mut();
-        unsafe {
-            dx_try!(
-                self.this,
-                CreateSwapChainForHwnd,
-                cast_to_iunknown!(command_queue.this),
-                window_handle,
-                &desc.0,
-                std::ptr::null(),
-                std::ptr::null_mut(),
-                &mut temp_hw_swapchain
-            );
-        }
+
+        dx_try!(
+            self.this,
+            CreateSwapChainForHwnd,
+            cast_to_iunknown!(command_queue.this),
+            window_handle,
+            &desc.0,
+            std::ptr::null(),
+            std::ptr::null_mut(),
+            &mut temp_hw_swapchain
+        );
 
         let mut hw_swapchain: *mut IDXGISwapChain4 = std::ptr::null_mut();
-        unsafe {
-            dx_try!(
-                temp_hw_swapchain,
-                QueryInterface,
-                &IID_IDXGISwapChain4,
-                cast_to_ppv(&mut hw_swapchain)
-            );
-        }
+        dx_try!(
+            temp_hw_swapchain,
+            QueryInterface,
+            &IID_IDXGISwapChain4,
+            cast_to_ppv(&mut hw_swapchain)
+        );
+
         Ok(Swapchain { this: hw_swapchain })
     }
 

@@ -2167,6 +2167,42 @@ impl Default for RasterizerDesc {
     }
 }
 
+// Padding fields are zeroed in Default impl, so this should be okay
+#[cfg(feature = "hash")]
+impl std::hash::Hash for RasterizerDesc {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        unsafe {
+            let slice = std::slice::from_raw_parts(
+                self as *const _ as *const u8,
+                std::mem::size_of::<Self>(),
+            );
+
+            slice.hash(state);
+        }
+    }
+}
+
+#[cfg(feature = "eq")]
+impl PartialEq for RasterizerDesc {
+    fn eq(&self, other: &Self) -> bool {
+        unsafe {
+            let self_slice = std::slice::from_raw_parts(
+                self as *const _ as *const u8,
+                std::mem::size_of::<Self>(),
+            );
+
+            let other_slice = std::slice::from_raw_parts(
+                other as *const _ as *const u8,
+                std::mem::size_of::<Self>(),
+            );
+
+            self_slice == other_slice
+        }
+    }
+}
+
+impl Eq for RasterizerDesc {}
+
 impl RasterizerDesc {
     pub fn set_fill_mode(&mut self, fill_mode: FillMode) -> &mut Self {
         self.0.FillMode = fill_mode as i32;

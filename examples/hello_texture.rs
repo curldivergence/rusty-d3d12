@@ -62,13 +62,17 @@ impl Vertex {
                 .unwrap()
                 .with_format(Format::R32G32B32Float)
                 .with_input_slot(0)
-                .with_aligned_byte_offset(ByteCount(offset_of!(Self, position) as u64)),
+                .with_aligned_byte_offset(ByteCount(
+                    offset_of!(Self, position) as u64,
+                )),
             InputElementDesc::default()
                 .with_semantic_name("TEXCOORD")
                 .unwrap()
                 .with_format(Format::R32G32Float)
                 .with_input_slot(0)
-                .with_aligned_byte_offset(ByteCount(offset_of!(Self, uv) as u64)),
+                .with_aligned_byte_offset(ByteCount(
+                    offset_of!(Self, uv) as u64
+                )),
         ]
     }
 }
@@ -721,9 +725,15 @@ fn create_swapchain(
         .with_width(WINDOW_WIDTH)
         .with_height(WINDOW_HEIGHT)
         .with_buffer_count(FRAMES_IN_FLIGHT);
-    let swapchain = factory
-        .create_swapchain(&command_queue, hwnd as *mut HWND__, &swapchain_desc)
-        .expect("Cannot create swapchain");
+    let swapchain = unsafe {
+        factory
+            .create_swapchain(
+                &command_queue,
+                hwnd as *mut HWND__,
+                &swapchain_desc,
+            )
+            .expect("Cannot create swapchain")
+    };
     factory
         .make_window_association(hwnd, MakeWindowAssociationFlags::NoAltEnter)
         .expect("Cannot make window association");

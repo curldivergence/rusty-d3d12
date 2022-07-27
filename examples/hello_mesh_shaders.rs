@@ -808,9 +808,15 @@ fn create_swapchain(
         .with_width(WINDOW_WIDTH)
         .with_height(WINDOW_HEIGHT)
         .with_buffer_count(u32::from(FRAMES_IN_FLIGHT));
-    let swapchain = factory
-        .create_swapchain(&command_queue, hwnd as *mut HWND__, &swapchain_desc)
-        .expect("Cannot create swapchain");
+    let swapchain = unsafe {
+        factory
+            .create_swapchain(
+                &command_queue,
+                hwnd as *mut HWND__,
+                &swapchain_desc,
+            )
+            .expect("Cannot create swapchain")
+    };
     factory
         .make_window_association(hwnd, MakeWindowAssociationFlags::NoAltEnter)
         .expect("Cannot make window association");

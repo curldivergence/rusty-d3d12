@@ -214,9 +214,11 @@ impl HelloTriangleSample {
 
         println!("swapchain_desc: {:?}", &swapchain_desc);
 
-        let swapchain = factory
-            .create_swapchain(&command_queue, hwnd as HWND, &swapchain_desc)
-            .expect("Cannot create swapchain");
+        let swapchain = unsafe {
+            factory
+                .create_swapchain(&command_queue, hwnd as HWND, &swapchain_desc)
+                .expect("Cannot create swapchain")
+        };
 
         let rtv_heap = device
             .create_descriptor_heap(

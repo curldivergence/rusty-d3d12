@@ -1,9 +1,9 @@
 [package]
 name = "rusty-d3d12"
-version = "0.5.2"
+version = "0.6.0"
 authors = ["Andrey Pushkar <andrey.s.pushkar@gmail.com>"]
 edition = "2021"
-description = """Low-level D3D12 bindings for Rust."""
+description = """Low-level (but idiomatic) D3D12 bindings for Rust."""
 license = "MIT"
 keywords = ["d3d", "d3d12", "directx12", "directx", "dxgi"]
 categories = ["rendering::graphics-api", "graphics", "game-development", "multimedia", "api-bindings"]
@@ -15,11 +15,13 @@ features = ["log_ref_counting", "pix", "debug_callback"]
 targets = ["x86_64-pc-windows-msvc"]
 
 [features]
-default = []
+default = ["eq", "hash"]
 log_ref_counting = []
 pix = []
 devel = ["pix"]
 debug_callback = []
+hash = []
+eq = []
 
 [build-dependencies]
 bindgen = "0.60"
