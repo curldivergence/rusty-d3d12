@@ -421,7 +421,7 @@ pub fn d3d_enable_experimental_shader_models() -> DxResult<()> {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Debug {
-    this: *mut ID3D12Debug5,
+    pub this: *mut ID3D12Debug5,
 }
 impl_com_object_refcount_unnamed!(Debug);
 impl_com_object_clone_drop!(Debug);
@@ -458,14 +458,14 @@ impl Debug {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct InfoQueue {
-    this: *mut ID3D12InfoQueue1,
+    pub this: *mut ID3D12InfoQueue1,
 }
 
 #[cfg(not(feature = "debug_callback"))]
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct InfoQueue {
-    this: *mut ID3D12InfoQueue,
+    pub this: *mut ID3D12InfoQueue,
 }
 
 impl_com_object_refcount_unnamed!(InfoQueue);
@@ -532,6 +532,21 @@ impl InfoQueue {
 
             Ok(InfoQueue { this: info_queue })
         }
+    }
+
+    pub fn add_storage_filter_entries(
+        &self,
+        filter: &mut InfoQueueFilter,
+    ) -> DxResult<()> {
+        unsafe {
+            dx_try!(
+                self.this,
+                AddStorageFilterEntries,
+                filter as *mut _ as *mut D3D12_INFO_QUEUE_FILTER
+            );
+        }
+
+        Ok(())
     }
 
     pub fn get_messages(&self) -> DxResult<Vec<String>> {
@@ -621,7 +636,7 @@ impl InfoQueue {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct DebugDevice {
-    this: *mut ID3D12DebugDevice,
+    pub this: *mut ID3D12DebugDevice,
 }
 impl_com_object_refcount_unnamed!(DebugDevice);
 impl_com_object_clone_drop!(DebugDevice);
@@ -663,7 +678,7 @@ impl DebugDevice {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Factory {
-    this: *mut IDXGIFactory6,
+    pub this: *mut IDXGIFactory6,
 }
 impl_com_object_refcount_unnamed!(Factory);
 impl_com_object_clone_drop!(Factory);
@@ -823,7 +838,7 @@ impl Factory {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Adapter {
-    this: *mut IDXGIAdapter3,
+    pub this: *mut IDXGIAdapter3,
 }
 impl_com_object_refcount_unnamed!(Adapter);
 impl_com_object_clone_drop!(Adapter);
@@ -841,7 +856,7 @@ impl Adapter {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Device {
-    this: *mut ID3D12Device2,
+    pub this: *mut ID3D12Device2,
 }
 impl_com_object_refcount_unnamed!(Device);
 impl_com_object_clone_drop!(Device);
@@ -1505,7 +1520,7 @@ impl Device {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct DeviceChild {
-    this: *mut ID3D12DeviceChild,
+    pub this: *mut ID3D12DeviceChild,
 }
 impl_com_object_refcount_unnamed!(DeviceChild);
 impl_com_object_clone_drop!(DeviceChild);
@@ -1543,7 +1558,7 @@ impl From<Fence> for DeviceChild {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct CommandQueue {
-    this: *mut ID3D12CommandQueue,
+    pub this: *mut ID3D12CommandQueue,
 }
 impl_com_object_refcount_unnamed!(CommandQueue);
 impl_com_object_clone_drop!(CommandQueue);
@@ -1585,7 +1600,7 @@ impl CommandQueue {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Swapchain {
-    this: *mut IDXGISwapChain4,
+    pub this: *mut IDXGISwapChain4,
 }
 impl_com_object_refcount_unnamed!(Swapchain);
 impl_com_object_clone_drop!(Swapchain);
@@ -1631,7 +1646,7 @@ impl Swapchain {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct DescriptorHeap {
-    this: *mut ID3D12DescriptorHeap,
+    pub this: *mut ID3D12DescriptorHeap,
 }
 
 impl_com_object_set_get_name!(DescriptorHeap);
@@ -1717,7 +1732,7 @@ impl GpuDescriptorHandle {
 #[derive(Debug, Hash, PartialOrd, Ord, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct Resource {
-    this: *mut ID3D12Resource,
+    pub this: *mut ID3D12Resource,
 }
 impl_com_object_clone_drop!(Resource);
 impl_com_object_refcount_named!(Resource);
@@ -1810,7 +1825,7 @@ impl Resource {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct CommandAllocator {
-    this: *mut ID3D12CommandAllocator,
+    pub this: *mut ID3D12CommandAllocator,
 }
 impl_com_object_set_get_name!(CommandAllocator);
 impl_com_object_refcount_named!(CommandAllocator);
@@ -1828,7 +1843,7 @@ assert_eq_size!(CommandList, *mut ID3D12GraphicsCommandList6);
 #[derive(Debug, Hash, PartialOrd, Ord, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct CommandList {
-    this: *mut ID3D12GraphicsCommandList6,
+    pub this: *mut ID3D12GraphicsCommandList6,
 }
 impl_com_object_set_get_name!(CommandList);
 impl_com_object_refcount_named!(CommandList);
@@ -2124,6 +2139,7 @@ impl CommandList {
         }
     }
 
+    // ToDo: 32_bit
     pub fn set_compute_root_32bit_constants(
         &self,
         root_parameter_index: u32,
@@ -2534,7 +2550,7 @@ unsafe fn memcpy_subresource(
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Fence {
-    this: *mut ID3D12Fence,
+    pub this: *mut ID3D12Fence,
 }
 
 impl_com_object_set_get_name!(Fence);
@@ -2623,7 +2639,7 @@ impl Handle {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct RootSignature {
-    this: *mut ID3D12RootSignature,
+    pub this: *mut ID3D12RootSignature,
 }
 
 impl_com_object_set_get_name!(RootSignature);
@@ -2664,7 +2680,7 @@ impl RootSignature {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct PipelineState {
-    this: *mut ID3D12PipelineState,
+    pub this: *mut ID3D12PipelineState,
 }
 impl_com_object_set_get_name!(PipelineState);
 impl_com_object_refcount_named!(PipelineState);
@@ -2676,7 +2692,7 @@ unsafe impl Send for PipelineState {}
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Blob {
-    this: *mut ID3DBlob,
+    pub this: *mut ID3DBlob,
 }
 impl_com_object_refcount_unnamed!(Blob);
 impl_com_object_clone_drop!(Blob);
@@ -2696,7 +2712,7 @@ impl Blob {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct QueryHeap {
-    this: *mut ID3D12QueryHeap,
+    pub this: *mut ID3D12QueryHeap,
 }
 impl_com_object_set_get_name!(QueryHeap);
 impl_com_object_refcount_named!(QueryHeap);
@@ -2705,7 +2721,7 @@ impl_com_object_clone_drop!(QueryHeap);
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Heap {
-    this: *mut ID3D12Heap,
+    pub this: *mut ID3D12Heap,
 }
 impl_com_object_set_get_name!(Heap);
 impl_com_object_refcount_named!(Heap);

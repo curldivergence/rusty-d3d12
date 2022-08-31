@@ -7380,3 +7380,146 @@ impl HeapDesc {
         unsafe { HeapFlags::from_bits_unchecked(self.0.Flags) }
     }
 }
+
+/// Wrapper around D3D12_INFO_QUEUE_FILTER_DESC structure
+#[derive(Default, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone)]
+#[repr(transparent)]
+pub struct InfoQueueFilterDesc<'a>(
+    pub(crate) D3D12_INFO_QUEUE_FILTER_DESC,
+    PhantomData<&'a [i32]>,
+);
+
+impl<'a> InfoQueueFilterDesc<'a> {
+    pub fn num_categories(&self) -> u32 {
+        self.0.NumCategories
+    }
+
+    pub fn set_category_list(
+        &mut self,
+        category_list: &'a [MessageCategory],
+    ) -> &mut Self {
+        self.0.pCategoryList = category_list.as_ptr() as *mut i32;
+        self.0.NumCategories = category_list.len() as u32;
+        self.1 = PhantomData;
+
+        self
+    }
+
+    pub fn with_category_list(
+        mut self,
+        category_list: &'a [MessageCategory],
+    ) -> Self {
+        self.set_category_list(category_list);
+        self
+    }
+
+    pub fn category_list(&self) -> &'a [MessageCategory] {
+        unsafe {
+            std::slice::from_raw_parts(
+                self.0.pCategoryList as *const MessageCategory,
+                self.0.NumCategories as usize,
+            )
+        }
+    }
+
+    pub fn num_severities(&self) -> u32 {
+        self.0.NumSeverities
+    }
+
+    pub fn set_severity_list(
+        &mut self,
+        severity_list: &'a [MessageSeverity],
+    ) -> &mut Self {
+        self.0.pSeverityList = severity_list.as_ptr() as *mut i32;
+        self.0.NumSeverities = severity_list.len() as u32;
+        self.1 = PhantomData;
+
+        self
+    }
+
+    pub fn with_severity_list(
+        mut self,
+        severity_list: &'a [MessageSeverity],
+    ) -> Self {
+        self.set_severity_list(severity_list);
+
+        self
+    }
+
+    pub fn severity_list(&self) -> &'a [MessageSeverity] {
+        unsafe {
+            std::slice::from_raw_parts(
+                self.0.pSeverityList as *const MessageSeverity,
+                self.0.NumSeverities as usize,
+            )
+        }
+    }
+
+    pub fn num_ids(&self) -> u32 {
+        self.0.NumIDs
+    }
+
+    pub fn set_id_list(&mut self, id_list: &'a [MessageId]) -> &mut Self {
+        self.0.pIDList = id_list.as_ptr() as *mut i32;
+        self.0.NumIDs = id_list.len() as u32;
+        self.1 = PhantomData;
+
+        self
+    }
+
+    pub fn with_id_list(mut self, id_list: &'a [MessageId]) -> Self {
+        self.set_id_list(id_list);
+
+        self
+    }
+
+    pub fn id_list(&self) -> &'a [MessageId] {
+        unsafe {
+            std::slice::from_raw_parts(
+                self.0.pIDList as *const MessageId,
+                self.0.NumIDs as usize,
+            )
+        }
+    }
+}
+
+/// Wrapper around D3D12_INFO_QUEUE_FILTER structure
+#[derive(Default, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone)]
+#[repr(transparent)]
+pub struct InfoQueueFilter(pub(crate) D3D12_INFO_QUEUE_FILTER);
+
+impl InfoQueueFilter {
+    pub fn set_allow_list(
+        &mut self,
+        allow_list: &InfoQueueFilterDesc,
+    ) -> &mut Self {
+        self.0.AllowList = allow_list.0;
+        self
+    }
+
+    pub fn with_allow_list(mut self, allow_list: &InfoQueueFilterDesc) -> Self {
+        self.set_allow_list(allow_list);
+        self
+    }
+
+    pub fn allow_list(&self) -> &InfoQueueFilterDesc {
+        unsafe { std::mem::transmute(&self.0.AllowList) }
+    }
+
+    pub fn set_deny_list(
+        &mut self,
+        deny_list: &InfoQueueFilterDesc,
+    ) -> &mut Self {
+        self.0.DenyList = deny_list.0;
+        self
+    }
+
+    pub fn with_deny_list(mut self, deny_list: &InfoQueueFilterDesc) -> Self {
+        self.set_deny_list(deny_list);
+        self
+    }
+
+    pub fn deny_list(&self) -> &InfoQueueFilterDesc {
+        unsafe { std::mem::transmute(&self.0.AllowList) }
+    }
+}
